@@ -1,14 +1,17 @@
-# Create a Monitor profile you want to on this directory
+# === 4ndr0666 === #
+# Monitor Profiles Directory
 
-# Create a unique file name i.e. Mirror, or Office, Scale, etc etc
+# Create a Monitor profile you want to use in this directory.
+# Create a unique file name ending in .lua (e.g. Mirror.lua, Office.lua, Scale.lua).
 
-# tip: You can easily create a profile using nwg-displays
-# after creating a profile using nwg-displays, copy the ~/.config/hypr/monitors.conf file to this directory with a unique file name
-# suggest not to call it default
+# Tip: You can easily create a layout profile using nwg-displays.
+# After creating a profile using nwg-displays, adapt the translated lines from 
+# ~/.config/hypr/monitors.lua into a new file in this directory.
+# It is highly suggested not to call it "default.lua".
 
+# Note: After selecting your desired profile via Rofi (SUPER SHIFT E), the active 
+# configuration will be swapped out. Previous profiles will be backed up 
+# automatically as Previous_Profile.lua.
 
-# Note, after selecting Profiles wanted via Rofi (SUPER SHIFT E), previous content of ~/.config/hypr/monitors.conf will be backed up and named as Previous_Profile.conf
-
-# Monitor profile should be loaded automatically once selected by KooL Rofi Settings ROfi Menu, unless you disabled the auto-reload function on Hyprland settings.
-# However, if it does not load, kindly log out and re-login. This seem apparent if you are using a Virtual Environment.
-
+# Profiles load automatically once chosen from the menu unless auto-reload is disabled[cite: 73, 74].
+# If changes do not reflect instantly, log out and log back in (especially in VMs)[cite: 74, 75].

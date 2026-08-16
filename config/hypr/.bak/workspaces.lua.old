@@ -1,0 +1,7 @@
+-- File: workspaces.lua
+-- Hyprland workspace overrides.
+--
+-- No workspace-specific overrides are currently defined. The module is kept
+-- as a valid require target for the generated hyprland.lua configuration.
+
+return true

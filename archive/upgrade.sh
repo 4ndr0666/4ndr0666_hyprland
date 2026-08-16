@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/JaKooLit 💫 ---- */  #
+# === 4ndr0666 === #
 # for Semi-Manual upgrading your system.
 # NOTE: requires rsync 
 
@@ -21,9 +21,10 @@ RESET="$(tput sgr0)"
 
 printf "\n%.0s" {1..1}  
 echo -e "\e[35m
-    ╦╔═┌─┐┌─┐╦    ╔╦╗┌─┐┌┬┐┌─┐
-    ╠╩╗│ ││ │║     ║║│ │ │ └─┐ 2025
-    ╩ ╩└─┘└─┘╩═╝  ═╩╝└─┘ ┴ └─┘ upgrade.sh
+# ========================================= #
+# ===           4ndr0666                === #
+# ===       System Upgrade              === #
+# ========================================= #
 \e[0m"
 printf "\n%.0s" {1..1}  
 
@@ -53,10 +54,10 @@ if grep -iqE '^(ID_LIKE|ID)=.*(ubuntu|debian)' /etc/os-release >/dev/null 2>&1; 
 fi
 
 echo "${WARNING}A T T E N T I O N !${RESET}"
-echo "${SKY_BLUE}This script is meant to manually upgrade your KooL Hyprland Dots${RESET}"
+echo "${SKY_BLUE}This script is meant to manually upgrade your 4ndr0666 Hyprland Dots${RESET}"
 echo "${YELLOW}NOTE that you should edit this script and assign an Directory or Files exclusion${RESET}"
 printf "\n%.0s" {1..1}
-echo "${MAGENTA}If you are not sure what you are doing,ran the ${SKY_BLUE}copy.sh${RESET} ${MAGENTA}instead${RESET}"
+echo "${MAGENTA}If you are not sure what you are doing, run the ${SKY_BLUE}copy.sh${RESET} ${MAGENTA}instead${RESET}"
 printf "\n%.0s" {1..1}
 read -p "${CAT} - Would you like to proceed (y/n): ${RESET}" proceed
 
@@ -95,7 +96,6 @@ declare -A directories=(
     ["config/fastfetch/"]="$HOME/.config/fastfetch/"
     ["config/wallust/"]="$HOME/.config/wallust/"
     ["config/wlogout/"]="$HOME/.config/wlogout/"
-    # Add more directories to compare as needed
 )
 
 # Update the exclusion rules
@@ -104,16 +104,14 @@ declare -A exclusions=(
     ["config/waybar/"]="--exclude=config --exclude=style.css"
     ["config/rofi/"]="--exclude=.current_wallpaper"
     ["config/quickshell/"]="--exclude=shell.qml"
-    # Add more exclusions as needed
 )
 
 # Function to compare directories
 compare_directories() {
     local source_dir="$1"
     local target_dir="$2"
-    local exclusion="${exclusions[$source_dir]}"  # Get exclusions for the source directory
+    local exclusion="${exclusions[$source_dir]}"
 
-    # Perform dry-run comparison using rsync with exclusions
     diff=$(rsync -avn --delete "$source_dir" "$target_dir" $exclusion)
     echo "$diff"
 }
@@ -159,28 +157,22 @@ if version_gt "$latest_version" "$stored_version"; then
     echo "$CAT newer version ($latest_version) is available. Do you want to upgrade? (Y/N)" 2>&1 | tee -a "$LOG"
     read -r answer
     if [[ "$answer" =~ ^[Yy]$ ]]; then
-        # Loop through directories for comparison
 		for source_directory in "${!directories[@]}"; do
     	target_directory="${directories[$source_directory]}"
     	echo "$YELLOW Comparing directories: $source_directory and $target_directory" $RESET    
-    	# Compare source and target directories
     	comparison=$(compare_directories "$source_directory" "$target_directory")
     	if [ -n "$comparison" ]; then
-        echo "$NOTE Here are difference of $source_directory and $target_directory:"
+        echo "$NOTE Here are differences for $source_directory and $target_directory:"
         echo "$comparison"
         
         printf "\n%.0s" {1..2}
         
-        # Prompt user for action
         echo "$CAT Do you want to copy files and directories from $source_directory to $target_directory? (Y/N)"
         read -r answer
 
         if [[ "$answer" =~ ^[Yy]$ ]]; then
-            # Creating backup of the target directory
             create_backup "$target_directory"
-            
             printf "\n%.0s" {1..2}
-            # Copy differences from source directory to target directory
             rsync -av --delete ${exclusions[$source_directory]} "$source_directory" "$target_directory"
             echo "$NOTE Differences of "$target_directory" copied successfully." 2>&1 | tee -a "$LOG"
             printf "\n%.0s" {1..2}
@@ -197,14 +189,13 @@ if version_gt "$latest_version" "$stored_version"; then
         # Set some files as executable
         chmod +x "$HOME/.config/hypr/scripts/"* 2>&1 | tee -a "$LOG"
         chmod +x "$HOME/.config/hypr/UserScripts/"* 2>&1 | tee -a "$LOG"
-        # Set executable for initial-boot.sh
         chmod +x "$HOME/.config/hypr/initial-boot.sh" 2>&1 | tee -a "$LOG"
         
     else
         echo "$MAGENTA Upgrade declined. No files or directories changed" 2>&1 | tee -a "$LOG"
     fi
 else
-    echo "$OK 👌 No upgrade found. The installed version ${MAGENTA}($stored_version)${RESET} is up to date with the KooL Hyprland-Dots version ${YELLOW}($latest_version)${RESET}" 2>&1 | tee -a "$LOG"
+    echo "$OK 👌 No upgrade found. The installed version ${MAGENTA}($stored_version)${RESET} is up to date with the 4ndr0666 Hyprland-Dots version ${YELLOW}($latest_version)${RESET}" 2>&1 | tee -a "$LOG"
 fi
 
 printf "\n%.0s" {1..3}
