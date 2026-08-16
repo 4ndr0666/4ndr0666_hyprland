@@ -3,3 +3,8 @@
 animations {
   enabled = no
 }
+hl.config({
+    animations = {
+        enabled = true
+    }
+})
