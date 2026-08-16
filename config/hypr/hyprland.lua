@@ -1,0 +1,52 @@
+-- File: hyprland.lua
+-- === 4ndr0666 === --
+
+local home = os.getenv("HOME")
+package.path = package.path .. ";" .. home .. "/.config/hypr/?.lua;" .. home .. "/.config/hypr/?/init.lua"
+
+-- Safe require wrapper: Emulates Hyprland's native source directive
+-- Prevents fatal compositor crashes if a user deletes an optional config file
+local function source(module_name)
+    local success, err = pcall(require, module_name)
+    if not success then
+        print("Warning: Could not source '" .. module_name .. "'. File may not exist. (" .. tostring(err) .. ")")
+    end
+end
+
+-- Initial boot script (Asynchronous hook to prevent blocking)
+hl.on("hyprland.start", function ()
+    hl.exec_cmd("[ ! -f " .. home .. "/.config/hypr/.initial_startup_done ] && " .. home .. "/.config/hypr/initial-boot.sh || true")
+end)
+
+-- Pre-configured keybinds
+source("configs.Keybinds")
+
+-- Load defaults, then user additions/overrides
+source("configs.Startup_Apps")
+source("UserConfigs.Startup_Apps")
+
+source("configs.ENVariables")
+source("UserConfigs.ENVariables")
+
+-- For laptop related
+-- source("configs.Laptops")
+-- source("UserConfigs.Laptops")
+-- source("UserConfigs.LaptopDisplay")
+
+-- Window Rules and Layer Rules
+source("configs.WindowRules")
+-- source("UserConfigs.WindowRules")
+
+-- Default config for hypr
+source("configs.SystemSettings")
+
+-- User Overrides
+source("UserConfigs.UserDecorations")
+-- source("UserConfigs.UserAnimations")
+source("UserConfigs.UserKeybinds")
+source("UserConfigs.UserSettings")
+source("UserConfigs.01-UserDefaults")
+
+-- Hardware & Workspaces (nwg-displays)
+source("monitors")
+source("workspaces")

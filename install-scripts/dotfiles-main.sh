@@ -1,37 +1,29 @@
 #!/bin/bash
 # === 4ndr0666 === #
-# Hyprland-Dots to download from main #
+# Dotfiles deployment from local Monorepo #
 
 ## WARNING: DO NOT EDIT BEYOND THIS LINE IF YOU DON'T KNOW WHAT YOU ARE DOING! ##
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Change the working directory to the parent directory of the script
+# Change the working directory to the parent directory of the script (Repo Root)
 PARENT_DIR="$SCRIPT_DIR/.."
 cd "$PARENT_DIR" || { echo "${ERROR} Failed to change directory to $PARENT_DIR"; exit 1; }
 
 # Source the global functions script
-if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
+if ! source "$SCRIPT_DIR/Global_functions.sh"; then
   echo "Failed to source Global_functions.sh"
   exit 1
 fi
 
-# Check if Hyprland-Dots exists
-printf "${NOTE} Cloning and Installing ${SKY_BLUE}4ndr0666's Hyprland Dots${RESET}....\n"
+printf "${NOTE} Deploying ${SKY_BLUE}4ndr0666's Hyprland Dots${RESET} from local repository....\n"
 
-if [ -d Hyprland-Dots ]; then
-  cd Hyprland-Dots
-  git stash && git pull
+# In a monorepo, copy.sh is in the root directory
+if [ -f "copy.sh" ]; then
   chmod +x copy.sh
-  ./copy.sh 
+  ./copy.sh
 else
-  if git clone --depth=1 https://github.com/4ndr0666/Hyprland-Dots; then
-    cd Hyprland-Dots || exit 1
-    chmod +x copy.sh
-    ./copy.sh 
-  else
-    echo -e "$ERROR Can't download ${YELLOW}4ndr0666's Hyprland-Dots${RESET} . Check your internet connection"
-    exit 1
-  fi
+  echo -e "$ERROR Local ${YELLOW}copy.sh${RESET} not found in the repository root. Ensure you have the complete monorepo."
+  exit 1
 fi
 
 # ==============================================================================
