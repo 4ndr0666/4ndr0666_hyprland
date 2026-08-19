@@ -26,26 +26,18 @@ source("configs.Keybinds")
 
 -- Load defaults, then user additions/overrides
 source("configs.Startup_Apps")
-source("UserConfigs.Startup_Apps")
-
 source("configs.ENVariables")
-source("UserConfigs.ENVariables")
-
--- For laptop related
---source("configs.Laptops")
---source("UserConfigs.Laptops")
---source("UserConfigs.LaptopDisplay")
 
 -- Window Rules and Layer Rules
 source("configs.WindowRules")
---source("UserConfigs.WindowRules")
+source("UserConfigs.WindowRules")
 
 -- Default config for hypr
 source("configs.SystemSettings")
 
 -- User Overrides
 source("UserConfigs.UserDecorations")
--- source("UserConfigs.UserAnimations")
+source("UserConfigs.UserAnimations")
 source("UserConfigs.UserKeybinds")
 source("UserConfigs.UserSettings")
 source("UserConfigs.01-UserDefaults")
