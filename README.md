@@ -1,6 +1,17 @@
-# === 4ndr0666 ===
+<p align="center">
+  <a href="banner.jpeg"><img src="banner.jpeg" alt="4ndr0666-Hyprland Banner"></a>
+  <a href="https://raw.githubusercontent.com/4ndr0666/ars0n-framework-v2-pi/refs/heads/pi-support/assets/badge_build.png"><img src="https://raw.githubusercontent.com/4ndr0666/ars0n-framework-v2-pi/refs/heads/pi-support/assets/badge_build.png" alt="Build Status"></a>
+  <a href="https://raw.githubusercontent.com/4ndr0666/ars0n-framework-v2-pi/refs/heads/pi-support/assets/badge_license.png"><img src="https://raw.githubusercontent.com/4ndr0666/ars0n-framework-v2-pi/refs/heads/pi-support/assets/badge_license.png" alt="License"></a>
+</p>
 
-# 4ndr0666 Hyprland Monorepo Dotfiles
+<h1 align="center">4NDR0666OS Hyprland Installer</h1>
+<p align="center">Arch-optimized, multi-Linux distro ready, and reproducible. Hyprland 55+, lua resilient provisioned, and a frictionless “it just works” deployment experience. Pure lua spec by default, and customised terminal independent scratchpad.</p>
+
+<p align="center">
+  ⊰💀•-⦑4NDR0666OS⦒-•💀⊱
+</p>
+
+---
 
 Welcome to the unified, purely Lua-driven ecosystem for the Hyprland compositor. This repository houses a single, integrated monorepo tree containing the baseline environment configurations, asset banks, orchestration layer, and modular installer scripts.
 
