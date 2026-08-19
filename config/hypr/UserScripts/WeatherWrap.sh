@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  ##
+# /* ----  https://github.com/4ndr0666  ---- */  ##
 # Weather entrypoint: prefer Python (Open‑Meteo), fallback to legacy Bash (wttr.in)
 
 SCRIPT_DIR="$(dirname "$0")"

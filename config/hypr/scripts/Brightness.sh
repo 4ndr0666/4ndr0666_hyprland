@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  ##
+# /* ----  https://github.com/4ndr0666  ---- */  ##
 # Script for Monitor backlights (if supported) using brightnessctl
 
 iDIR="$HOME/.config/mako/icons"

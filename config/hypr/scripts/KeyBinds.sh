@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  ##
+# /* ----  https://github.com/4ndr0666  ---- */  ##
 # searchable enabled keybinds using rofi (supports bindd descriptions)
 
 # kill yad to not interfere with this binds

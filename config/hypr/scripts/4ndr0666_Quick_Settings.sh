@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  ##
-# Rofi menu for 4ndr0666 Hyprland Quick Settings (SUPER SHIFT E)
+# /* ---- 💫 https://github.com/JaKooLit 💫 ---- */  ##
+# Rofi menu for KooL Hyprland Quick Settings (SUPER SHIFT E)
 
 config_file="$HOME/.config/hypr/UserConfigs/01-UserDefaults.lua"
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  ##
+# /* ----  https://github.com/4ndr0666  ---- */  ##
 # For applying Pre-configured Monitor Profiles
 
 # Check if rofi is already running

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  ##
+# /* ----  https://github.com/4ndr0666  ---- */  ##
 # Simple bash script to check and will try to update your system
 
 # Local Paths

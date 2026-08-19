@@ -1,5 +1,5 @@
 -- File: configs/SystemSettings.lua
--- /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */  #
 -- Default settings
 
 local scriptsDir = os.getenv("HOME") .. "/.config/hypr/scripts"

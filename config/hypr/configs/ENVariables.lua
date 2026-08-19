@@ -1,5 +1,5 @@
 -- File: configs/ENVariables.lua
--- /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */  #
 -- Environment Variables
 
 hl.env("DOTS_VERSION", "2.3.20")

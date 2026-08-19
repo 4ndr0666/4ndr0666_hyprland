@@ -1,5 +1,5 @@
 -- File: configs/Keybinds.lua
--- /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */  #
 -- Default Keybinds
 
 local mainMod = "SUPER"

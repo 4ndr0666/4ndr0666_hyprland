@@ -1,16 +1,5 @@
 -- File: UserConfigs/UserSettings.lua
--- /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  #
--- User settings override module.
---
--- Active defaults and user-specific settings are defined in the dedicated
--- configuration modules loaded by hyprland.lua. This module remains a valid
--- require target so the generated configuration has a stable override hook.
-
-return true
-
--- Appended from merged variants --
--- File: UserConfigs/UserSettings.lua
--- /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */  #
 -- User settings override module.
 --
 -- This is where you put your own settings. They will not be touched during updates.
@@ -22,4 +11,3 @@ return true
 -- require target so the generated configuration has a stable override hook.
 
 return true
--- Segment 2

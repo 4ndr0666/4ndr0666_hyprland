@@ -1,5 +1,5 @@
 -- File: configs/WindowRules-pre-53.lua
--- /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */  #
 -- Vendor defaults for window rules and layerrules
 -- Notes: Ported for Hyprland > 0.48
 

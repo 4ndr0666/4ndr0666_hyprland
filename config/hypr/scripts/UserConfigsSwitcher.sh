@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  ##
+# /* ----  https://github.com/4ndr0666  ---- */  ##
 # Script to manage UserConfigs and UserConfigsBak
 
 HYPR_CONFIG_DIR="$HOME/.config/hypr"

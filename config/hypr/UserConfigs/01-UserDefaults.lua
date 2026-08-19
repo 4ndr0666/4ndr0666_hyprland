@@ -1,5 +1,5 @@
 -- File: UserConfigs/01-UserDefaults.lua
--- /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  #
+-- /* ---- https://github.com/4ndr0666 ---- */  #
 -- User Defaults: Default apps, search engine, etc.
 
 -- Default editor

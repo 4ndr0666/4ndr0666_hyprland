@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  ##
+# /* ----  https://github.com/4ndr0666  ---- */  ##
 # Toggle Hyprland's master/dwindle layout.
 #
 # Layout-aware J/K navigation is implemented in configs/Keybinds.lua and

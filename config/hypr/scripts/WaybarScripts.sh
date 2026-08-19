@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  #
+# /* ----  https://github.com/4ndr0666  ---- */  #
 
 config_file="$HOME/.config/hypr/UserConfigs/01-UserDefaults.lua"
 

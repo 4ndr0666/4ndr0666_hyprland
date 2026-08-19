@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  ##
+# /* ----  https://github.com/4ndr0666  ---- */  ##
 # Scripts for refreshing waybar, rofi, mako, wallust
 
 SCRIPTSDIR="$HOME/.config/hypr/scripts"

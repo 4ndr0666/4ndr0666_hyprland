@@ -1,5 +1,5 @@
 -- File: configs/Startup_Apps.lua
--- /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */  #
 -- Startup Apps
 
 local scriptsDir = os.getenv("HOME") .. "/.config/hypr/scripts"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  ##
+# /* ----  https://github.com/4ndr0666  ---- */  ##
 # Airplane Mode. Turning on or off all wifi using rfkill. 
 
 notif="$HOME/.config/mako/images/ja.png"

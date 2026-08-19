@@ -1,5 +1,5 @@
 -- File: UserConfigs/UserKeybinds.lua
--- /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */  #
 -- User Custom Keybinds
 
 local mainMod = "SUPER"
@@ -39,9 +39,9 @@ hl.bind(mainMod .. " + F9", hl.dsp.exec_cmd(term .. " -e " .. os.getenv("HOME") 
 hl.bind(mainMod .. " + SHIFT + F9", hl.dsp.exec_cmd("st -e python3 /home/git/clone/4ndr0666/scr/media/dorkmaster/dorkmaster.py"), { description = "Dorkmaster" })
 
 -- F10
-hl.bind(mainMod .. " + F10", hl.dsp.exec_cmd("nohup mpv --profile=playdir &"), { description = "MPV" })
-hl.bind(mainMod .. " + SHIFT + F10", hl.dsp.exec_cmd("bash /home/andro/.local/bin/wofi_media.sh >/dev/null 2>&1"), { description = "Wofi Media" })
+hl.bind(mainMod .. " + F10", hl.dsp.exec_cmd("mpv"), { description = "MPV" })
+hl.bind(mainMod .. " + SHIFT + F10", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.local/bin/wl-media >/dev/null 2>&1"), { description = "Wl-Media" })
 
 -- F12
-hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.local/bin/dmenurecord &"), { description = "Dmenurecord" })
+hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.local/bin/wl-record >/dev/null 2>&1"), { description = "Wl-record" })
 -- Segment 2

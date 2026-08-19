@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# /* ---- 💫 https://github.com/4ndr0666 💫 ---- */  ##
+# /* ----  https://github.com/4ndr0666  ---- */  ##
 # weather info from wttr. https://github.com/chubin/wttr.in
 # Remember to add city 
 # Function to get current city from IP address with fallback
