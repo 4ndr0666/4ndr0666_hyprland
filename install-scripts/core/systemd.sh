@@ -45,7 +45,11 @@ systemd_record_unit() {
   local unit="$1"
   local enabled active
 
-  systemd_unit_exists "$unit" || return 0
+  if ! systemd_unit_exists "$unit"; then
+    printf '%s|absent|absent\n' "$unit" >> "$SYSTEMD_STATE_MANIFEST"
+    return 0
+  fi
+
   enabled="$(systemd_unit_enabled_state "$unit")"
   active="$(systemd_unit_active_state "$unit")"
   printf '%s|%s|%s\n' "$unit" "$enabled" "$active" >> "$SYSTEMD_STATE_MANIFEST"
