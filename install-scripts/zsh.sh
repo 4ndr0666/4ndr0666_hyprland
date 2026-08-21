@@ -20,9 +20,15 @@ package_install "${zsh_pkg2[@]}"
 OH_MY_ZSH_DIR="$HOME/.oh-my-zsh"
 ZSH_CUSTOM_DIR="${ZSH_CUSTOM:-$OH_MY_ZSH_DIR/custom}"
 
+# Revisions are commit IDs, not branch names. These defaults are reviewed
+# revisions; overrides are intended for deliberate dependency updates.
+OH_MY_ZSH_REVISION="${OH_MY_ZSH_REVISION:-97e1105}"
+ZSH_AUTOSUGGESTIONS_REVISION="${ZSH_AUTOSUGGESTIONS_REVISION:-85919cd}"
+ZSH_SYNTAX_HIGHLIGHTING_REVISION="${ZSH_SYNTAX_HIGHLIGHTING_REVISION:-c4d9559}"
+
 clone_pinned() {
   local url="$1" revision="$2" destination="$3"
-  local tmp
+  local tmp actual
 
   [[ "$destination" == "$HOME"/* ]] || {
     printf '[ERROR] Refusing repository destination outside HOME: %s\n' "$destination" >&2
@@ -36,32 +42,33 @@ clone_pinned() {
   tmp="$(mktemp -d --tmpdir="$(dirname "$destination") .clone.XXXXXX)"
   git clone --quiet --filter=blob:none --no-checkout "$url" "$tmp"
   git -C "$tmp" checkout --quiet --detach "$revision"
+  actual="$(git -C "$tmp" rev-parse HEAD)"
+  git -C "$tmp" rev-parse --verify "$revision^{commit}" >/dev/null
+  [[ "$actual" == "$(git -C "$tmp" rev-parse "$revision^{commit}")" ]] || {
+    rm -rf -- "$tmp"
+    printf '[ERROR] Revision verification failed for %s\n' "$url" >&2
+    return 1
+  }
   rm -rf -- "$tmp/.git"
   mv -- "$tmp" "$destination"
 }
 
 install_oh_my_zsh() {
-  local revision="${OH_MY_ZSH_REVISION:-master}"
   local url="https://github.com/ohmyzsh/ohmyzsh.git"
 
   [[ -d "$OH_MY_ZSH_DIR" ]] && return 0
   mkdir -p -- "$(dirname "$OH_MY_ZSH_DIR")"
-
-  # The default is the repository's named branch for compatibility. Production
-  # deployments should set OH_MY_ZSH_REVISION to an immutable commit SHA.
-  clone_pinned "$url" "$revision" "$OH_MY_ZSH_DIR"
+  clone_pinned "$url" "$OH_MY_ZSH_REVISION" "$OH_MY_ZSH_DIR"
 }
 
 install_oh_my_zsh
 mkdir -p -- "$ZSH_CUSTOM_DIR/plugins"
 
-# Pin these repositories with environment variables. Mutable branch names remain
-# available for development, while release/preset configurations can supply SHAs.
 clone_pinned "https://github.com/zsh-users/zsh-autosuggestions.git" \
-  "${ZSH_AUTOSUGGESTIONS_REVISION:-master}" \
+  "$ZSH_AUTOSUGGESTIONS_REVISION" \
   "$ZSH_CUSTOM_DIR/plugins/zsh-autosuggestions"
 clone_pinned "https://github.com/zsh-users/zsh-syntax-highlighting.git" \
-  "${ZSH_SYNTAX_HIGHLIGHTING_REVISION:-master}" \
+  "$ZSH_SYNTAX_HIGHLIGHTING_REVISION" \
   "$ZSH_CUSTOM_DIR/plugins/zsh-syntax-highlighting"
 
 install -m 0644 -- "$ROOT_DIR/assets/.zshrc" "$HOME/.zshrc"
