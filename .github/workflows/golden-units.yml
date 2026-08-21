@@ -25,3 +25,6 @@ jobs:
 
       - name: Run file-state core tests
         run: bash tests/unit/test-files.sh
+
+      - name: Run dotfile core tests
+        run: bash tests/unit/test-dotfiles.sh
