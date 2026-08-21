@@ -86,10 +86,15 @@ rollback() {
 }
 trap rollback ERR
 
-# Capture every mutable configuration file before touching it.
+# Capture every mutable configuration and generated boot artifact before touching it.
 capture_file /etc/mkinitcpio.conf
 capture_file /etc/modprobe.d/nvidia.conf
 capture_file /etc/default/grub
+capture_file /boot/grub/grub.cfg
+for image in /boot/initramfs*.img; do
+  [[ -e "$image" ]] || continue
+  capture_file "$image"
+done
 
 MKINITCPIO_TMP="$(mktemp)"
 GRUB_TMP=""
@@ -116,9 +121,6 @@ elif ! sudo grep -Fq 'options nvidia_drm modeset=1 fbdev=1' /etc/modprobe.d/nvid
   printf '%s\n' 'options nvidia_drm modeset=1 fbdev=1' | sudo tee -a /etc/modprobe.d/nvidia.conf >/dev/null
 fi
 
-log '[ACTION] Rebuilding initramfs.'
-sudo mkinitcpio -P 2>&1 | tee -a "$LOG"
-
 if sudo test -f /etc/default/grub; then
   GRUB_TMP="$(mktemp)"
   sudo cp -- /etc/default/grub "$GRUB_TMP"
@@ -132,8 +134,6 @@ if sudo test -f /etc/default/grub; then
   grep -q 'nvidia_drm.fbdev=1' "$GRUB_TMP" || { log '[ERROR] Failed to add NVIDIA fbdev option to GRUB.'; exit 1; }
 
   sudo cp -- "$GRUB_TMP" /etc/default/grub
-  log '[ACTION] Regenerating GRUB configuration.'
-  sudo grub-mkconfig -o /boot/grub/grub.cfg 2>&1 | tee -a "$LOG"
 fi
 
 if sudo test -f /boot/loader/loader.conf; then
@@ -165,6 +165,14 @@ if sudo test -f /boot/loader/loader.conf; then
       rm -f -- "$tmp"
     done
   fi
+fi
+
+log '[ACTION] Rebuilding initramfs.'
+sudo mkinitcpio -P 2>&1 | tee -a "$LOG"
+
+if sudo test -f /etc/default/grub; then
+  log '[ACTION] Regenerating GRUB configuration.'
+  sudo grub-mkconfig -o /boot/grub/grub.cfg 2>&1 | tee -a "$LOG"
 fi
 
 trap - ERR
