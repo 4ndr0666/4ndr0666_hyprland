@@ -18,14 +18,27 @@ file_state_record() {
 }
 
 file_state_hash() {
-  sha256sum -- "$1" | awk '{print $1}'
+  local path="$1"
+  if [[ -f "$path" && ! -L "$path" ]]; then
+    sha256sum -- "$path" | awk '{print $1}'
+    return 0
+  fi
+  if [[ -L "$path" ]]; then
+    readlink -- "$path" | sha256sum | awk '{print $1}'
+    return 0
+  fi
+  if [[ -d "$path" ]]; then
+    tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf - -C "$(dirname "$path")" "$(basename "$path")" 2>/dev/null | sha256sum | awk '{print $1}'
+    return 0
+  fi
+  return 1
 }
 
 file_state_backup() {
   local path="$1" backup
   file_state_init
   [[ -e "$path" || -L "$path" ]] || return 0
-  backup="$BACKUP_ROOT/$(printf '%s' "$path" | sed 's#^/##; s#[/]#_#g').$(date +%Y%m%d%H%M%S).bak"
+  backup="$BACKUP_ROOT/$(printf '%s' "$path" | sed 's#^/##; s#[/]#_#g').$(date +%Y%m%d%H%M%S%N).bak"
   cp -a -- "$path" "$backup"
   printf '%s\n' "$backup"
 }
@@ -33,17 +46,18 @@ file_state_backup() {
 file_state_restore() {
   local path="$1" backup="$2"
   [[ -e "$backup" || -L "$backup" ]] || return 1
-  if [[ -d "$backup" ]]; then
+  if [[ -d "$backup" && ! -L "$backup" ]]; then
     rm -rf -- "$path"
     cp -a -- "$backup" "$path"
   else
     mkdir -p -- "$(dirname "$path")"
+    rm -rf -- "$path"
     cp -a -- "$backup" "$path"
   fi
 }
 
 file_state_atomic_replace() {
-  local source="$1" destination="$2" backup="" before="" after
+  local source="$1" destination="$2" backup="" before="" after tmp
   file_state_init
   [[ -e "$source" || -L "$source" ]] || { printf '%s\n' "missing source: $source" >&2; return 1; }
 
@@ -52,7 +66,6 @@ file_state_atomic_replace() {
     backup="$(file_state_backup "$destination")"
   fi
 
-  local tmp
   tmp="$(mktemp --tmpdir="$(dirname "$destination")" .installer.XXXXXX)"
   rm -f -- "$tmp"
   cp -a -- "$source" "$tmp"
