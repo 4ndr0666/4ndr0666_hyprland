@@ -55,9 +55,7 @@ done
 
 case "${1:-}" in
   show)
-    case "${3:-}" in
-      --value) [[ "$(get_field "$unit" load)" == loaded ]] && printf 'loaded\n' || printf 'not-found\n' ;;
-    esac
+    [[ "$(get_field "$unit" load)" == loaded ]] && printf 'loaded\n' || printf 'not-found\n'
     ;;
   is-enabled)
     value="$(get_field "$unit" enabled)"
