@@ -31,3 +31,6 @@ jobs:
 
       - name: Run bootstrap tests
         run: bash tests/unit/test-bootstrap.sh
+
+      - name: Run installer entry-point architecture tests
+        run: bash tests/unit/test-installer-entrypoint.sh
