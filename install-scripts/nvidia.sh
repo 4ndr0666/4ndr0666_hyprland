@@ -1,8 +1,22 @@
 #!/bin/bash
-# === 4ndr0666 === #
-# Nvidia Stuffs #
+# NVIDIA system integration.
+# Boot configuration is treated as a stateful operation: capture first,
+# prepare replacements, then regenerate the derived boot artifacts.
 
-nvidia_pkg=(
+set -Eeuo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$SCRIPT_DIR/.."
+LOG="$ROOT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_nvidia.log"
+mkdir -p -- "$(dirname "$LOG")"
+
+source "$SCRIPT_DIR/core/packages.sh"
+
+log() {
+  printf '%s\n' "$*" | tee -a "$LOG"
+}
+
+NVIDIA_PACKAGES=(
   nvidia-dkms
   nvidia-settings
   nvidia-utils
@@ -10,116 +24,156 @@ nvidia_pkg=(
   libva-nvidia-driver
 )
 
-
-## WARNING: DO NOT EDIT BEYOND THIS LINE IF YOU DON'T KNOW WHAT YOU ARE DOING! ##
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-# Change the working directory to the parent directory of the script
-PARENT_DIR="$SCRIPT_DIR/.."
-cd "$PARENT_DIR" || { echo "${ERROR} Failed to change directory to $PARENT_DIR"; exit 1; }
-
-# Source the global functions script
-if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
-  echo "Failed to source Global_functions.sh"
+mapfile -t KERNELS < <(pacman -Qq | grep -E '^(linux|linux-lts|linux-zen|linux-hardened)$' || true)
+if ((${#KERNELS[@]} == 0)); then
+  log '[ERROR] No supported installed Arch kernel package was found.'
   exit 1
 fi
 
-
-
-# Set the name of the log file to include the current date and time
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_nvidia.log"
-
-
-# nvidia stuff
-printf "${YELLOW} Checking for other hyprland packages and remove if any..${RESET}\n"
-if pacman -Qs hyprland > /dev/null; then
-  printf "${YELLOW} Hyprland detected. removing to install Hyprland from official repo...${RESET}\n"
-    for hyprnvi in hyprland-git hyprland-nvidia hyprland-nvidia-git hyprland-nvidia-hidpi-git; do
-    sudo pacman -R --noconfirm "$hyprnvi" 2>/dev/null | tee -a "$LOG" || true
-    done
-fi
-
-# Install additional Nvidia packages
-printf "${YELLOW} Installing ${SKY_BLUE}Nvidia Packages and Linux headers${RESET}...\n"
-for krnl in $(cat /usr/lib/modules/*/pkgbase); do
-  for NVIDIA in "${krnl}-headers" "${nvidia_pkg[@]}"; do
-    install_package "$NVIDIA" "$LOG"
-  done
+for kernel in "${KERNELS[@]}"; do
+  NVIDIA_PACKAGES+=("${kernel}-headers")
 done
 
-# Check if the Nvidia modules are already added in mkinitcpio.conf and add if not
-if grep -qE '^MODULES=.*nvidia. *nvidia_modeset.*nvidia_uvm.*nvidia_drm' /etc/mkinitcpio.conf; then
-  echo "Nvidia modules already included in /etc/mkinitcpio.conf" 2>&1 | tee -a "$LOG"
-else
-  sudo sed -Ei 's/^(MODULES=\([^\)]*)\)/\1 nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' /etc/mkinitcpio.conf 2>&1 | tee -a "$LOG"
-  echo "${OK} Nvidia modules added in /etc/mkinitcpio.conf"
+log '[ACTION] Installing NVIDIA packages and headers.'
+package_install "${NVIDIA_PACKAGES[@]}"
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/4ndr0666-hyprland/nvidia"
+BACKUP_DIR="$STATE_DIR/backups"
+STATE_FILE="$STATE_DIR/state.manifest"
+mkdir -p -- "$BACKUP_DIR"
+: > "$STATE_FILE"
+
+BACKUPS=()
+record_backup() {
+  local target="$1" backup="$2" existed="$3"
+  printf '%s\t%s\t%s\n' "$target" "$backup" "$existed" >> "$STATE_FILE"
+  BACKUPS+=("$target::$backup::$existed")
+}
+
+capture_file() {
+  local target="$1" name backup
+  name="$(printf '%s' "$target" | sed 's#^/##; s#[/]#_#g')"
+  backup="$BACKUP_DIR/${name}.bak"
+  if sudo test -e "$target" || sudo test -L "$target"; then
+    sudo cp -a -- "$target" "$backup"
+    record_backup "$target" "$backup" present
+  else
+    record_backup "$target" "$backup" absent
+  fi
+}
+
+restore_file() {
+  local target="$1" backup="$2" existed="$3"
+  if [[ "$existed" == present ]]; then
+    sudo cp -a -- "$backup" "$target"
+  elif sudo test -e "$target" || sudo test -L "$target"; then
+    sudo rm -rf -- "$target"
+  fi
+}
+
+rollback() {
+  local rc=$?
+  local pair target backup existed
+  log '[ERROR] NVIDIA configuration failed; restoring captured configuration.'
+  for pair in "${BACKUPS[@]}"; do
+    target="${pair%%::*}"
+    pair="${pair#*::}"
+    backup="${pair%%::*}"
+    existed="${pair#*::}"
+    restore_file "$target" "$backup" "$existed" || log "[ERROR] Failed to restore $target"
+  done
+  return "$rc"
+}
+trap rollback ERR
+
+# Capture every mutable configuration and generated boot artifact before touching it.
+capture_file /etc/mkinitcpio.conf
+capture_file /etc/modprobe.d/nvidia.conf
+capture_file /etc/default/grub
+capture_file /boot/grub/grub.cfg
+for image in /boot/initramfs*.img; do
+  [[ -e "$image" ]] || continue
+  capture_file "$image"
+done
+
+MKINITCPIO_TMP="$(mktemp)"
+GRUB_TMP=""
+trap 'rm -f -- "$MKINITCPIO_TMP" ${GRUB_TMP:+"$GRUB_TMP"}' EXIT
+sudo cp -- /etc/mkinitcpio.conf "$MKINITCPIO_TMP"
+
+if ! grep -Eq '^MODULES=.*nvidia.*nvidia_modeset.*nvidia_uvm.*nvidia_drm' "$MKINITCPIO_TMP"; then
+  if grep -Eq '^MODULES=' "$MKINITCPIO_TMP"; then
+    sed -Ei 's/^MODULES=\(([^)]*)\)/MODULES=(\1 nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' "$MKINITCPIO_TMP"
+  else
+    printf '%s\n' 'MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)' >> "$MKINITCPIO_TMP"
+  fi
 fi
 
-printf "\n%.0s" {1..1}
-printf "${INFO} Rebuilding ${YELLOW}Initramfs${RESET}...\n" 2>&1 | tee -a "$LOG"
+grep -Eq '^MODULES=.*nvidia.*nvidia_modeset.*nvidia_uvm.*nvidia_drm' "$MKINITCPIO_TMP" || {
+  log '[ERROR] Failed to produce a valid NVIDIA MODULES configuration.'
+  exit 1
+}
+sudo cp -- "$MKINITCPIO_TMP" /etc/mkinitcpio.conf
+
+if ! sudo test -f /etc/modprobe.d/nvidia.conf; then
+  printf '%s\n' 'options nvidia_drm modeset=1 fbdev=1' | sudo tee /etc/modprobe.d/nvidia.conf >/dev/null
+elif ! sudo grep -Fq 'options nvidia_drm modeset=1 fbdev=1' /etc/modprobe.d/nvidia.conf; then
+  printf '%s\n' 'options nvidia_drm modeset=1 fbdev=1' | sudo tee -a /etc/modprobe.d/nvidia.conf >/dev/null
+fi
+
+if sudo test -f /etc/default/grub; then
+  GRUB_TMP="$(mktemp)"
+  sudo cp -- /etc/default/grub "$GRUB_TMP"
+
+  grep -q 'nvidia-drm.modeset=1' "$GRUB_TMP" || \
+    sed -Ei 's/^(GRUB_CMDLINE_LINUX_DEFAULT="[^"]*)"/\1 nvidia-drm.modeset=1"/' "$GRUB_TMP"
+  grep -q 'nvidia_drm.fbdev=1' "$GRUB_TMP" || \
+    sed -Ei 's/^(GRUB_CMDLINE_LINUX_DEFAULT="[^"]*)"/\1 nvidia_drm.fbdev=1"/' "$GRUB_TMP"
+
+  grep -q 'nvidia-drm.modeset=1' "$GRUB_TMP" || { log '[ERROR] Failed to add NVIDIA DRM modeset option to GRUB.'; exit 1; }
+  grep -q 'nvidia_drm.fbdev=1' "$GRUB_TMP" || { log '[ERROR] Failed to add NVIDIA fbdev option to GRUB.'; exit 1; }
+
+  sudo cp -- "$GRUB_TMP" /etc/default/grub
+fi
+
+if sudo test -f /boot/loader/loader.conf; then
+  shopt -s nullglob
+  entries=(/boot/loader/entries/*.conf)
+  if ((${#entries[@]} == 0)); then
+    log '[INFO] systemd-boot detected but no loader entries were found.'
+  else
+    for entry in "${entries[@]}"; do
+      capture_file "$entry"
+
+      tmp="$(mktemp)"
+      sudo awk '
+        /^options / {
+          sub(/ nvidia-drm\.modeset=[^ ]*/, "")
+          sub(/ nvidia_drm\.fbdev=[^ ]*/, "")
+          print $0 " nvidia-drm.modeset=1 nvidia_drm.fbdev=1"
+          next
+        }
+        { print }
+      ' "$entry" > "$tmp"
+
+      grep -Eq '^options .*nvidia-drm\.modeset=1.*nvidia_drm\.fbdev=1' "$tmp" || {
+        rm -f -- "$tmp"
+        log "[ERROR] Failed to prepare systemd-boot entry: $entry"
+        exit 1
+      }
+      sudo cp -- "$tmp" "$entry"
+      rm -f -- "$tmp"
+    done
+  fi
+fi
+
+log '[ACTION] Rebuilding initramfs.'
 sudo mkinitcpio -P 2>&1 | tee -a "$LOG"
 
-printf "\n%.0s" {1..1}
-
-# Additional Nvidia steps
-NVEA="/etc/modprobe.d/nvidia.conf"
-if [ -f "$NVEA" ]; then
-  printf "${INFO} Seems like ${YELLOW}nvidia_drm modeset=1 fbdev=1${RESET} is already added in your system..moving on."
-  printf "\n"
-else
-  printf "\n"
-  printf "${YELLOW} Adding options to $NVEA..."
-  sudo echo -e "options nvidia_drm modeset=1 fbdev=1" | sudo tee -a /etc/modprobe.d/nvidia.conf 2>&1 | tee -a "$LOG"
-  printf "\n"
+if sudo test -f /etc/default/grub; then
+  log '[ACTION] Regenerating GRUB configuration.'
+  sudo grub-mkconfig -o /boot/grub/grub.cfg 2>&1 | tee -a "$LOG"
 fi
 
-# Additional for GRUB users
-if [ -f /etc/default/grub ]; then
-    printf "${INFO} ${YELLOW}GRUB${RESET} bootloader detected\n" 2>&1 | tee -a "$LOG"
-    
-    # Check if nvidia-drm.modeset=1 is present
-    if ! sudo grep -q "nvidia-drm.modeset=1" /etc/default/grub; then
-        sudo sed -i -e 's/\(GRUB_CMDLINE_LINUX_DEFAULT=".*\)"/\1 nvidia-drm.modeset=1"/' /etc/default/grub
-        printf "${OK} nvidia-drm.modeset=1 added to /etc/default/grub\n" 2>&1 | tee -a "$LOG"
-    fi
-
-    # Check if nvidia_drm.fbdev=1 is present
-    if ! sudo grep -q "nvidia_drm.fbdev=1" /etc/default/grub; then
-        sudo sed -i -e 's/\(GRUB_CMDLINE_LINUX_DEFAULT=".*\)"/\1 nvidia_drm.fbdev=1"/' /etc/default/grub
-        printf "${OK} nvidia_drm.fbdev=1 added to /etc/default/grub\n" 2>&1 | tee -a "$LOG"
-    fi
-
-    # Regenerate GRUB configuration 
-    if sudo grep -q "nvidia-drm.modeset=1" /etc/default/grub || sudo grep -q "nvidia_drm.fbdev=1" /etc/default/grub; then
-       sudo grub-mkconfig -o /boot/grub/grub.cfg
-       printf "${INFO} ${YELLOW}GRUB${RESET} configuration regenerated\n" 2>&1 | tee -a "$LOG"
-    fi
-  
-    printf "${OK} Additional steps for ${YELLOW}GRUB${RESET} completed\n" 2>&1 | tee -a "$LOG"
-fi
-
-# Additional for systemd-boot users
-if [ -f /boot/loader/loader.conf ]; then
-    printf "${INFO} ${YELLOW}systemd-boot${RESET} bootloader detected\n" 2>&1 | tee -a "$LOG"
-  
-    backup_count=$(find /boot/loader/entries/ -type f -name "*.conf.bak" | wc -l)
-    conf_count=$(find /boot/loader/entries/ -type f -name "*.conf" | wc -l)
-  
-    if [ "$backup_count" -ne "$conf_count" ]; then
-        find /boot/loader/entries/ -type f -name "*.conf" | while read imgconf; do
-            # Backup conf
-            sudo cp "$imgconf" "$imgconf.bak"
-            printf "${INFO} Backup created for systemd-boot loader: %s\n" "$imgconf" 2>&1 | tee -a "$LOG"
-            
-            # Clean up options and update with NVIDIA settings
-            sdopt=$(grep -w "^options" "$imgconf" | sed 's/\b nvidia-drm.modeset=[^ ]*\b//g' | sed 's/\b nvidia_drm.fbdev=[^ ]*\b//g')
-            sudo sed -i "/^options/c${sdopt} nvidia-drm.modeset=1 nvidia_drm.fbdev=1" "$imgconf" 2>&1 | tee -a "$LOG"
-        done
-
-        printf "${OK} Additional steps for ${YELLOW}systemd-boot${RESET} completed\n" 2>&1 | tee -a "$LOG"
-    else
-        printf "${NOTE} ${YELLOW}systemd-boot${RESET} is already configured...\n" 2>&1 | tee -a "$LOG"
-    fi
-fi
-
-printf "\n%.0s" {1..2}
+trap - ERR
+log '[OK] NVIDIA system integration completed.'
