@@ -28,3 +28,6 @@ jobs:
 
       - name: Run dotfile core tests
         run: bash tests/unit/test-dotfiles.sh
+
+      - name: Run bootstrap tests
+        run: bash tests/unit/test-bootstrap.sh
