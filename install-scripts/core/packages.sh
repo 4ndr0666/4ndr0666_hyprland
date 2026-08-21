@@ -31,10 +31,7 @@ package_manifest_record() {
 
 package_normalize() {
   local package
-  for package in "$@"; do
-    [[ -n "$package" ]] || continue
-    printf '%s\n' "$package"
-  done | awk '!seen[$0]++'
+  for package in "$@"; do [[ -n "$package" ]] && printf '%s\n' "$package"; done | awk '!seen[$0]++'
 }
 
 package_run_with_log() {

@@ -16,19 +16,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Run package core tests
         run: bash tests/unit/test-packages.sh
-
       - name: Run systemd core tests
         run: bash tests/unit/test-systemd.sh
-
       - name: Run file-state core tests
         run: bash tests/unit/test-files.sh
-
       - name: Run dotfile core tests
         run: bash tests/unit/test-dotfiles.sh
-
       - name: Run bootstrap tests
         run: bash tests/unit/test-bootstrap.sh
 
