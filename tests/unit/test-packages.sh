@@ -40,6 +40,9 @@ case "${1:-}" in
     printf '%s\n' "$@" >> "$state"
     ;;
   -R)
+    if [[ "${FAKE_PACMAN_FAIL:-0}" == 1 ]]; then
+      exit 23
+    fi
     shift
     while (($#)); do
       [[ "$1" == -- ]] && { shift; break; }
@@ -132,5 +135,24 @@ printf '%s\n' existing > "$STATE"
 package_install_aur aurpkg
 assert_contains aurpkg "$STATE"
 assert_contains aurpkg "$MANIFEST"
+
+# Uninstall removes only manifest-owned packages and leaves unrelated packages.
+printf '%s\n' ownedpkg externalpkg > "$STATE"
+printf '%s\n' ownedpkg > "$MANIFEST"
+package_remove_owned
+assert_not_contains ownedpkg "$STATE"
+assert_contains externalpkg "$STATE"
+[[ ! -s "$MANIFEST" ]] || fail "successful removal did not clear the manifest"
+
+# A failed removal must propagate failure and retain ownership state for retry.
+printf '%s\n' ownedpkg externalpkg > "$STATE"
+printf '%s\n' ownedpkg > "$MANIFEST"
+export FAKE_PACMAN_FAIL=1
+if package_remove_owned; then
+  fail "failed removal transaction returned success"
+fi
+assert_contains ownedpkg "$STATE"
+assert_contains ownedpkg "$MANIFEST"
+unset FAKE_PACMAN_FAIL
 
 printf 'PASS: package core\n'
