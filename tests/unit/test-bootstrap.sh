@@ -4,19 +4,23 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCRIPT="$ROOT/Distro-Hyprland.sh"
 
-assert_refused() {
-  local output rc
+assert_missing_release_ref_refused() {
+  local tmp output rc
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' RETURN
+  cp -- "$SCRIPT" "$tmp/Distro-Hyprland.sh"
+
   set +e
-  output=$(env -u HYPRLAND_INSTALL_REF TERM=dumb bash "$SCRIPT" 2>&1)
+  output=$(env -u HYPRLAND_INSTALL_REF TERM=dumb bash "$tmp/Distro-Hyprland.sh" 2>&1)
   rc=$?
   set -e
 
   ((rc == 2)) || {
-    printf '%s\n' "expected bootstrap to reject missing revision, got rc=$rc" >&2
+    printf '%s\n' "expected bootstrap to reject missing release revision, got rc=$rc" >&2
     printf '%s\n' "$output" >&2
     exit 1
   }
-  grep -Fq 'HYPRLAND_INSTALL_REF must be a full 40-character commit ID' <<<"$output"
+  grep -Fq 'No release revision is configured' <<<"$output"
 }
 
 assert_invalid_ref_refused() {
@@ -31,9 +35,9 @@ assert_invalid_ref_refused() {
     printf '%s\n' "$output" >&2
     exit 1
   }
-  grep -Fq 'Refusing to execute mutable branch/tag content' <<<"$output"
+  grep -Fq 'Mutable branches and tags are not accepted' <<<"$output"
 }
 
-assert_refused
+assert_missing_release_ref_refused
 assert_invalid_ref_refused
 printf '%s\n' 'bootstrap: PASS'
