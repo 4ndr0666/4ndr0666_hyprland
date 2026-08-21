@@ -1,59 +1,23 @@
 #!/bin/bash
-# === 4ndr0666 === #
-# Paru AUR Helper #
-# NOTE: If yay is already installed, paru will not be installed #
+# Bootstrap paru only. Normal AUR package transactions belong to core/packages.sh.
 
-pkg="paru-bin"
+set -Eeuo pipefail
 
-## WARNING: DO NOT EDIT BEYOND THIS LINE IF YOU DON'T KNOW WHAT YOU ARE DOING! ##
-# Set the name of the log file to include the current date and time
-LOG="install-$(date +%d-%H%M%S)_yay.log"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$SCRIPT_DIR/.."
+cd "$ROOT"
 
-# Set some colors for output messages
-OK="$(tput setaf 2)[OK]$(tput sgr0)"
-ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
-NOTE="$(tput setaf 3)[NOTE]$(tput sgr0)"
-INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
-WARN="$(tput setaf 1)[WARN]$(tput sgr0)"
-CAT="$(tput setaf 6)[ACTION]$(tput sgr0)"
-MAGENTA="$(tput setaf 5)"
-ORANGE="$(tput setaf 214)"
-WARNING="$(tput setaf 1)"
-YELLOW="$(tput setaf 3)"
-GREEN="$(tput setaf 2)"
-BLUE="$(tput setaf 4)"
-SKY_BLUE="$(tput setaf 6)"
-RESET="$(tput sgr0)"
+LOG="${LOG:-Install-Logs/install-$(date +%d-%H%M%S)_paru.log}"
+mkdir -p "$(dirname "$LOG")"
+export LOG
 
-# Create Directory for Install Logs
-if [ ! -d Install-Logs ]; then
-    mkdir Install-Logs
+source "$SCRIPT_DIR/core/aur-bootstrap.sh"
+
+if command -v paru >/dev/null 2>&1; then
+  printf '[INFO] paru is already installed.\n' | tee -a "$LOG"
+  exit 0
 fi
 
-# Check for AUR helper and install if not found
-ISAUR=$(command -v yay || command -v paru)
-if [ -n "$ISAUR" ]; then
-  printf "\n%s - ${SKY_BLUE}AUR helper${RESET} already installed, moving on.\n" "${OK}"
-else
-  printf "\n%s - Installing ${SKY_BLUE}$pkg${RESET} from AUR\n" "${NOTE}"
-
-# Check if directory exists and remove it
-if [ -d "$pkg" ]; then
-    rm -rf "$pkg"
-fi
-  git clone https://aur.archlinux.org/$pkg.git || { printf "%s - Failed to clone ${YELLOW}$pkg${RESET} from AUR\n" "${ERROR}"; exit 1; }
-  cd $pkg || { printf "%s - Failed to enter $pkg directory\n" "${ERROR}"; exit 1; }
-  makepkg -si --noconfirm 2>&1 | tee -a "$LOG" || { printf "%s - Failed to install ${YELLOW}$pkg${RESET} from AUR\n" "${ERROR}"; exit 1; }
-
-  # moving install logs in to Install-Logs directory
-  mv install*.log ../Install-Logs/ || true   
-  cd ..
-fi
-
-# Update system before proceeding
-printf "\n%s - Performing a full system update to avoid issues.... \n" "${NOTE}"
-ISAUR=$(command -v yay || command -v paru)
-
-$ISAUR -Syu --noconfirm 2>&1 | tee -a "$LOG" || { printf "%s - Failed to update system\n" "${ERROR}"; exit 1; }
-
-printf "\n%.0s" {1..2}
+printf '[INFO] Bootstrapping paru-bin from the AUR.\n' | tee -a "$LOG"
+package_bootstrap_aur_helper paru-bin
+printf '[OK] AUR helper bootstrap completed.\n' | tee -a "$LOG"
