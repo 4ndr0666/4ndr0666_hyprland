@@ -24,7 +24,9 @@ state="${FAKE_PACMAN_STATE:?}"
 
 case "${1:-}" in
   -Q)
-    grep -Fqx -- "${2:-}" "$state"
+    package="${2:-}"
+    [[ "$package" == -- ]] && package="${3:-}"
+    grep -Fqx -- "$package" "$state"
     ;;
   -S)
     if [[ "${FAKE_PACMAN_FAIL:-0}" == 1 ]]; then
@@ -69,7 +71,9 @@ if [[ "${1:-}" == -S ]]; then
   exit 0
 fi
 if [[ "${1:-}" == -Q ]]; then
-  grep -Fqx -- "${2:-}" "$state"
+  package="${2:-}"
+  [[ "$package" == -- ]] && package="${3:-}"
+  grep -Fqx -- "$package" "$state"
 fi
 EOF
 
