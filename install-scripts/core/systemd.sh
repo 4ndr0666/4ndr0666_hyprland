@@ -66,12 +66,22 @@ systemd_capture_units() {
 }
 
 systemd_restore_units() {
-  local unit enabled active
+  local unit enabled active current_enabled current_active
 
   [[ -s "$SYSTEMD_STATE_MANIFEST" ]] || return 0
 
   while IFS='|' read -r unit enabled active; do
     [[ -n "$unit" ]] || continue
+
+    if [[ "$enabled" == absent ]]; then
+      if systemd_unit_exists "$unit"; then
+        current_enabled="$(systemd_unit_enabled_state "$unit")"
+        current_active="$(systemd_unit_active_state "$unit")"
+        [[ "$current_enabled" == disabled || "$current_enabled" == static || "$current_enabled" == absent ]] || sudo systemctl disable -- "$unit" >/dev/null
+        [[ "$current_active" == inactive || "$current_active" == absent ]] || sudo systemctl stop -- "$unit" >/dev/null
+      fi
+      continue
+    fi
 
     case "$enabled" in
       enabled|linked|linked-runtime)
@@ -83,7 +93,7 @@ systemd_restore_units() {
       masked)
         sudo systemctl mask -- "$unit" >/dev/null
         ;;
-      static|indirect|generated|transient|absent)
+      static|indirect|generated|transient)
         ;;
       *)
         return 1
@@ -97,7 +107,7 @@ systemd_restore_units() {
       inactive|failed)
         sudo systemctl stop -- "$unit" >/dev/null
         ;;
-      activating|deactivating|absent)
+      activating|deactivating)
         ;;
       *)
         return 1
