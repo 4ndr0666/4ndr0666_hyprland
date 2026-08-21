@@ -16,10 +16,7 @@ if ((EUID == 0)); then
   exit 1
 fi
 
-if [[ ! -r /etc/os-release ]]; then
-  printf '[ERROR] Cannot determine operating system.\n' | tee -a "$LOG" >&2
-  exit 1
-fi
+[[ -r /etc/os-release ]] || { printf '[ERROR] Cannot determine operating system.\n' >&2; exit 1; }
 # shellcheck disable=SC1091
 source /etc/os-release
 [[ "${ID:-}" == arch ]] || { printf '[ERROR] This installer supports Arch Linux only.\n' >&2; exit 1; }
@@ -31,8 +28,6 @@ if package_is_installed pulseaudio; then
   exit 1
 fi
 
-# The UI depends on whiptail; install it through the same package transaction
-# primitive used by the rest of the installer.
 if ! command -v whiptail >/dev/null 2>&1; then
   package_install libnewt
 fi
@@ -47,7 +42,7 @@ execute_script() {
 }
 
 check_login_managers() {
-  active_services=()
+  local -a active_services=()
   local svc
   for svc in gdm.service gdm3.service lightdm.service lxdm.service; do
     if systemctl is-active --quiet "$svc"; then
@@ -66,8 +61,6 @@ if ! whiptail --title 'Proceed with Installation?' --yesno 'Proceed with the ins
   exit 0
 fi
 
-# Presets are data supplied by the caller; they are sourced only after the
-# argument shape has been validated.
 gtk_themes=OFF bluetooth=OFF thunar=OFF quickshell=OFF sddm=OFF sddm_theme=OFF
 xdph=OFF zsh=OFF pokemon=OFF rog=OFF dots=OFF input_group=OFF nvidia=OFF nouveau=OFF
 if [[ "${1:-}" == --preset && -n "${2:-}" ]]; then
@@ -76,9 +69,12 @@ if [[ "${1:-}" == --preset && -n "${2:-}" ]]; then
   source "$2"
 fi
 
-# AUR helper selection is retained as UI policy; installation itself remains
-# delegated to the dedicated yay/paru module and package core.
-aur_helper="$(package_aur_helper 2>/dev/null || true)"
+aur_helper=""
+if command -v yay >/dev/null 2>&1; then
+  aur_helper=yay
+elif command -v paru >/dev/null 2>&1; then
+  aur_helper=paru
+fi
 if [[ -z "$aur_helper" ]]; then
   while true; do
     aur_helper="$(whiptail --title 'AUR Helper' --checklist \
@@ -138,13 +134,12 @@ while true; do
   whiptail --title 'Confirm Choices' --yesno "$confirm_message" 25 80 && break
 done
 
-# Establish the base package state before any feature module executes.
 execute_script 00-base.sh
 execute_script pacman.sh
 
 if [[ "$aur_helper" == yay ]]; then
   execute_script yay.sh
-elif [[ "$aur_helper" == paru ]]; then
+else
   execute_script paru.sh
 fi
 
