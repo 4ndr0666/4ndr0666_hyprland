@@ -41,9 +41,7 @@ CORE_PACKAGES=(
   slurp
   swappy
   swaync
-  swww
   unzip
-  wallust
   waybar
   wget
   wl-clipboard
@@ -71,16 +69,17 @@ OPTIONAL_PACKAGES=(
   yt-dlp
 )
 
-EXTRA_PACKAGES=()
-
-# Formerly this script unconditionally removed packages such as rofi,
-# wallust-git, dunst and mako. That destroyed pre-existing system state and
-# was not reversible. Conflicts are now left to the package transaction and
-# will fail loudly until a deliberate replacement policy is implemented.
+# These names are intentionally explicit AUR inputs. The installer must never
+# silently reinterpret an unavailable official package as an AUR package.
+AUR_PACKAGES=(
+  swww
+  wallust
+)
 
 source "$SCRIPT_DIR/core/packages.sh"
 
-package_install "${CORE_PACKAGES[@]}" "${OPTIONAL_PACKAGES[@]}" "${EXTRA_PACKAGES[@]}"
+package_install "${CORE_PACKAGES[@]}" "${OPTIONAL_PACKAGES[@]}"
+package_install_aur "${AUR_PACKAGES[@]}"
 
-printf '%s\n' "[OK] Hyprland package transaction completed."
+printf '%s\n' "[OK] Hyprland package transactions completed."
 printf '%s\n' "[INFO] Installer-owned package manifest: ${PACKAGE_MANIFEST}"
