@@ -53,13 +53,12 @@ systemd_record_unit() {
 
 systemd_capture_units() {
   local unit
+
   systemd_core_init
   : > "$SYSTEMD_STATE_MANIFEST"
   for unit in "$@"; do
     systemd_record_unit "$unit"
   done
-grep -Fv '^[[:space:]]*$' "$SYSTEMD_STATE_MANIFEST" > "${SYSTEMD_STATE_MANIFEST}.tmp"
-  mv -- "${SYSTEMD_STATE_MANIFEST}.tmp" "$SYSTEMD_STATE_MANIFEST"
 }
 
 systemd_restore_units() {
@@ -71,7 +70,7 @@ systemd_restore_units() {
     [[ -n "$unit" ]] || continue
 
     case "$enabled" in
-      enabled|static|indirect|generated|transient|linked|linked-runtime)
+      enabled|linked|linked-runtime)
         sudo systemctl enable -- "$unit" >/dev/null
         ;;
       disabled)
@@ -80,7 +79,10 @@ systemd_restore_units() {
       masked)
         sudo systemctl mask -- "$unit" >/dev/null
         ;;
+      static|indirect|generated|transient|absent)
+        ;;
       *)
+        return 1
         ;;
     esac
 
@@ -91,7 +93,10 @@ systemd_restore_units() {
       inactive|failed)
         sudo systemctl stop -- "$unit" >/dev/null
         ;;
+      activating|deactivating|absent)
+        ;;
       *)
+        return 1
         ;;
     esac
   done < "$SYSTEMD_STATE_MANIFEST"
