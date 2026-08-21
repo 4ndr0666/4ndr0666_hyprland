@@ -11,7 +11,6 @@ LOG="$ROOT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_nvidia.log"
 mkdir -p -- "$(dirname "$LOG")"
 
 source "$SCRIPT_DIR/core/packages.sh"
-source "$SCRIPT_DIR/core/files.sh"
 
 log() {
   printf '%s\n' "$*" | tee -a "$LOG"
@@ -45,30 +44,43 @@ mkdir -p -- "$BACKUP_DIR"
 : > "$STATE_FILE"
 
 BACKUPS=()
-restore_file() {
-  local target="$1" backup="$2"
-  sudo cp -a -- "$backup" "$target"
+record_backup() {
+  local target="$1" backup="$2" existed="$3"
+  printf '%s\t%s\t%s\n' "$target" "$backup" "$existed" >> "$STATE_FILE"
+  BACKUPS+=("$target::$backup::$existed")
 }
 
 capture_file() {
   local target="$1" name backup
+  name="$(printf '%s' "$target" | sed 's#^/##; s#[/]#_#g')"
+  backup="$BACKUP_DIR/${name}.bak"
   if sudo test -e "$target" || sudo test -L "$target"; then
-    name="$(printf '%s' "$target" | sed 's#^/##; s#[/]#_#g')"
-    backup="$BACKUP_DIR/${name}.bak"
     sudo cp -a -- "$target" "$backup"
-    printf '%s\t%s\n' "$target" "$backup" >> "$STATE_FILE"
-    BACKUPS+=("$target::$backup")
+    record_backup "$target" "$backup" present
+  else
+    record_backup "$target" "$backup" absent
+  fi
+}
+
+restore_file() {
+  local target="$1" backup="$2" existed="$3"
+  if [[ "$existed" == present ]]; then
+    sudo cp -a -- "$backup" "$target"
+  elif sudo test -e "$target" || sudo test -L "$target"; then
+    sudo rm -rf -- "$target"
   fi
 }
 
 rollback() {
   local rc=$?
-  local pair target backup
+  local pair target backup existed
   log '[ERROR] NVIDIA configuration failed; restoring captured configuration.'
   for pair in "${BACKUPS[@]}"; do
     target="${pair%%::*}"
-    backup="${pair#*::}"
-    restore_file "$target" "$backup" || log "[ERROR] Failed to restore $target"
+    pair="${pair#*::}"
+    backup="${pair%%::*}"
+    existed="${pair#*::}"
+    restore_file "$target" "$backup" "$existed" || log "[ERROR] Failed to restore $target"
   done
   return "$rc"
 }
@@ -80,10 +92,11 @@ capture_file /etc/modprobe.d/nvidia.conf
 capture_file /etc/default/grub
 
 MKINITCPIO_TMP="$(mktemp)"
-trap 'rm -f -- "$MKINITCPIO_TMP"' EXIT
+GRUB_TMP=""
+trap 'rm -f -- "$MKINITCPIO_TMP" ${GRUB_TMP:+"$GRUB_TMP"}' EXIT
 sudo cp -- /etc/mkinitcpio.conf "$MKINITCPIO_TMP"
 
-if ! grep -Eq '^MODULES=.*nvidia(_modeset|_uvm|_drm)' "$MKINITCPIO_TMP"; then
+if ! grep -Eq '^MODULES=.*nvidia.*nvidia_modeset.*nvidia_uvm.*nvidia_drm' "$MKINITCPIO_TMP"; then
   if grep -Eq '^MODULES=' "$MKINITCPIO_TMP"; then
     sed -Ei 's/^MODULES=\(([^)]*)\)/MODULES=(\1 nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' "$MKINITCPIO_TMP"
   else
@@ -108,7 +121,6 @@ sudo mkinitcpio -P 2>&1 | tee -a "$LOG"
 
 if sudo test -f /etc/default/grub; then
   GRUB_TMP="$(mktemp)"
-  trap 'rm -f -- "$MKINITCPIO_TMP" "$GRUB_TMP"' EXIT
   sudo cp -- /etc/default/grub "$GRUB_TMP"
 
   grep -q 'nvidia-drm.modeset=1' "$GRUB_TMP" || \
@@ -131,9 +143,7 @@ if sudo test -f /boot/loader/loader.conf; then
     log '[INFO] systemd-boot detected but no loader entries were found.'
   else
     for entry in "${entries[@]}"; do
-      backup="$BACKUP_DIR/$(basename "$entry").bak"
-      sudo cp -a -- "$entry" "$backup"
-      printf '%s\t%s\n' "$entry" "$backup" >> "$STATE_FILE"
+      capture_file "$entry"
 
       tmp="$(mktemp)"
       sudo awk '
