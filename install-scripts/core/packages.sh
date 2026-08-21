@@ -142,6 +142,7 @@ package_install_aur() {
 package_remove_owned() {
   local package
   local -a owned=()
+  local -a installed=()
 
   package_core_init
   mapfile -t owned < "$PACKAGE_MANIFEST"
@@ -150,10 +151,23 @@ package_remove_owned() {
   for package in "${owned[@]}"; do
     [[ -n "$package" ]] || continue
     if package_is_installed "$package"; then
-      package_core_log "[INFO] Removing installer-owned package: ${package}"
-      package_run_with_log sudo pacman -R --noconfirm -- "$package" || return $?
+      installed+=("$package")
     else
       package_core_log "[INFO] Installer-owned package already absent: ${package}"
     fi
   done
+
+  ((${#installed[@]})) || return 0
+
+  package_core_log "[INFO] Removing installer-owned packages: ${installed[*]}"
+  package_run_with_log sudo pacman -R --noconfirm -- "${installed[@]}" || return $?
+
+  for package in "${installed[@]}"; do
+    if package_is_installed "$package"; then
+      package_core_log "[ERROR] Package remains installed after removal transaction: ${package}"
+      return 1
+    fi
+  done
+
+  : > "$PACKAGE_MANIFEST"
 }
