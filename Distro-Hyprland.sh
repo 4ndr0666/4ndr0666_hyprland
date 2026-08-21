@@ -1,152 +1,111 @@
 #!/usr/bin/env bash
 # === 4ndr0666 === #
-# https://github.com/4ndr0666
+# Bootstrap a distro-specific Hyprland installer at an immutable revision.
 
-# Script design to clone the Distro-Hyprland install scripts
+set -Eeuo pipefail
 
-# Set some colors for output messages
 OK="$(tput setaf 2)[OK]$(tput sgr0)"
 ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
-NOTE="$(tput setaf 3)[NOTE]$(tput sgr0)"
 INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
-WARN="$(tput setaf 1)[WARN]$(tput sgr0)"
-CAT="$(tput setaf 6)[ACTION]$(tput sgr0)"
-MAGENTA="$(tput setaf 5)"
-ORANGE="$(tput setaf 214)"
-WARNING="$(tput setaf 1)"
 YELLOW="$(tput setaf 3)"
-GREEN="$(tput setaf 2)"
-BLUE="$(tput setaf 4)"
-SKY_BLUE="$(tput setaf 6)"
 RESET="$(tput sgr0)"
 
-# Detect the current distribution using /etc/os-release
-if [ -f /etc/os-release ]; then
+# A mutable branch/tag is not an acceptable execution target for a bootstrapper.
+# Supply the exact 40-character commit selected by the release maintainer.
+INSTALL_REF="${HYPRLAND_INSTALL_REF:-}"
+if [[ ! "$INSTALL_REF" =~ ^[0-9a-fA-F]{40}$ ]]; then
+    printf '%s\n' "${ERROR} HYPRLAND_INSTALL_REF must be a full 40-character commit ID." >&2
+    printf '%s\n' "${INFO} Refusing to execute mutable branch/tag content." >&2
+    exit 2
+fi
+
+if [[ -f /etc/os-release ]]; then
+    # shellcheck disable=SC1091
     . /etc/os-release
-    distro_name=$NAME
-    distro_version=$VERSION_ID
 else
-    echo "${ERROR} Unable to detect the distribution. Exiting."
+    printf '%s\n' "${ERROR} Unable to detect the distribution." >&2
     exit 1
 fi
 
-# Define package managers, Git install commands, and dynamic variables for each distro
-if [ "$distro_name" = "Debian GNU/Linux" ]; then
-    PACKAGE_MANAGER="apt"
-    INSTALL_CMD="sudo apt install -y"
-    GIT_INSTALL_CMD="sudo apt install -y git"
-    Distro="Debian-Hyprland"
-    Github_URL="https://github.com/4ndr0666/$Distro.git"
-    Distro_DIR="$HOME/$Distro"
-elif [ "$distro_name" = "Ubuntu" ]; then
-    PACKAGE_MANAGER="apt"
-    INSTALL_CMD="sudo apt install -y"
-    GIT_INSTALL_CMD="sudo apt install -y git"
+distro_name="${NAME:-}"
+distro_version="${VERSION_ID:-}"
+PACKAGE_MANAGER=""
+Distro=""
+Github_URL=""
+Distro_DIR=""
 
-    case "$distro_version" in
-        "24.04")
-            Distro="Ubuntu-Hyprland"
-            Github_URL="https://github.com/4ndr0666/$Distro.git"
-            Github_URL_branch="24.04"
-            Distro_DIR="$HOME/$Distro-$Github_URL_branch"
-            echo "${INFO} Ubuntu 24.04 detected. Customizing setup for Ubuntu 24.04."
-            ;;
-        "24.10")
-            Distro="Ubuntu-Hyprland"
-            Github_URL="https://github.com/4ndr0666/$Distro.git"
-            Github_URL_branch="24.10"
-            Distro_DIR="$HOME/$Distro-$Github_URL_branch"
-            echo "${INFO} Ubuntu 24.10 detected. Customizing setup for Ubuntu 24.10."
-            ;;
-        "25.04")
-            Distro="Ubuntu-Hyprland"
-            Github_URL="https://github.com/4ndr0666/$Distro.git"
-            Github_URL_branch="25.04"
-            Distro_DIR="$HOME/$Distro-$Github_URL_branch"
-            echo "${INFO} Ubuntu 25.04 detected. Customizing setup for Ubuntu 25.04."
-            ;;
-        "25.10")
-            Distro="Ubuntu-Hyprland"
-            Github_URL="https://github.com/4ndr0666/$Distro.git"
-            Github_URL_branch="25.10"
-            Distro_DIR="$HOME/$Distro-$Github_URL_branch"
-            echo "${INFO} Ubuntu 25.10 detected. Customizing setup for Ubuntu 25.10."
-            ;;
-        "26.04-development")
-            Distro="Ubuntu-Hyprland"
-            Github_URL="https://github.com/4ndr0666/$Distro.git"
-            Github_URL_branch="26.04-development"
-            Distro_DIR="$HOME/$Distro-$Github_URL_branch"
-            echo "${INFO} Ubuntu 26.04 (development) detected. Customizing setup for Ubuntu 26.04 development branch."
-            ;;
-        *)
-            Distro="Ubuntu-Hyprland"
-            echo "${ERROR} Unsupported distribution: $distro_version. Exiting."
+case "$distro_name" in
+    "Debian GNU/Linux")
+        PACKAGE_MANAGER="apt"
+        Distro="Debian-Hyprland"
+        ;;
+    "Ubuntu")
+        PACKAGE_MANAGER="apt"
+        Distro="Ubuntu-Hyprland"
+        ;;
+    "NixOS")
+        PACKAGE_MANAGER="nix"
+        Distro="NixOS-Hyprland"
+        ;;
+    *)
+        if command -v pacman >/dev/null 2>&1; then
+            PACKAGE_MANAGER="pacman"
+            Distro="Arch-Hyprland"
+        elif command -v dnf >/dev/null 2>&1; then
+            PACKAGE_MANAGER="dnf"
+            Distro="Fedora-Hyprland"
+        elif command -v zypper >/dev/null 2>&1; then
+            PACKAGE_MANAGER="zypper"
+            Distro="OpenSUSE-Hyprland"
+        else
+            printf '%s\n' "${ERROR} Unsupported distribution: $distro_name." >&2
             exit 1
-            ;;
-    esac
+        fi
+        ;;
+esac
 
-elif command -v pacman &> /dev/null; then
-    PACKAGE_MANAGER="pacman"
-    INSTALL_CMD="sudo pacman -S --noconfirm"
-    GIT_INSTALL_CMD="sudo pacman -S git --noconfirm"
-    Distro="Arch-Hyprland"
-    Github_URL="https://github.com/4ndr0666/$Distro.git"
-    Distro_DIR="$HOME/$Distro"
-elif command -v dnf &> /dev/null; then
-    PACKAGE_MANAGER="dnf"
-    INSTALL_CMD="sudo dnf install -y"
-    GIT_INSTALL_CMD="sudo dnf install -y git"
-    Distro="Fedora-Hyprland"
-    Github_URL="https://github.com/4ndr0666/$Distro.git"
-    Distro_DIR="$HOME/$Distro"
-elif command -v zypper &> /dev/null; then
-    PACKAGE_MANAGER="zypper"
-    INSTALL_CMD="sudo zypper install -y"
-    GIT_INSTALL_CMD="sudo zypper install -y git"
-    Distro="OpenSUSE-Hyprland"
-    Github_URL="https://github.com/4ndr0666/$Distro.git"
-    Distro_DIR="$HOME/$Distro"
-elif [ "$distro_name" = "NixOS" ]; then
-    PACKAGE_MANAGER="nix"
-    INSTALL_CMD="nix-shell"
-    GIT_INSTALL_CMD="nix-shell -p git curl pciutils"
-    Distro="NixOS-Hyprland"
-    Github_URL="https://github.com/4ndr0666/$Distro.git"
-    Distro_DIR="$HOME/$Distro"
-else
-    echo "${ERROR} Unsupported distribution: $distro_name. Exiting."
+case "$distro_name:$distro_version" in
+    "Ubuntu:24.04") Github_URL_BRANCH="24.04" ;;
+    "Ubuntu:24.10") Github_URL_BRANCH="24.10" ;;
+    "Ubuntu:25.04") Github_URL_BRANCH="25.04" ;;
+    "Ubuntu:25.10") Github_URL_BRANCH="25.10" ;;
+    "Ubuntu:26.04-development") Github_URL_BRANCH="26.04-development" ;;
+    "Ubuntu:"*)
+        printf '%s\n' "${ERROR} Unsupported Ubuntu release: $distro_version." >&2
+        exit 1
+        ;;
+    *)
+        Github_URL_BRANCH=""
+        ;;
+esac
+
+Github_URL="https://github.com/4ndr0666/${Distro}.git"
+Distro_DIR="$HOME/$Distro"
+[[ -n "${Github_URL_BRANCH}" ]] && Distro_DIR="$HOME/${Distro}-${Github_URL_BRANCH}"
+
+if ! command -v git >/dev/null 2>&1; then
+    printf '%s\n' "${ERROR} Git is required before bootstrap can continue." >&2
+    printf '%s\n' "${INFO} Install git with the distribution package manager, then rerun." >&2
     exit 1
 fi
 
-# Check for Git and install if not found
-if ! command -v git &> /dev/null; then
-    echo "${INFO} Git not found! ${SKY_BLUE}Installing Git...${RESET}"
-    if ! $GIT_INSTALL_CMD; then
-        echo "${ERROR} Failed to install Git. Exiting."
-        exit 1
-    fi
+if [[ -d "$Distro_DIR" ]]; then
+    printf '%s\n' "${YELLOW}$Distro_DIR already exists. Automatic update is disabled.${RESET}"
+    printf '%s\n' "${INFO} The existing checkout will not be mutated by this bootstrapper."
+    exit 1
 fi
 
-# Check if the directory already exists and perform clone or update
-if [ -d "$Distro_DIR" ]; then
-    echo "${YELLOW}$Distro_DIR exists. Updating the repository... ${RESET}"
-    cd "$Distro_DIR"
-    git stash && git pull
-    chmod +x install.sh
-    ./install.sh
-else
-    echo "${MAGENTA}$Distro_DIR does not exist. Cloning the repository...${RESET}"
-    
-    # Clone the specific branch for Ubuntu versions only
-    if [ "$distro_name" = "Ubuntu" ]; then
-        echo "${INFO} Cloning from branch ${Github_URL_branch} for Ubuntu $distro_version."
-        git clone --depth=1 -b "$Github_URL_branch" "$Github_URL" "$Distro_DIR"
-    else
-        git clone --depth=1 "$Github_URL" "$Distro_DIR"
-    fi
-    
-    cd "$Distro_DIR"
-    chmod +x install.sh
-    ./install.sh
+printf '%s\n' "${INFO} Cloning $Distro at immutable revision $INSTALL_REF."
+git clone --no-checkout "$Github_URL" "$Distro_DIR"
+cd "$Distro_DIR"
+git fetch --depth=1 origin "$INSTALL_REF"
+git checkout --detach --force "$INSTALL_REF"
+
+actual_ref="$(git rev-parse HEAD)"
+if [[ "$actual_ref" != "$INSTALL_REF" ]]; then
+    printf '%s\n' "${ERROR} Checked-out revision does not match requested revision." >&2
+    exit 1
 fi
+
+chmod +x -- install.sh
+exec ./install.sh
