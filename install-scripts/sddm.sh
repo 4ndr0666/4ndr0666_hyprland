@@ -12,6 +12,9 @@ mkdir -p "$(dirname "$LOG")"
 source "$SCRIPT_DIR/core/packages.sh"
 source "$SCRIPT_DIR/core/systemd.sh"
 
+SDDM_STATE_MANIFEST="${XDG_STATE_HOME:-$HOME/.local/state}/4ndr0666-hyprland/sddm.manifest"
+mkdir -p "$(dirname "$SDDM_STATE_MANIFEST")"
+
 SDDM_PACKAGES=(
   qt6-declarative
   qt6-svg
@@ -30,16 +33,26 @@ LOGIN_MANAGER_UNITS=(
   sddm.service
 )
 
+wayland_sessions_dir=/usr/share/wayland-sessions
+
 systemd_capture_units "${LOGIN_MANAGER_UNITS[@]}"
 
 printf '%s\n' '[ACTION] Installing SDDM and dependencies.' | tee -a "$LOG"
-package_install "${SDDM_PACKAGES[@]}"
+if ! package_install "${SDDM_PACKAGES[@]}"; then
+  rm -f -- "$SYSTEMD_STATE_MANIFEST"
+  exit 1
+fi
 
 restore_on_failure() {
   local rc=$?
   printf '%s\n' '[ERROR] SDDM transition failed; restoring captured service state.' | tee -a "$LOG" >&2
   if ! systemd_restore_units >>"$LOG" 2>&1; then
     printf '%s\n' '[ERROR] Service-state restoration also failed; inspect the SDDM log immediately.' | tee -a "$LOG" >&2
+  fi
+  if [[ -s "$SDDM_STATE_MANIFEST" ]] && grep -Fqx 'wayland_sessions_dir|created' "$SDDM_STATE_MANIFEST"; then
+    if [[ -d "$wayland_sessions_dir" ]] && [[ -z "$(find "$wayland_sessions_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+      sudo rmdir -- "$wayland_sessions_dir" >>"$LOG" 2>&1 || true
+    fi
   fi
   return "$rc"
 }
@@ -75,10 +88,13 @@ sudo systemctl enable -- sddm.service >>"$LOG" 2>&1
   exit 1
 }
 
-wayland_sessions_dir=/usr/share/wayland-sessions
+: > "$SDDM_STATE_MANIFEST"
 if [[ ! -d "$wayland_sessions_dir" ]]; then
   printf '[ACTION] Creating %s.\n' "$wayland_sessions_dir" | tee -a "$LOG"
   sudo mkdir -- "$wayland_sessions_dir" >>"$LOG" 2>&1
+  printf '%s\n' 'wayland_sessions_dir|created' > "$SDDM_STATE_MANIFEST"
+else
+  printf '%s\n' 'wayland_sessions_dir|preexisting' > "$SDDM_STATE_MANIFEST"
 fi
 
 trap - ERR
