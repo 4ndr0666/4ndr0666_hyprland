@@ -2,9 +2,9 @@
 # === 4ndr0666 === #
 # Package transaction primitives.
 #
-# The package manager's foreground exit status is authoritative. This file
-# deliberately does not poll child processes or infer transaction success from
-# package presence after the fact.
+# Package provenance is explicit at the call site. The package manager's
+# foreground exit status is authoritative; no process polling or package-
+# presence inference is used to determine transaction success.
 
 PACKAGE_MANIFEST_DEFAULT="${XDG_STATE_HOME:-$HOME/.local/state}/4ndr0666-hyprland/packages.manifest"
 
@@ -72,32 +72,23 @@ package_run_with_log() {
   return "$rc"
 }
 
-package_install_official() {
-  local -a packages=("$@")
-  ((${#packages[@]})) || return 0
-  package_core_log "[INFO] Installing official packages: ${packages[*]}"
-  package_run_with_log sudo pacman -S --needed --noconfirm -- "${packages[@]}"
-}
+package_record_newly_owned() {
+  local package
+  local -a requested=("$@")
 
-package_install_aur() {
-  local -a packages=("$@")
-  local helper
-  ((${#packages[@]})) || return 0
-
-  helper="$(package_aur_helper)" || {
-    package_core_log "[ERROR] AUR packages requested but neither yay nor paru is installed."
-    return 1
-  }
-
-  package_core_log "[INFO] Installing AUR packages with ${helper}: ${packages[*]}"
-  package_run_with_log "$helper" -S --needed --noconfirm -- "${packages[@]}"
+  for package in "${requested[@]}"; do
+    if package_is_installed "$package"; then
+      package_manifest_record "$package"
+    else
+      package_core_log "[ERROR] Package transaction completed without ${package} being installed."
+      return 1
+    fi
+  done
 }
 
 package_install() {
   local package
   local -a requested=()
-  local -a official=()
-  local -a aur=()
   local -a newly_owned=()
 
   package_core_init
@@ -112,39 +103,40 @@ package_install() {
     fi
   done
 
-  if ((${#newly_owned[@]})) && ! command -v pacman >/dev/null 2>&1; then
-    package_core_log "[ERROR] pacman is required on Arch Linux."
-    return 1
-  fi
+  ((${#newly_owned[@]})) || return 0
+  package_core_log "[INFO] Installing official packages: ${newly_owned[*]}"
+  package_run_with_log sudo pacman -S --needed --noconfirm -- "${newly_owned[@]}" || return $?
+  package_record_newly_owned "${newly_owned[@]}"
+}
 
-  # pacman -Si identifies packages available from configured repositories.
-  # Names unavailable there are handed to the AUR helper.
-  for package in "${newly_owned[@]}"; do
-    if pacman -Si -- "$package" >/dev/null 2>&1; then
-      official+=("$package")
-    else
-      aur+=("$package")
-    fi
-  done
+package_install_aur() {
+  local package
+  local helper
+  local -a requested=()
+  local -a newly_owned=()
 
-  if ((${#official[@]})); then
-    package_install_official "${official[@]}" || return $?
-  fi
+  package_core_init
+  mapfile -t requested < <(package_normalize "$@")
+  ((${#requested[@]})) || return 0
 
-  if ((${#aur[@]})); then
-    package_install_aur "${aur[@]}" || return $?
-  fi
-
-  # Record only explicitly requested packages that are now present. Dependencies
-  # pulled in by the transaction are deliberately not installer-owned.
-  for package in "${newly_owned[@]}"; do
+  for package in "${requested[@]}"; do
     if package_is_installed "$package"; then
-      package_manifest_record "$package"
+      package_core_log "[INFO] ${package} is already installed; ownership unchanged."
     else
-      package_core_log "[ERROR] Package transaction completed without ${package} being installed."
-      return 1
+      newly_owned+=("$package")
     fi
   done
+
+  ((${#newly_owned[@]})) || return 0
+
+  helper="$(package_aur_helper)" || {
+    package_core_log "[ERROR] AUR packages requested but neither yay nor paru is installed."
+    return 1
+  }
+
+  package_core_log "[INFO] Installing AUR packages with ${helper}: ${newly_owned[*]}"
+  package_run_with_log "$helper" -S --needed --noconfirm -- "${newly_owned[@]}" || return $?
+  package_record_newly_owned "${newly_owned[@]}"
 }
 
 package_remove_owned() {
