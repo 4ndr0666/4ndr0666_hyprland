@@ -1,8 +1,21 @@
 #!/bin/bash
 # === 4ndr0666 === #
-# SDDM Log-in Manager #
+# SDDM Login Manager
 
-sddm=(
+set -Eeuo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$SCRIPT_DIR/.."
+LOG="$ROOT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_sddm.log"
+mkdir -p "$(dirname "$LOG")"
+
+source "$SCRIPT_DIR/core/packages.sh"
+source "$SCRIPT_DIR/core/systemd.sh"
+
+SDDM_STATE_MANIFEST="${XDG_STATE_HOME:-$HOME/.local/state}/4ndr0666-hyprland/sddm.manifest"
+mkdir -p "$(dirname "$SDDM_STATE_MANIFEST")"
+
+SDDM_PACKAGES=(
   qt6-declarative
   qt6-svg
   qt6-virtualkeyboard
@@ -11,66 +24,78 @@ sddm=(
   sddm
 )
 
-# login managers to attempt to disable
-login=(
-  lightdm
-  gdm3
-  gdm
-  lxdm
-  lxdm-gtk3
+LOGIN_MANAGER_UNITS=(
+  lightdm.service
+  gdm3.service
+  gdm.service
+  lxdm.service
+  lxdm-gtk3.service
+  sddm.service
 )
 
-## WARNING: DO NOT EDIT BEYOND THIS LINE IF YOU DON'T KNOW WHAT YOU ARE DOING! ##
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+wayland_sessions_dir=/usr/share/wayland-sessions
 
-# Change the working directory to the parent directory of the script
-PARENT_DIR="$SCRIPT_DIR/.."
-cd "$PARENT_DIR" || {
-  echo "${ERROR} Failed to change directory to $PARENT_DIR"
-  exit 1
-}
+systemd_capture_units "${LOGIN_MANAGER_UNITS[@]}"
 
-# Source the global functions script
-if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
-  echo "Failed to source Global_functions.sh"
+printf '%s\n' '[ACTION] Installing SDDM and dependencies.' | tee -a "$LOG"
+if ! package_install "${SDDM_PACKAGES[@]}"; then
+  rm -f -- "$SYSTEMD_STATE_MANIFEST"
   exit 1
 fi
 
-# Set the name of the log file to include the current date and time
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_sddm.log"
+restore_on_failure() {
+  local rc=$?
+  printf '%s\n' '[ERROR] SDDM transition failed; restoring captured service state.' | tee -a "$LOG" >&2
+  if ! systemd_restore_units >>"$LOG" 2>&1; then
+    printf '%s\n' '[ERROR] Service-state restoration also failed; inspect the SDDM log immediately.' | tee -a "$LOG" >&2
+  fi
+  if [[ -s "$SDDM_STATE_MANIFEST" ]] && grep -Fqx 'wayland_sessions_dir|created' "$SDDM_STATE_MANIFEST"; then
+    if [[ -d "$wayland_sessions_dir" ]] && [[ -z "$(find "$wayland_sessions_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+      sudo rmdir -- "$wayland_sessions_dir" >>"$LOG" 2>&1 || true
+    fi
+  fi
+  return "$rc"
+}
+trap restore_on_failure ERR
 
-# Install SDDM and SDDM theme
-printf "${NOTE} Installing sddm and dependencies........\n"
-for package in "${sddm[@]}"; do
-  install_package "$package" "$LOG"
-done
+for unit in "${LOGIN_MANAGER_UNITS[@]}"; do
+  [[ "$unit" == sddm.service ]] && continue
+  systemd_unit_exists "$unit" || continue
 
-printf "\n%.0s" {1..1}
+  enabled="$(systemd_unit_enabled_state "$unit")"
+  active="$(systemd_unit_active_state "$unit")"
 
-# Check if other login managers installed and disabling its service before enabling sddm
-for login_manager in "${login[@]}"; do
-  if pacman -Qs "$login_manager" >/dev/null 2>&1; then
-    sudo systemctl disable "$login_manager.service" >>"$LOG" 2>&1
-    echo "$login_manager disabled." >>"$LOG" 2>&1
+  case "$enabled" in
+    masked|disabled|absent)
+      ;;
+    *)
+      printf '[INFO] Disabling %s.\n' "$unit" | tee -a "$LOG"
+      sudo systemctl disable -- "$unit" >>"$LOG" 2>&1
+      ;;
+  esac
+
+  if [[ "$active" == active ]]; then
+    printf '[INFO] Stopping active %s.\n' "$unit" | tee -a "$LOG"
+    sudo systemctl stop -- "$unit" >>"$LOG" 2>&1
   fi
 done
 
-# Double check with systemctl
-for manager in "${login[@]}"; do
-  if systemctl is-active --quiet "$manager" >/dev/null 2>&1; then
-    echo "$manager is active, disabling it..." >>"$LOG" 2>&1
-    sudo systemctl disable "$manager" --now >>"$LOG" 2>&1
-  fi
-done
+printf '%s\n' '[ACTION] Enabling sddm.service.' | tee -a "$LOG"
+sudo systemctl enable -- sddm.service >>"$LOG" 2>&1
 
-printf "\n%.0s" {1..1}
-printf "${INFO} Activating sddm service........\n"
-sudo systemctl enable sddm
-
-wayland_sessions_dir=/usr/share/wayland-sessions
-[ ! -d "$wayland_sessions_dir" ] && {
-  printf "$CAT - $wayland_sessions_dir not found, creating...\n"
-  sudo mkdir "$wayland_sessions_dir" 2>&1 | tee -a "$LOG"
+[[ "$(systemd_unit_enabled_state sddm.service)" == enabled ]] || {
+  printf '%s\n' '[ERROR] sddm.service is not enabled after the transaction.' >&2
+  exit 1
 }
 
-printf "\n%.0s" {1..2}
+: > "$SDDM_STATE_MANIFEST"
+if [[ ! -d "$wayland_sessions_dir" ]]; then
+  printf '[ACTION] Creating %s.\n' "$wayland_sessions_dir" | tee -a "$LOG"
+  sudo mkdir -- "$wayland_sessions_dir" >>"$LOG" 2>&1
+  printf '%s\n' 'wayland_sessions_dir|created' > "$SDDM_STATE_MANIFEST"
+else
+  printf '%s\n' 'wayland_sessions_dir|preexisting' > "$SDDM_STATE_MANIFEST"
+fi
+
+trap - ERR
+printf '%s\n' '[OK] SDDM service transition completed.' | tee -a "$LOG"
