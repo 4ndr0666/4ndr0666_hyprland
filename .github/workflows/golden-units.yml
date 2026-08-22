@@ -19,6 +19,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Run package core tests
         run: bash tests/unit/test-packages.sh
+      - name: Run pacman sync invariant
+        run: bash tests/unit/test-pacman-sync-invariant.sh
       - name: Run systemd core tests
         run: bash tests/unit/test-systemd.sh
       - name: Run file-state core tests
