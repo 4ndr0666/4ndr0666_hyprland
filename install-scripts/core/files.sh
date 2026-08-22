@@ -66,10 +66,35 @@ file_state_atomic_replace() {
     backup="$(file_state_backup "$destination")"
   fi
 
-  tmp="$(mktemp --tmpdir="$(dirname "$destination")" .installer.XXXXXX)"
-  rm -f -- "$tmp"
-  cp -a -- "$source" "$tmp"
-  mv -Tf -- "$tmp" "$destination"
+  if [[ -d "$source" && ! -L "$source" ]]; then
+    tmp="$(mktemp -d --tmpdir="$(dirname "$destination")" .installer.XXXXXX)"
+    if ! cp -a -- "$source/." "$tmp/"; then
+      rm -rf -- "$tmp"
+      return 1
+    fi
+  else
+    tmp="$(mktemp --tmpdir="$(dirname "$destination")" .installer.XXXXXX)"
+    rm -f -- "$tmp"
+    if ! cp -a -- "$source" "$tmp"; then
+      rm -f -- "$tmp"
+      return 1
+    fi
+  fi
+
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    if ! rm -rf -- "$destination"; then
+      rm -rf -- "$tmp"
+      return 1
+    fi
+  fi
+
+  if ! mv -- "$tmp" "$destination"; then
+    rm -rf -- "$tmp"
+    if [[ -n "$backup" ]]; then
+      cp -a -- "$backup" "$destination"
+    fi
+    return 1
+  fi
   after="$(file_state_hash "$destination")"
 
   if [[ -n "$backup" ]]; then
