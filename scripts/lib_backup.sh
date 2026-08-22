@@ -1,73 +1,113 @@
 #!/usr/bin/env bash
 # === 4ndr0666 === #
-# Backup helper utilities shared by copy.sh (and future scripts).
+# Backup helper utilities shared by copy.sh.
 
-# Create a unique backup directory name with month, day, hours, and minutes.
+set -Eeuo pipefail
+
 get_backup_dirname() {
-  echo "back-up_$(date +"%m%d_%H%M")"
+  printf 'back-up_%s\n' "$(date +%m%d_%H%M%S)"
 }
 
-# Move a directory to a timestamped backup alongside the original.
-# Usage: backup_dir "/path/to/dir" [logfile]
+# Atomically move an existing directory into a sibling backup.
+# The source remains untouched if the move cannot be completed.
 backup_dir() {
   local dir="$1"
   local log="${2:-/dev/null}"
-  local backup_suffix
+  local backup
 
-  [ -z "$dir" ] && return 1
-  backup_suffix=$(get_backup_dirname)
-  mv "$dir" "${dir}-backup-${backup_suffix}" 2>&1 \vert{} tee -a "$log"
+  [[ -n "$dir" ]] || return 1
+  [[ -d "$dir" ]] || return 1
+
+  backup="${dir}-backup-$(get_backup_dirname)"
+  mv -- "$dir" "$backup" 2>&1 | tee -a "$log"
+  printf '%s\n' "$backup"
 }
 
-# Cleanup old backups under ~/.config, keeping the newest for each base dir.
-# mode: "auto" (no prompts) or "prompt" (asks before delete); log optional.
 cleanup_backups() {
   local mode="${1:-prompt}"
   local log="${2:-/dev/null}"
-  local CONFIG_DIR="$HOME/.config"
-  local BACKUP_PREFIX="-backup"
+  local config_dir="$HOME/.config"
+  local dir backup latest
+  local backups=()
 
-  for DIR in "$CONFIG_DIR"/*; do
-    [ -d "$DIR" ] || continue
-    local BACKUP_DIRS=()
+  for dir in "$config_dir"/*; do
+    [[ -d "$dir" ]] || continue
+    backups=()
+    for backup in "$dir"-backup-*; do
+      [[ -d "$backup" ]] && backups+=("$backup")
+    done
+    ((${#backups[@]} > 1)) || continue
 
-    for BACKUP in "$DIR"$BACKUP_PREFIX*; do
-      [ -d "$BACKUP" ] && BACKUP_DIRS+=("$BACKUP")
+    latest="${backups[0]}"
+    for backup in "${backups[@]}"; do
+      [[ "$backup" -nt "$latest" ]] && latest="$backup"
     done
 
-    [ ${#BACKUP_DIRS[@]} -gt 1 ] || continue
-
-    # Determine latest backup by mtime
-    local latest_backup="${BACKUP_DIRS[0]}"
-    for BACKUP in "${BACKUP_DIRS[@]}"; do
-      [ "$BACKUP" -nt "$latest_backup" ] && latest_backup="$BACKUP"
-    done
-
-    if [ "$mode" = "auto" ]; then
-      for BACKUP in "${BACKUP_DIRS[@]}"; do
-        if [ "$BACKUP" != "$latest_backup" ]; then
-          rm -rf "$BACKUP"
-        fi
+    if [[ "$mode" == auto ]]; then
+      for backup in "${backups[@]}"; do
+        [[ "$backup" == "$latest" ]] && continue
+        rm -rf -- "$backup"
       done
-      echo "${INFO:-[INFO]} Express mode: trimmed backups for${YELLOW:-}${DIR##*/}${RESET:-}, keeping ${MAGENTA:-}${latest_backup##*/}${RESET:-}." 2>&1 \vert{} tee -a "$log"
+      printf '%s\n' "${INFO:-[INFO]} Express mode: trimmed backups for ${dir##*/}, keeping ${latest##*/}." | tee -a "$log"
       continue
     fi
 
-    printf "\n%s Found multiple backups for: %s\n" "${INFO:-[INFO]}" "${DIR##*/}"
-    echo "${YELLOW:-}Backups:${RESET:-}"
-    for BACKUP in "${BACKUP_DIRS[@]}"; do
-      echo "  - ${BACKUP##*/}"
+    printf '\n%s Found multiple backups for: %s\n' "${INFO:-[INFO]}" "${dir##*/}"
+    printf '%s\n' "${YELLOW:-}Backups:${RESET:-}"
+    for backup in "${backups[@]}"; do
+      printf '  - %s\n' "${backup##*/}"
     done
-    echo -n "${CAT:-[ACTION]} Delete older backups and keep only the latest? (y/N): "
-    read back_choice
+    printf '%s' "${CAT:-[ACTION]} Delete older backups and keep only the latest? (y/N): "
+    read -r back_choice
     if [[ "$back_choice" == [Yy]* ]]; then
-      for BACKUP in "${BACKUP_DIRS[@]}"; do
-        if [ "$BACKUP" != "$latest_backup" ]; then
-          rm -rf "$BACKUP"
-          echo "Deleted: ${BACKUP##*/}"
-        fi
+      for backup in "${backups[@]}"; do
+        [[ "$backup" == "$latest" ]] && continue
+        rm -rf -- "$backup"
+        printf 'Deleted: %s\n' "${backup##*/}"
       done
-      echo "Kept: ${latest_backup##*/}"
+      printf 'Kept: %s\n' "${latest##*/}"
     fi
   done
+}
+
+# Transactional directory replacement.
+# 1. Copy the candidate to a temporary sibling.
+# 2. Rename the existing destination to a backup.
+# 3. Rename the prepared candidate into place.
+# If step 3 fails, restore the original destination.
+replace_dir_transaction() {
+  local source="$1"
+  local destination="$2"
+  local log="${3:-/dev/null}"
+  local parent candidate backup
+
+  [[ -d "$source" ]] || { printf 'missing source directory: %s\n' "$source" >&2; return 1; }
+  parent="$(dirname "$destination")"
+  mkdir -p -- "$parent"
+  candidate="$(mktemp -d --tmpdir="$parent" '.dotfiles.XXXXXX')"
+  backup=''
+
+  if ! cp -a -- "$source/." "$candidate/" 2>&1 | tee -a "$log"; then
+    rm -rf -- "$candidate"
+    return 1
+  fi
+
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    backup="${destination}-backup-$(get_backup_dirname)"
+    if ! mv -- "$destination" "$backup" 2>&1 | tee -a "$log"; then
+      rm -rf -- "$candidate"
+      return 1
+    fi
+  fi
+
+  if mv -- "$candidate" "$destination" 2>&1 | tee -a "$log"; then
+    printf '%s\n' "$backup"
+    return 0
+  fi
+
+  rm -rf -- "$candidate"
+  if [[ -n "$backup" ]] && [[ ! -e "$destination" && ! -L "$destination" ]]; then
+    mv -- "$backup" "$destination"
+  fi
+  return 1
 }
