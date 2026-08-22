@@ -25,8 +25,20 @@ package_is_installed() { pacman -Q -- "$1" >/dev/null 2>&1; }
 package_manifest_contains() { grep -Fqx -- "$1" "$PACKAGE_MANIFEST"; }
 
 package_manifest_record() {
-  local package="$1"
-  package_manifest_contains "$package" || printf '%s\n' "$package" >> "$PACKAGE_MANIFEST"
+  local package
+  local -a entries=() updated=()
+  package_core_init
+  mapfile -t entries < "$PACKAGE_MANIFEST"
+  updated=("${entries[@]}")
+  for package in "$@"; do
+    [[ -n "$package" ]] || continue
+    package_manifest_contains "$package" || updated+=("$package")
+  done
+  ((${#updated[@]})) || return 0
+  local tmp
+  tmp="$(mktemp "${PACKAGE_MANIFEST}.tmp.XXXXXX")"
+  printf '%s\n' "${updated[@]}" > "$tmp"
+  mv -- "$tmp" "$PACKAGE_MANIFEST"
 }
 
 package_normalize() {
@@ -52,13 +64,12 @@ package_sync() {
 package_record_newly_owned() {
   local package
   for package in "$@"; do
-    if package_is_installed "$package"; then
-      package_manifest_record "$package"
-    else
+    if ! package_is_installed "$package"; then
       package_core_log "[ERROR] Package transaction completed without ${package} being installed."
       return 1
     fi
   done
+  package_manifest_record "$@"
 }
 
 package_install() {
