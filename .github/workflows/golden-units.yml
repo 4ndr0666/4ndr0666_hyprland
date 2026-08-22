@@ -37,3 +37,5 @@ jobs:
         run: bash tests/unit/test-legacy-installer-removal.sh
       - name: Run remote execution boundary test
         run: bash tests/unit/test-remote-exec-invariant.sh
+      - name: Run self-update boundary test
+        run: bash tests/unit/test-self-update-boundary.sh
