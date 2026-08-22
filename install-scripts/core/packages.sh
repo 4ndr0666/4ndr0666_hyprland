@@ -45,8 +45,8 @@ package_run_with_log() {
 
 package_sync() {
   package_core_init
-  package_core_log '[INFO] Synchronizing Arch package databases.'
-  package_run_with_log sudo pacman -Sy
+  package_core_log '[INFO] Synchronizing Arch package databases and applying the full system upgrade.'
+  package_run_with_log sudo pacman -Syu --noconfirm
 }
 
 package_record_newly_owned() {
