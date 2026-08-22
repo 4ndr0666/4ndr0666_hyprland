@@ -39,3 +39,5 @@ jobs:
         run: bash tests/unit/test-remote-exec-invariant.sh
       - name: Run self-update boundary test
         run: bash tests/unit/test-self-update-boundary.sh
+      - name: Run SDDM rollback invariant
+        run: bash tests/unit/test-sddm-rollback.sh
