@@ -37,12 +37,6 @@ wayland_sessions_dir=/usr/share/wayland-sessions
 
 systemd_capture_units "${LOGIN_MANAGER_UNITS[@]}"
 
-printf '%s\n' '[ACTION] Installing SDDM and dependencies.' | tee -a "$LOG"
-if ! package_install "${SDDM_PACKAGES[@]}"; then
-  rm -f -- "$SYSTEMD_STATE_MANIFEST"
-  exit 1
-fi
-
 restore_on_failure() {
   local rc=$?
   printf '%s\n' '[ERROR] SDDM transition failed; restoring captured service state.' | tee -a "$LOG" >&2
@@ -56,6 +50,13 @@ restore_on_failure() {
   fi
   return "$rc"
 }
+
+printf '%s\n' '[ACTION] Installing SDDM and dependencies.' | tee -a "$LOG"
+if ! package_install "${SDDM_PACKAGES[@]}"; then
+  restore_on_failure
+  exit 1
+fi
+
 trap restore_on_failure ERR
 
 for unit in "${LOGIN_MANAGER_UNITS[@]}"; do
