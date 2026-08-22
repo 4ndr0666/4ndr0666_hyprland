@@ -32,3 +32,5 @@ jobs:
         run: bash tests/unit/test-installer-entrypoint.sh
       - name: Run package-boundary architecture tests
         run: bash tests/unit/test-package-boundary.sh
+      - name: Run legacy installer removal test
+        run: bash tests/unit/test-legacy-installer-removal.sh
