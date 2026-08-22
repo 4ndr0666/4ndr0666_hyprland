@@ -64,13 +64,12 @@ package_sync() {
 package_record_newly_owned() {
   local package
   for package in "$@"; do
-    if package_is_installed "$package"; then
-      package_manifest_record "$package"
-    else
+    if ! package_is_installed "$package"; then
       package_core_log "[ERROR] Package transaction completed without ${package} being installed."
       return 1
     fi
   done
+  package_manifest_record "$@"
 }
 
 package_install() {
