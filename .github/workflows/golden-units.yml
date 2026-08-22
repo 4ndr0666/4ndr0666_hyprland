@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'refactor/**'
+      - 'audit/**'
   pull_request:
 
 permissions:
@@ -34,3 +35,5 @@ jobs:
         run: bash tests/unit/test-package-boundary.sh
       - name: Run legacy installer removal test
         run: bash tests/unit/test-legacy-installer-removal.sh
+      - name: Run remote execution boundary test
+        run: bash tests/unit/test-remote-exec-invariant.sh
