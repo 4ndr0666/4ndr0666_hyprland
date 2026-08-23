@@ -2,35 +2,26 @@
 # === 4ndr0666 === #
 # Bluetooth Stuff #
 
+set -Eeuo pipefail
+
 blue=(
   bluez
   bluez-utils
   blueman
 )
 
-## WARNING: DO NOT EDIT BEYOND THIS LINE IF YOU DON'T KNOW WHAT YOU ARE DOING! ##
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-# Change the working directory to the parent directory of the script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$SCRIPT_DIR/.."
-cd "$PARENT_DIR" || { echo "${ERROR} Failed to change directory to $PARENT_DIR"; exit 1; }
+cd "$PARENT_DIR"
 
-# Source the global functions script
-if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
-  echo "Failed to source Global_functions.sh"
-  exit 1
-fi
-
-# Set the name of the log file to include the current date and time
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_bluetooth.log"
+mkdir -p "$(dirname "$LOG")"
+source "$SCRIPT_DIR/core/packages.sh"
 
-# Bluetooth
-printf "${NOTE} Installing ${SKY_BLUE}Bluetooth${RESET} Packages...\n"
- for BLUE in "${blue[@]}"; do
-   install_package "$BLUE" "$LOG"
-  done
+printf '[INFO] Installing Bluetooth packages...\n'
+package_install "${blue[@]}"
 
-printf " Activating ${YELLOW}Bluetooth${RESET} Services...\n"
+printf 'Activating Bluetooth services...\n'
 sudo systemctl enable --now bluetooth.service 2>&1 | tee -a "$LOG"
 
-printf "\n%.0s" {1..2}
+printf '\n%.0s' {1..2}
