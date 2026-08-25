@@ -128,13 +128,26 @@ fi
 assert_not_contains brokenpkg "$MANIFEST"
 unset FAKE_PACMAN_FAIL
 
-# AUR installation requires an explicit helper and records ownership only
-# after the helper exits successfully.
+# AUR installation requires yay specifically; paru is not a supported helper.
 printf '%s\n' existing > "$STATE"
 : > "$MANIFEST"
 package_install_aur aurpkg
 assert_contains aurpkg "$STATE"
 assert_contains aurpkg "$MANIFEST"
+
+# A paru-only environment must fail closed rather than silently selecting paru.
+rm -f "$FAKEBIN/yay"
+cat > "$FAKEBIN/paru" <<'EOF'
+#!/bin/bash
+exit 99
+EOF
+chmod +x "$FAKEBIN/paru"
+printf '%s\n' existing > "$STATE"
+: > "$MANIFEST"
+if package_install_aur parufallback; then
+  fail "AUR transaction succeeded without yay"
+fi
+assert_not_contains parufallback "$MANIFEST"
 
 # Uninstall removes only manifest-owned packages and leaves unrelated packages.
 printf '%s\n' ownedpkg externalpkg > "$STATE"
