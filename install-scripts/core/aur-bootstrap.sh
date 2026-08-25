@@ -7,11 +7,13 @@
 set -Eeuo pipefail
 
 AUR_BOOTSTRAP_ROOT="${XDG_CACHE_HOME:-$HOME/.cache}/4ndr0666-hyprland/aur-bootstrap"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROVENANCE_FILE="$SCRIPT_DIR/aur-provenance.conf"
 
 package_bootstrap_aur_helper() {
   local package="$1"
   local build_dir="$AUR_BOOTSTRAP_ROOT/$package"
-  local ref="${AUR_YAY_BIN_REF:-}"
+  local ref=""
 
   command -v yay >/dev/null 2>&1 && return 0
 
@@ -20,8 +22,13 @@ package_bootstrap_aur_helper() {
     return 1
   }
 
+  # Load repository-owned provenance; do not permit an ambient environment
+  # value to override the reviewed pin.
+  source "$PROVENANCE_FILE"
+  ref="${AUR_YAY_BIN_REF:-}"
+
   [[ "$ref" =~ ^[0-9a-fA-F]{40}$ ]] || {
-    printf '[ERROR] No immutable AUR revision configured for yay-bin. Set AUR_YAY_BIN_REF to a 40-character commit SHA.\n' >&2
+    printf '[ERROR] Invalid immutable AUR revision configured for yay-bin.\n' >&2
     return 1
   }
 
