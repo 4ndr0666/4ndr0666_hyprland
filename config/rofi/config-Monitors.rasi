@@ -1,7 +1,6 @@
-/* ---- 💫 https://github.com/JaKooLit 💫 ---- */
-/* Monitor Profiles Menu */
+/* ----  https://github.com/4ndr0666  ---- */
 
-@import "~/.config/rofi/config.rasi" 
+@import "~/.config/rofi/config.rasi"
 
 /* ---- Mainbox ---- */
 mainbox {
@@ -15,7 +14,7 @@ window {
   height: inherit;
 }
 
-/* ---- Entry ---- */ 
+/* ---- Entry ---- */
 entry {
   width: 43%;
   placeholder: " 💻 Search / Choose which Monitor Profiles to load";

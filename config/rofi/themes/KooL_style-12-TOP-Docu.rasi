@@ -1,6 +1,4 @@
-/* ---- 💫 https://github.com/JaKooLit 💫 ---- */
-/* KooL Hyprland Rofi Style 12 - TOP - Docu */
-/* Credit to DaveDavenport. I have only some few things changed */
+/* ----  https://github.com/4ndr0666  ---- */
 
 /**
  * ROFI Documentation theme.
@@ -47,13 +45,13 @@ mode-switcher {
     border: 					2px;
     border-radius: 				0px 4px 4px 0px;
     border-color: 				darkgrey;
-    background-color: 			darkgrey;    
+    background-color: 			darkgrey;
 }
 
 button {
 	padding: 					0px 60px 0px 60px;
     background-color: 			grey;
-    border-color: 				darkgrey;    
+    border-color: 				darkgrey;
     cursor: 					pointer;
 }
 
@@ -85,7 +83,7 @@ window {
     chilren:					[  inputbar, message, listview ];
 }
 
-mainbox { 
+mainbox {
     spacing: 					1em;
 }
 

@@ -1,4 +1,4 @@
-//* ---- 💫 https://github.com/JaKooLit 💫 ---- *//
+//* ----  https://github.com/4ndr0666  ---- *//
 /* Waybar Modules Extras */
 
 /* This is where you can add Extra Modules you wish. copy.sh will try to restore*/
@@ -6,5 +6,75 @@
 /* IMPORTANT, be mindful with , or ". else waybar will not start */
 
 {
-
+    "clock#4ndr0666L": {
+        "interval": 60,
+        "timezone": "America/Matamoros",
+        "format": "{:%I:%M %p}"
+    },
+    "clock#4ndr0666R": {
+        "timezone": "America/Matamoros",
+        "format": "{:%A, %B %d, %Y}",
+	"tooltip-format": "\n<span size='14pt' font='JetBrains Mono ExtraBold'>{calendar}</span>",
+//        "tooltip-format": "<big>{:%Y %B}</big>\n<tt>{calendar}</tt>",
+        "calendar": {
+            "mode": "month",
+            "mode-mon-col": 3,
+            "weeks-pos": "right",
+            "on-scroll": 1,
+            "format": {
+                "months": "<span color='#ffead3'><b>{}</b></span>",
+                "days": "<span color='#ecc6d9'><b>{}</b></span>",
+                "weeks": "<span color='#99ffdd'><b>W{:%V}</b></span>",
+                "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
+                "today": "<span color='#ff6699'><b><u>{}</u></b></span>"
+            }
+        }
+    },
+    "custom/filemanager#4ndr0666": {
+      "format": " ",
+      "on-click": "thunar",
+      "on-click-right": "$TERMINAL -e yazi",
+      "tooltip": true,
+      "tooltip-format": "File Manager",
+    },
+    "custom/storage": {
+      "format": " / {}",
+      "format-alt": " {percentage}%",
+      "format-alt-click": "click-left",
+      "return-type": "json",
+      "on-click-right": "setsid -f $TERMINAL -e bashmount >/dev/null 2>&1",
+      "interval": 60,
+      "exec": "$HOME/.config/wayfire/waybar/scripts/storage.sh"
+    },
+    "custom/menu#4ndr0666": {
+//      "format": " 💀 ",
+      "format": "  ",
+      "tooltip": true,
+      "on-click": "$HOME/.config/wayfire/scripts/rofi_launcher",
+      "on-click-right": "$HOME/.config/wayfire/scripts/rofi_runner",
+      "tooltip-format": "Left Click: Launcher\nRight Click: Runner",
+    },
+    "custom/power#4ndr0666": {
+      "format": "💀",
+      "tooltip": false,
+      "on-click": "$HOME/.config/wayfire/scripts/rofi_powermenu"
+    },
+    "network#4ndr0666": {
+    	"interval": 1,
+    	"format": "{ifname}",
+    	"format-wifi": "{icon}  {bandwidthUpBytes}  {bandwidthDownBytes}",
+    	"format-ethernet": "󰌘  {bandwidthUpBytes}  {bandwidthDownBytes}",
+    	"format-disconnected": "󰌙",
+    	"tooltip-format": "{ipaddr}",
+    	"format-linked": "󰈁 {ifname} (No IP)",
+    	"tooltip-format-wifi": "{essid} {icon} {signalStrength}%",
+    	"tooltip-format-ethernet": "{ifname} 󰌘",
+    	"tooltip-format-disconnected": "󰌙 Disconnected",
+    	"min-length": 24,
+    	"max-length": 24,
+    	"format-icons": [
+    		"󰤯", "󰤟", "󰤢", "󰤥", "󰤨"
+    	],
+    	"on-click-right": "$HOME/.config/hypr/scripts/RofiNetwork.sh"
+    },
 }

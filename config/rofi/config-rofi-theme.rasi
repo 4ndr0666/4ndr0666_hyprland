@@ -1,7 +1,6 @@
-/* ---- 💫 https://github.com/JaKooLit 💫 ---- */
-/* Main Config Rofi Theme */
+/* ----  https://github.com/4ndr0666  ---- */
 
-@import "~/.config/rofi/config.rasi"  
+@import "~/.config/rofi/config.rasi"
 
 /* ---- Window ---- */
 window {

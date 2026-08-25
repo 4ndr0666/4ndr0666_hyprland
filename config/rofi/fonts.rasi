@@ -1,0 +1,9 @@
+/**
+ * https://www.github.com/4ndr0666
+ **/
+
+/* Text Font */
+
+* {
+    font: "Iosevka 10";
+}

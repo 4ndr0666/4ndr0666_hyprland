@@ -1,9 +1,8 @@
-/* ---- 💫 https://github.com/JaKooLit 💫 ---- */
-/* Main Config (wallpaper) */
+/* ----  https://github.com/4ndr0666  ---- */
 
-@import "~/.config/rofi/config.rasi"  
+@import "~/.config/rofi/config.rasi"
 
-/* ---- Configuration ---- */ 
+/* ---- Configuration ---- */
 configuration {
   modi: "drun";
 }

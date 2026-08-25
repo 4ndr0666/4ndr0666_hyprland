@@ -1,7 +1,6 @@
-/* ---- 💫 https://github.com/JaKooLit 💫 ---- */
-/* KooL Hyprland Edit Rofi Config */
+/* ----  https://github.com/4ndr0666  ---- */
 
-@import "~/.config/rofi/config.rasi"  
+@import "~/.config/rofi/config.rasi"
 
 /* ---- Mainbox ---- */
 mainbox {
@@ -10,7 +9,7 @@ mainbox {
 }
 
 
-/* ---- Configuration ---- */ 
+/* ---- Configuration ---- */
 configuration {
   modi: "drun";
 }

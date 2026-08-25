@@ -1,7 +1,6 @@
-/* ---- 💫 https://github.com/JaKooLit 💫 ---- */
-/* Main config Rofi Beats Config menu */
+/* ----  https://github.com/4ndr0666  ---- */
 
-@import "~/.config/rofi/config.rasi"  
+@import "~/.config/rofi/config.rasi"
 
 /* ---- Mainbox ---- */
 mainbox {
@@ -9,7 +8,7 @@ mainbox {
     [ "inputbar", "listview"];
 }
 
-/* ---- Entry ---- */ 
+/* ---- Entry ---- */
 entry {
   expand: false;
   width: 25%;
@@ -41,5 +40,5 @@ element-icon {
 }
 element-text {
     horizontal-align: 0.5;
-    
+
 }
