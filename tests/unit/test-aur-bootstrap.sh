@@ -20,8 +20,8 @@ if grep -Eq 'git clone .*aur\.archlinux\.org|git pull|--depth=1 .*aur\.archlinux
   fail 'mutable AUR checkout pattern remains'
 fi
 
-grep -Eq 'git fetch .*origin "\$ref"' "$FILE" || fail 'pinned git fetch is missing'
-grep -Eq 'rev-parse HEAD' "$FILE" || fail 'post-checkout revision verification is missing'
+grep -Eq 'git -C .* fetch .*origin "\$ref"' "$FILE" || fail 'pinned git fetch is missing'
+grep -Eq 'git -C .* rev-parse HEAD' "$FILE" || fail 'post-checkout revision verification is missing'
 grep -Fq 'command -v yay' "$FILE" || fail 'yay postcondition is missing'
 
 printf '[PASS] yay-only AUR bootstrap provenance invariants\n'
