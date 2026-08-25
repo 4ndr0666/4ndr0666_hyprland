@@ -16,8 +16,7 @@ package_core_log() {
 }
 
 package_aur_helper() {
-  if command -v yay >/dev/null 2>&1; then printf '%s\n' yay; return 0; fi
-  if command -v paru >/dev/null 2>&1; then printf '%s\n' paru; return 0; fi
+  command -v yay >/dev/null 2>&1 && { printf '%s\n' yay; return 0; }
   return 1
 }
 
@@ -105,7 +104,7 @@ package_install_aur() {
     fi
   done
   ((${#newly_owned[@]})) || return 0
-  helper="$(package_aur_helper)" || { package_core_log '[ERROR] AUR packages requested but neither yay nor paru is installed.'; return 1; }
+  helper="$(package_aur_helper)" || { package_core_log '[ERROR] AUR packages requested but yay is not installed.'; return 1; }
   package_core_log "[INFO] Installing AUR packages with ${helper}: ${newly_owned[*]}"
   package_run_with_log "$helper" -S --needed --noconfirm -- "${newly_owned[@]}" || return $?
   package_record_newly_owned "${newly_owned[@]}"
