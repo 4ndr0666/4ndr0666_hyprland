@@ -29,8 +29,18 @@ jobs:
         run: bash tests/unit/test-files.sh
       - name: Run dotfile core tests
         run: bash tests/unit/test-dotfiles.sh
+      - name: Run dotfile backup atomicity tests
+        run: bash tests/unit/test-dotfile-backup-atomicity.sh
+      - name: Run destructive dotfile pattern invariant
+        run: bash tests/unit/test-dotfile-destructive-patterns.sh
       - name: Run bootstrap tests
         run: bash tests/unit/test-bootstrap.sh
+      - name: Run bootstrap documentation invariant
+        run: bash tests/unit/test-bootstrap-docs.sh
+      - name: Run immutable auto-installer invariant
+        run: bash tests/unit/test-auto-install-immutability.sh
+      - name: Run release reference consistency invariant
+        run: bash tests/unit/test-release-ref-consistency.sh
       - name: Run AUR bootstrap provenance tests
         run: bash tests/unit/test-aur-bootstrap.sh
       - name: Run installer entry-point architecture tests
@@ -39,6 +49,8 @@ jobs:
         run: bash tests/unit/test-package-boundary.sh
       - name: Run legacy installer removal test
         run: bash tests/unit/test-legacy-installer-removal.sh
+      - name: Run legacy install_package API invariant
+        run: bash tests/unit/test-no-legacy-install-package.sh
       - name: Run remote execution boundary test
         run: bash tests/unit/test-remote-exec-invariant.sh
       - name: Run self-update boundary test
