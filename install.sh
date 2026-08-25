@@ -72,20 +72,10 @@ fi
 aur_helper=""
 if command -v yay >/dev/null 2>&1; then
   aur_helper=yay
-elif command -v paru >/dev/null 2>&1; then
-  aur_helper=paru
 fi
 if [[ -z "$aur_helper" ]]; then
-  while true; do
-    aur_helper="$(whiptail --title 'AUR Helper' --checklist \
-      'Select exactly one AUR helper.' 12 60 2 \
-      yay 'AUR helper yay' OFF \
-      paru 'AUR helper paru' OFF \
-      3>&1 1>&2 2>&3)" || exit 0
-    aur_helper="${aur_helper//\"/}"
-    [[ "$aur_helper" == yay || "$aur_helper" == paru ]] && break
-    whiptail --msgbox 'Select exactly one AUR helper.' 8 50
-  done
+  whiptail --title 'AUR Helper' --msgbox 'yay is required by this installer. Bootstrap yay first, then restart the installer.' 10 70
+  exit 1
 fi
 
 nvidia_detected=false
@@ -136,13 +126,7 @@ done
 
 execute_script 00-base.sh
 execute_script pacman.sh
-
-if [[ "$aur_helper" == yay ]]; then
-  execute_script yay.sh
-else
-  execute_script paru.sh
-fi
-
+execute_script yay.sh
 execute_script 01-hypr-pkgs.sh
 execute_script pipewire.sh
 execute_script fonts.sh
