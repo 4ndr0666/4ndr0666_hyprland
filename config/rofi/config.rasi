@@ -1,4 +1,5 @@
 /* ----  https://github.com/4ndr0666  ---- */
+/* Default
 
 * All main themes or configs are located in ~/.config/rofi/themes/
 * If you want to edit the config, that is where you should edit NOT here
@@ -19,4 +20,7 @@
 /* You can manually change here or you can use rofi theme selector SUPER SHIFT E */
 
 
-@theme "~/.config/rofi/themes/KooL_style-4.rasi"
+
+//@theme "~/.config/rofi/themes/saint-rofi.rasi"
+//@theme "~/.config/rofi/themes/KooL_style-11-Win11-list-dark.rasi"
+@theme "~/.config/rofi/themes/saint-rofi.rasi"
