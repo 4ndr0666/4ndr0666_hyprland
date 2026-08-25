@@ -19,14 +19,9 @@ Welcome to the unified, purely Lua-driven ecosystem for the Hyprland compositor.
 
 ### 🚩 Automated Installer Bootstrapping
 
-For a streamlined setup sequence across supported system environments, bootstrap the dynamic configuration pipeline using the automated distro wrapper script:
+For a reproducible setup sequence, use the commit-pinned bootstrap procedure documented in [`docs/BOOTSTRAP.md`](docs/BOOTSTRAP.md). Do not execute `Distro-Hyprland.sh` from mutable `main`.
 
-```bash
-sh <(curl -L https://raw.githubusercontent.com/4ndr0666/4ndr0666_hyprland/main/Distro-Hyprland.sh)
-
-```
-
-This bootstrapping utility analyzes system state, targets your active platform layer, fetches execution parameters, and passes initialization contexts safely to the localized baseline scripts.
+The documented procedure pins the bootstrap to the repository's reviewed `release.ref`, after which the bootstrap itself verifies the exact installer revision before execution.
 
 ---
 
@@ -134,4 +129,4 @@ The configuration footprint features an advanced, refactored design driven entir
 
 ### 🤝 Contributing
 
-Contributions to further optimize execution profiles, refine modular routines, or expand translation indices across this unified architecture are welcome. Please ensure your contributions comply with layout schema updates, strict scoping constraints, and maintain clean separation of layout properties.
+Contributions to further optimize execution profiles, refine modular routines, or expand translation indices across this unified architecture are welcome. Please ensure your contributions comply with layout schema updates, strict scoping, and maintain clean separation of layout properties.
