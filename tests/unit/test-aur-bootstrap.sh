@@ -6,10 +6,14 @@ FILE="$ROOT/install-scripts/core/aur-bootstrap.sh"
 
 fail() { printf '[FAIL] %s\n' "$1" >&2; exit 1; }
 
-# The bootstrap must require an immutable 40-character revision.
+# The bootstrap must require an immutable yay revision.
 grep -Eq 'AUR_YAY_BIN_REF:-' "$FILE" || fail 'yay immutable ref is not required'
-grep -Eq 'AUR_PARU_BIN_REF:-' "$FILE" || fail 'paru immutable ref is not required'
 grep -Eq '\[\[ "\$ref" =~ \^\[0-9a-fA-F\]\{40\}\$' "$FILE" || fail '40-character SHA validation is missing'
+grep -Fq 'Only yay-bin is supported.' "$FILE" || fail 'yay-only contract is missing'
+grep -Fq 'https://aur.archlinux.org/yay-bin.git' "$FILE" || fail 'yay AUR repository is missing'
+
+# Paru must not be part of the supported bootstrap contract.
+grep -Eq 'paru|AUR_PARU_BIN_REF' "$FILE" && fail 'paru bootstrap support remains'
 
 # Mutable clone/update patterns are forbidden in the bootstrap.
 if grep -Eq 'git clone .*aur\.archlinux\.org|git pull|--depth=1 .*aur\.archlinux\.org' "$FILE"; then
@@ -18,5 +22,6 @@ fi
 
 grep -Eq 'git fetch .*origin "\$ref"' "$FILE" || fail 'pinned git fetch is missing'
 grep -Eq 'rev-parse HEAD' "$FILE" || fail 'post-checkout revision verification is missing'
+grep -Fq 'command -v yay' "$FILE" || fail 'yay postcondition is missing'
 
-printf '[PASS] AUR bootstrap provenance invariants\n'
+printf '[PASS] yay-only AUR bootstrap provenance invariants\n'
