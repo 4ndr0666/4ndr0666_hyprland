@@ -1,5 +1,5 @@
 -- File: configs/Keybinds.lua
--- /* ----  https://github.com/4ndr0666  ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */
 -- Default Keybinds
 
 local mainMod = "SUPER"
@@ -32,9 +32,6 @@ hl.bind(mainMod .. " + ALT + B", hl.dsp.exec_cmd(scriptsDir .. "/WaybarLayout.sh
 
 -- WAYBAR REFRESH
 hl.bind(mainMod .. " + ALT + R", hl.dsp.exec_cmd(scriptsDir .. "/Refresh.sh"), { description = "refresh bar and menus" })
-
--- NOTIFICATIONS
-hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd("makoctl mode -t dnd"), { description = "notification panel" })
 
 -- QUICKSHELL
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd(scriptsDir .. "/OverviewToggle.sh"), { description = "desktop overview" })
@@ -136,19 +133,9 @@ hl.bind(mainMod .. " + X", hl.dsp.exec_cmd(scriptsDir .. "/Wlogout.sh"), { descr
 -- LAYOUTS
 hl.bind(mainMod .. " + ALT + L", hl.dsp.exec_cmd(scriptsDir .. "/ChangeLayout.sh"), { description = "toggle master/dwindle layout" })
 hl.bind(mainMod .. " + SHIFT + I", function() hl.dispatch("layoutmsg", "removemaster") end, { description = "remove master" })
-hl.bind(mainMod .. " + I", function() hl.dispatch("layoutmsg", "addmaster") end, { description = "add master" })
-
--- Duplicate binds preserved from canonical configuration
-hl.bind(mainMod .. " + CTRL + Return", function() hl.dispatch("layoutmsg", "swapwithmaster") end, { description = "swap with master" })
-hl.bind(mainMod .. " + I", function() hl.dispatch("pseudo") end, { description = "toggle pseudo (dwindle)" })
 
 -- CYCLE; if floating bring to top (Native Dispatchers mapped)
 hl.bind("ALT + Tab", function() hl.dispatch("cyclenext") end, { description = "cycle next window" })
-hl.bind("ALT + Tab", function() hl.dispatch("bringactivetotop") end, { description = "bring active to top" })
-
--- CYCLE; if floating bring to top (Native Dispatchers mapped)
-hl.bind("ALT + Tab", function() hl.dispatch("cyclenext") end, { description = "cycle next window" })
-hl.bind("ALT + Tab", function() hl.dispatch("bringactivetotop") end, { description = "bring active to top" })
 
 -- HOTKEYS
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(scriptsDir .. "/Volume.sh --inc"), { repeating = true, locked = true, description = "volume up" })
