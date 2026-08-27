@@ -45,3 +45,6 @@ source("UserConfigs.01-UserDefaults")
 -- Hardware & Workspaces (nwg-displays)
 source("monitors")
 source("workspaces")
+
+-- User-owned workspace policy is loaded after generated workspace placement.
+source("UserConfigs.WorkSpaceRules")

@@ -1,5 +1,5 @@
 -- File: UserConfigs/UserKeybinds.lua
--- /* ----  https://github.com/4ndr0666  ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */
 -- User Custom Keybinds
 
 local mainMod = "SUPER"
@@ -44,4 +44,74 @@ hl.bind(mainMod .. " + SHIFT + F10", hl.dsp.exec_cmd("bash " .. os.getenv("HOME"
 
 -- F12
 hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.local/bin/wl-record >/dev/null 2>&1"), { description = "Wl-record" })
--- Segment 2
+
+-- ============================================================================
+-- Hyprland 0.56 layout overrides
+-- Machine-specific layout controls belong here, not in the defaults.
+-- ============================================================================
+
+-- Retire transitional layout-aware bindings from configs.Keybinds.lua.
+hl.unbind(mainMod .. " + J")
+hl.unbind(mainMod .. " + K")
+hl.unbind(mainMod .. " + M")
+hl.unbind(mainMod .. " + O")
+hl.unbind(mainMod .. " + ALT + L")
+hl.unbind(mainMod .. " + SHIFT + I")
+
+-- J/K retain the established global next/previous-window behavior without
+-- the legacy startup script or layout-dependent branching.
+hl.bind(mainMod .. " + J", function() hl.dispatch("cyclenext") end, { description = "cycle next window" })
+hl.bind(mainMod .. " + K", function() hl.dispatch("cyclenext", "prev") end, { description = "cycle previous window" })
+
+-- Cycle the tiled layout of the active workspace. This intentionally replaces
+-- the legacy global general.layout mutation performed by ChangeLayout.sh.
+local function toggle_layout()
+    local workspace = hl.get_active_special_workspace() or hl.get_active_workspace()
+    if not workspace then
+        return
+    end
+
+    local current = workspace.tiled_layout
+    local next_layout
+
+    if current == "dwindle" then
+        next_layout = "master"
+    elseif current == "master" then
+        next_layout = "dwindle"
+    else
+        return
+    end
+
+    local selector = tostring(workspace.name or workspace.id)
+    hl.workspace_rule({
+        workspace = selector,
+        layout = next_layout,
+    })
+
+    hl.notification.create({
+        text = next_layout == "master" and "Master Layout" or "Dwindle Layout",
+        timeout = 2000,
+        icon = "ok",
+    })
+end
+
+hl.bind(mainMod .. " + ALT + L", toggle_layout, { description = "toggle master/dwindle layout" })
+hl.bind(mainMod .. " + SHIFT + I", hl.dsp.layout("removemaster"), { description = "remove master" })
+
+-- Preserve the established layout-ratio control using native 0.56 dispatchers.
+local layout_ratio_dispatch = {
+    master = hl.dsp.layout("mfact +0.3"),
+    dwindle = hl.dsp.layout("splitratio +0.3"),
+}
+
+hl.bind(mainMod .. " + M", function()
+    local workspace = hl.get_active_special_workspace() or hl.get_active_workspace()
+    if not workspace then
+        return
+    end
+
+    local dispatcher = layout_ratio_dispatch[workspace.tiled_layout]
+    if dispatcher then
+        hl.dispatch(dispatcher)
+    end
+end, { description = "adjust current layout ratio" })
