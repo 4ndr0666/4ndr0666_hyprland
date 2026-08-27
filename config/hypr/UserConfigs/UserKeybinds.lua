@@ -63,40 +63,38 @@ hl.unbind(mainMod .. " + SHIFT + I")
 hl.bind(mainMod .. " + J", function() hl.dispatch("cyclenext") end, { description = "cycle next window" })
 hl.bind(mainMod .. " + K", function() hl.dispatch("cyclenext", "prev") end, { description = "cycle previous window" })
 
+-- Cycle the tiled layout of the active workspace. This intentionally replaces
+-- the legacy global general.layout mutation performed by ChangeLayout.sh.
 local function toggle_layout()
-    local layout = hl.get_config("general.layout")
-    local next_layout
-    local message
-
-    if layout == "dwindle" then
-        next_layout = "master"
-        message = "Master Layout"
-    elseif layout == "master" then
-        next_layout = "dwindle"
-        message = "Dwindle Layout"
-    else
-        hl.notification.create({
-            text = "Unsupported layout: " .. tostring(layout),
-            timeout = 3000,
-            icon = "error",
-        })
+    local workspace = hl.get_active_special_workspace() or hl.get_active_workspace()
+    if not workspace then
         return
     end
 
-    hl.config({
-        general = {
-            layout = next_layout,
-        },
+    local current = workspace.tiled_layout
+    local next_layout
+
+    if current == "dwindle" then
+        next_layout = "master"
+    elseif current == "master" then
+        next_layout = "dwindle"
+    else
+        return
+    end
+
+    local selector = tostring(workspace.name or workspace.id)
+    hl.workspace_rule({
+        workspace = selector,
+        layout = next_layout,
     })
 
     hl.notification.create({
-        text = message,
+        text = next_layout == "master" and "Master Layout" or "Dwindle Layout",
         timeout = 2000,
         icon = "ok",
     })
 end
 
--- Preserve the established machine workflow without the legacy shell state machine.
 hl.bind(mainMod .. " + ALT + L", toggle_layout, { description = "toggle master/dwindle layout" })
 hl.bind(mainMod .. " + SHIFT + I", hl.dsp.layout("removemaster"), { description = "remove master" })
 
@@ -107,7 +105,12 @@ local layout_ratio_dispatch = {
 }
 
 hl.bind(mainMod .. " + M", function()
-    local dispatcher = layout_ratio_dispatch[hl.get_config("general.layout")]
+    local workspace = hl.get_active_special_workspace() or hl.get_active_workspace()
+    if not workspace then
+        return
+    end
+
+    local dispatcher = layout_ratio_dispatch[workspace.tiled_layout]
     if dispatcher then
         hl.dispatch(dispatcher)
     end
