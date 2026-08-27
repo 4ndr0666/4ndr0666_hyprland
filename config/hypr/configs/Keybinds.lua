@@ -131,8 +131,7 @@ hl.bind("CTRL + ALT + L", hl.dsp.exec_cmd(scriptsDir .. "/LockScreen.sh"), { des
 hl.bind(mainMod .. " + X", hl.dsp.exec_cmd(scriptsDir .. "/Wlogout.sh"), { description = "powermenu" })
 
 -- LAYOUTS
-hl.bind(mainMod .. " + ALT + L", hl.dsp.exec_cmd(scriptsDir .. "/ChangeLayout.sh"), { description = "toggle master/dwindle layout" })
-hl.bind(mainMod .. " + SHIFT + I", function() hl.dispatch("layoutmsg", "removemaster") end, { description = "remove master" })
+-- Layout controls are owned by UserConfigs/UserKeybinds.lua.
 
 -- CYCLE; if floating bring to top (Native Dispatchers mapped)
 hl.bind("ALT + Tab", function() hl.dispatch("cyclenext") end, { description = "cycle next window" })
