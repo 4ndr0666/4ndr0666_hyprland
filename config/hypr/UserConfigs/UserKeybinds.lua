@@ -50,13 +50,18 @@ hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.
 -- Machine-specific layout controls belong here, not in the defaults.
 -- ============================================================================
 
--- Retire the transitional layout-aware keybinds from configs.Keybinds.lua.
+-- Retire transitional layout-aware bindings from configs.Keybinds.lua.
 hl.unbind(mainMod .. " + J")
 hl.unbind(mainMod .. " + K")
 hl.unbind(mainMod .. " + M")
 hl.unbind(mainMod .. " + O")
 hl.unbind(mainMod .. " + ALT + L")
 hl.unbind(mainMod .. " + SHIFT + I")
+
+-- J/K retain the established global next/previous-window behavior without
+-- the legacy startup script or layout-dependent branching.
+hl.bind(mainMod .. " + J", function() hl.dispatch("cyclenext") end, { description = "cycle next window" })
+hl.bind(mainMod .. " + K", function() hl.dispatch("cyclenext", "prev") end, { description = "cycle previous window" })
 
 local function toggle_layout()
     local layout = hl.get_config("general.layout")
@@ -95,7 +100,7 @@ end
 hl.bind(mainMod .. " + ALT + L", toggle_layout, { description = "toggle master/dwindle layout" })
 hl.bind(mainMod .. " + SHIFT + I", hl.dsp.layout("removemaster"), { description = "remove master" })
 
--- Preserve the legacy split-ratio control, but use the native 0.56 layout API.
+-- Preserve the established layout-ratio control using the native 0.56 API.
 hl.bind(mainMod .. " + M", function()
     local layout = hl.get_config("general.layout")
 
