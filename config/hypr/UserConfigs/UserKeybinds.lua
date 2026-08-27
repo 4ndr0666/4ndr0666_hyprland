@@ -1,5 +1,5 @@
 -- File: UserConfigs/UserKeybinds.lua
--- /* ----  https://github.com/4ndr0666  ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */
 -- User Custom Keybinds
 
 local mainMod = "SUPER"
@@ -44,4 +44,64 @@ hl.bind(mainMod .. " + SHIFT + F10", hl.dsp.exec_cmd("bash " .. os.getenv("HOME"
 
 -- F12
 hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.local/bin/wl-record >/dev/null 2>&1"), { description = "Wl-record" })
--- Segment 2
+
+-- ============================================================================
+-- Hyprland 0.56 layout overrides
+-- Machine-specific layout controls belong here, not in the defaults.
+-- ============================================================================
+
+-- Retire the transitional layout-aware keybinds from configs.Keybinds.lua.
+hl.unbind(mainMod .. " + J")
+hl.unbind(mainMod .. " + K")
+hl.unbind(mainMod .. " + M")
+hl.unbind(mainMod .. " + O")
+hl.unbind(mainMod .. " + ALT + L")
+hl.unbind(mainMod .. " + SHIFT + I")
+
+local function toggle_layout()
+    local layout = hl.get_config("general.layout")
+    local next_layout
+    local message
+
+    if layout == "dwindle" then
+        next_layout = "master"
+        message = "Master Layout"
+    elseif layout == "master" then
+        next_layout = "dwindle"
+        message = "Dwindle Layout"
+    else
+        hl.notification.create({
+            text = "Unsupported layout: " .. tostring(layout),
+            timeout = 3000,
+            icon = "error",
+        })
+        return
+    end
+
+    hl.config({
+        general = {
+            layout = next_layout,
+        },
+    })
+
+    hl.notification.create({
+        text = message,
+        timeout = 2000,
+        icon = "ok",
+    })
+end
+
+-- Preserve the established machine workflow without the legacy shell state machine.
+hl.bind(mainMod .. " + ALT + L", toggle_layout, { description = "toggle master/dwindle layout" })
+hl.bind(mainMod .. " + SHIFT + I", hl.dsp.layout("removemaster"), { description = "remove master" })
+
+-- Preserve the legacy split-ratio control, but use the native 0.56 layout API.
+hl.bind(mainMod .. " + M", function()
+    local layout = hl.get_config("general.layout")
+
+    if layout == "master" then
+        hl.dispatch(hl.dsp.layout("mfact +0.3"))
+    elseif layout == "dwindle" then
+        hl.dispatch(hl.dsp.layout("splitratio +0.3"))
+    end
+end, { description = "adjust current layout ratio" })
