@@ -105,8 +105,8 @@ hl.bind(mainMod .. " + M", function()
     local layout = hl.get_config("general.layout")
 
     if layout == "master" then
-        hl.dispatch(hl.dsp.layout("mfact +0.3"))
+        hl.bind(mainMod .. " + M", hl.dsp.layout("mfact +0.3"), { description = "adjust master ratio" })
     elseif layout == "dwindle" then
-        hl.dispatch(hl.dsp.layout("splitratio +0.3"))
+        hl.bind(mainMod .. " + M", hl.dsp.layout("splitratio +0.3"), { description = "adjust split ratio" })
     end
 end, { description = "adjust current layout ratio" })
