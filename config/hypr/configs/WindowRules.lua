@@ -1,5 +1,5 @@
 -- File: configs/WindowRules.lua
--- /* ----  https://github.com/4ndr0666  ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */
 -- Vendor defaults for window rules and layerrules
 -- Notes: Ported for Hyprland >= 0.53
 
@@ -108,9 +108,6 @@ hl.window_rule({ match = { title = "^(Picture-in-Picture)$" }, move = "72% 7%" }
 
 -- windowrule to avoid idle for fullscreen apps
 hl.window_rule({ match = { fullscreen = true }, idle_inhibit = "fullscreen" })
-hl.window_rule({ match = { fullscreen = 1 }, idle_inhibit = "fullscreen" })
-hl.window_rule({ match = { class = "^(.*)$" }, idle_inhibit = "fullscreen" })
-hl.window_rule({ match = { title = "^(.*)$" }, idle_inhibit = "fullscreen" })
 
 -- FLOAT
 hl.window_rule({ match = { tag = "4ndr0666_Cheat" }, float = true })
@@ -162,7 +159,7 @@ hl.window_rule({ match = { class = "^([Ff]erdium)$" }, size = "(monitor_w*0.6) (
 hl.window_rule({ match = { tag = "games" }, no_blur = true, fullscreen = 0 })
 
 -- Focus
-hl.window_rule({ match = { class = "^(jetbrains-*)" }, no_initial_focus = true })
+hl.window_rule({ match = { class = "^(jetbrains-.*)$" }, no_initial_focus = true })
 hl.window_rule({ match = { title = "^(wind.*)$" }, no_initial_focus = true })
 
 -- LAYER RULES
