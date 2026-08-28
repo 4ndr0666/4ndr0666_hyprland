@@ -99,19 +99,15 @@ hl.bind(mainMod .. " + ALT + L", toggle_layout, { description = "toggle master/d
 hl.bind(mainMod .. " + SHIFT + I", hl.dsp.layout("removemaster"), { description = "remove master" })
 
 -- Preserve the established layout-ratio control using native 0.56 dispatchers.
-local layout_ratio_dispatch = {
-    master = hl.dsp.layout("mfact +0.3"),
-    dwindle = hl.dsp.layout("splitratio +0.3"),
-}
-
 hl.bind(mainMod .. " + M", function()
     local workspace = hl.get_active_special_workspace() or hl.get_active_workspace()
     if not workspace then
         return
     end
 
-    local dispatcher = layout_ratio_dispatch[workspace.tiled_layout]
-    if dispatcher then
-        hl.dispatch(dispatcher)
+    if workspace.tiled_layout == "master" then
+        hl.dispatch("layoutmsg", "mfact +0.3")
+    elseif workspace.tiled_layout == "dwindle" then
+        hl.dispatch("layoutmsg", "splitratio +0.3")
     end
 end, { description = "adjust current layout ratio" })
