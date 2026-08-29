@@ -85,13 +85,13 @@ end
 hl.bind(mainMod .. " + ALT + L", toggle_layout, { description = "toggle master/dwindle layout" })
 hl.bind(mainMod .. " + SHIFT + I", hl.dsp.layout("removemaster"), { description = "remove master" })
 
--- Preserve the established layout-ratio control using native 0.56 dispatchers.
+-- Preserve the established layout-ratio control using native 0.56 layout messages.
 hl.bind(mainMod .. " + M", function()
     local layout = hl.get_config("general.layout")
 
     if layout == "master" then
-        hl.dispatch("layoutmsg", "mfact +0.3")
+        hl.dispatch(hl.dsp.layout("mfact +0.3"))
     elseif layout == "dwindle" then
-        hl.dispatch("layoutmsg", "splitratio +0.3")
+        hl.dispatch(hl.dsp.layout("splitratio +0.3"))
     end
 end, { description = "adjust current layout ratio" })
