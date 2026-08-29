@@ -63,15 +63,10 @@ hl.unbind(mainMod .. " + SHIFT + I")
 hl.bind(mainMod .. " + J", function() hl.dispatch("cyclenext") end, { description = "cycle next window" })
 hl.bind(mainMod .. " + K", function() hl.dispatch("cyclenext", "prev") end, { description = "cycle previous window" })
 
--- Cycle the tiled layout of the active workspace. This intentionally replaces
--- the legacy global general.layout mutation performed by ChangeLayout.sh.
+-- Toggle the global compositor layout. This preserves the legacy
+-- ChangeLayout.sh contract while using the native Lua configuration API.
 local function toggle_layout()
-    local workspace = hl.get_active_special_workspace() or hl.get_active_workspace()
-    if not workspace then
-        return
-    end
-
-    local current = workspace.tiled_layout
+    local current = hl.get_config("general.layout")
     local next_layout
 
     if current == "dwindle" then
@@ -82,10 +77,10 @@ local function toggle_layout()
         return
     end
 
-    local selector = tostring(workspace.name or workspace.id)
-    hl.workspace_rule({
-        workspace = selector,
-        layout = next_layout,
+    hl.config({
+        general = {
+            layout = next_layout,
+        },
     })
 
     hl.notification.create({
@@ -100,14 +95,11 @@ hl.bind(mainMod .. " + SHIFT + I", hl.dsp.layout("removemaster"), { description 
 
 -- Preserve the established layout-ratio control using native 0.56 dispatchers.
 hl.bind(mainMod .. " + M", function()
-    local workspace = hl.get_active_special_workspace() or hl.get_active_workspace()
-    if not workspace then
-        return
-    end
+    local layout = hl.get_config("general.layout")
 
-    if workspace.tiled_layout == "master" then
+    if layout == "master" then
         hl.dispatch("layoutmsg", "mfact +0.3")
-    elseif workspace.tiled_layout == "dwindle" then
+    elseif layout == "dwindle" then
         hl.dispatch("layoutmsg", "splitratio +0.3")
     end
 end, { description = "adjust current layout ratio" })
