@@ -57,6 +57,8 @@ hl.config({
         workspace_swipe_min_speed_to_force = 30,
         workspace_swipe_cancel_ratio = 0.5,
         workspace_swipe_create_new = true,
+        workspace_swipe_distance = 500,
+        workspace_swipe_create_new = true,
         workspace_swipe_forever = true,
     },
     misc = {
@@ -95,15 +97,23 @@ hl.config({
     },
 })
 
--- Native 0.56 gesture declarations. Runtime hyprctl is retained only for
--- changing the live cursor zoom factor; gesture registration itself is Lua.
+local function adjust_cursor_zoom(factor)
+    local zoom = hl.get_config("cursor.zoom_factor")
+    if zoom < 1 then
+        zoom = 1
+    end
+    hl.config({ cursor = { zoom_factor = zoom * factor } })
+end
+
+-- Native 0.56 gesture declarations. Runtime cursor zoom is changed directly
+-- through the Lua configuration API; no hyprctl keyword IPC is required.
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
 
 hl.gesture({
     fingers = 4,
     direction = "up",
     action = function()
-        hl.exec_cmd("hyprctl keyword cursor:zoom_factor \"$(hyprctl getoption cursor:zoom_factor | awk 'NR==1 {factor = $2; if (factor < 1) {factor = 1}; print factor * 1.5}')\"")
+        adjust_cursor_zoom(1.5)
     end,
 })
 
@@ -111,7 +121,7 @@ hl.gesture({
     fingers = 4,
     direction = "down",
     action = function()
-        hl.exec_cmd("hyprctl keyword cursor:zoom_factor \"$(hyprctl getoption cursor:zoom_factor | awk 'NR==1 {factor = $2; if (factor < 1) {factor = 1}; print factor / 1.5}')\"")
+        adjust_cursor_zoom(1 / 1.5)
     end,
 })
 
