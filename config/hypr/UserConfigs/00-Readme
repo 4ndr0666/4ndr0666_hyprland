@@ -1,16 +1,13 @@
-# /* ---- 💫 https://github.com/JaKooLit 💫 ---- */  #
+# 4ndr0666 Hyprland User Configuration
 
-KooL's Hyprland-Dots
+This directory contains user-owned Lua configuration and overrides loaded by `config/hypr/hyprland.lua`.
 
-1.) Suggest not to rename any files in this directory. As this is connected and being sourced from hyprland.conf in ~/.config/hypr
+1. Do not rename files that are loaded by `hyprland.lua` unless you also update the corresponding `require()` path.
 
-2.) This directory, along with UserScripts directory will NOT be touch when running upgrade.sh
+2. `UserConfigs` and `UserScripts` are user-owned and are preserved by repository upgrades.
 
-3.) However, if hyprland has a big change in settings, i.e., blur section is moved into another group, you should managed the change yourself.
+3. Hyprland breaking changes may require updates to the user-owned Lua modules. Use the current Hyprland 0.56+ documentation when changing configuration schema.
 
-4.) Guidance on the keybinds. Suggest NOT to assign a keybind which I set on the default Keybinds. Else will conflict. Once Hyprland decided to have a global keybinds, then I will adjust.
+4. Keep machine-specific defaults, keybinds, settings, animations, window rules, and workspace rules in their designated user modules rather than modifying vendor defaults unnecessarily.
 
-5.) If you think that the default keybinds SHOULD be adjusted, open an issue on my github page and present me a valid argument. Like conflicting to GLOBAL keybinds, etc etc etc.
-
-
-I will update the Hyprland-Dots wiki for guidance. Make sure to check out changelogs as well
+5. When a default configuration needs correction, prefer fixing the canonical default module and keeping machine-specific behavior in the appropriate `UserConfigs` override.
