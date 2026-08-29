@@ -13,6 +13,9 @@ local function source(module_name)
     return require(module_name)
 end
 
+-- User defaults must exist before any module that consumes them.
+source("UserConfigs.01-UserDefaults")
+
 -- Initial boot script (Asynchronous hook to prevent blocking)
 hl.on("hyprland.start", function ()
     hl.exec_cmd("[ ! -f " .. home .. "/.config/hypr/.initial_startup_done ] && " .. home .. "/.config/hypr/initial-boot.sh || true")
@@ -37,7 +40,6 @@ source("UserConfigs.UserDecorations")
 source("UserConfigs.UserAnimations")
 source("UserConfigs.UserKeybinds")
 source("UserConfigs.UserSettings")
-source("UserConfigs.01-UserDefaults")
 
 -- Hardware & Workspaces (nwg-displays)
 source("monitors")
