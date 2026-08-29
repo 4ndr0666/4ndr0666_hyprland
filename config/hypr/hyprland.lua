@@ -40,6 +40,7 @@ source("UserConfigs.UserDecorations")
 source("UserConfigs.UserAnimations")
 source("UserConfigs.UserKeybinds")
 source("UserConfigs.UserSettings")
+source("UserConfigs.Runtime")
 
 -- Hardware & Workspaces (nwg-displays)
 source("monitors")
