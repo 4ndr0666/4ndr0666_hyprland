@@ -129,7 +129,8 @@ copy_phase2() {
   install_terminal_configs "$log"
 }
 
-# Restore Animations and Monitor Profiles plus key hypr files from backup
+# Restore user-owned Lua animation and monitor profiles without reintroducing
+# historical .conf payloads from pre-Lua backups.
 restore_hypr_assets() {
   local log="$1"
   local express_mode="$2"
@@ -145,18 +146,27 @@ restore_hypr_assets() {
       return
     fi
 
-    echo -e "\n${NOTE:-[NOTE]} Restoring ${SKY_BLUE:-}Animations & Monitor Profiles${RESET:-} into ${YELLOW:-}$HYPR_DIR${RESET:-}..."
+    echo -e "\n${NOTE:-[NOTE]} Restoring user Lua animations and monitor profiles into ${YELLOW:-}$HYPR_DIR${RESET:-}..."
 
-    local DIR_B=("Monitor_Profiles" "animations" "wallpaper_effects")
-    for DIR_RESTORE in "${DIR_B[@]}"; do
-      local BACKUP_SUBDIR="$BACKUP_HYPR_PATH/$DIR_RESTORE"
+    local LUA_DIR
+    for LUA_DIR in "Monitor_Profiles" "animations"; do
+      local BACKUP_SUBDIR="$BACKUP_HYPR_PATH/$LUA_DIR"
       if [ -d "$BACKUP_SUBDIR" ]; then
-        cp -r "$BACKUP_SUBDIR" "$HYPR_DIR/" 2>&1 | tee -a "$log"
-        echo "${OK:-[OK]} - Restored directory: ${MAGENTA:-}$DIR_RESTORE${RESET:-}" 2>&1 | tee -a "$log"
+        find "$BACKUP_SUBDIR" -maxdepth 1 -type f -name '*.lua' -exec cp -f {} "$HYPR_DIR/$LUA_DIR/" \; 2>&1 | tee -a "$log"
+        echo "${OK:-[OK]} - Restored Lua profiles: ${MAGENTA:-}$LUA_DIR${RESET:-}" 2>&1 | tee -a "$log"
       fi
     done
 
-    local FILE_B=("monitors.conf" "workspaces.conf")
+    # Wallpaper effects are not Hyprland configuration syntax and retain their
+    # full backup/restore behavior.
+    local WALLPAPER_BACKUP="$BACKUP_HYPR_PATH/wallpaper_effects"
+    if [ -d "$WALLPAPER_BACKUP" ]; then
+      cp -r "$WALLPAPER_BACKUP" "$HYPR_DIR/" 2>&1 | tee -a "$log"
+      echo "${OK:-[OK]} - Restored directory: ${MAGENTA:-}wallpaper_effects${RESET:-}" 2>&1 | tee -a "$log"
+    fi
+
+    # Current generated machine state is Lua. Never restore pre-Lua .conf files.
+    local FILE_B=("monitors.lua" "workspaces.lua")
     for FILE_RESTORE in "${FILE_B[@]}"; do
       local BACKUP_FILE="$BACKUP_HYPR_PATH/$FILE_RESTORE"
       if [ -f "$BACKUP_FILE" ]; then
@@ -169,7 +179,7 @@ restore_hypr_assets() {
 
 # Helper to extract overlay additions/disables from previous user file vs base
 compose_overlay_from_backup() {
-  local type="$1" # startup|windowrules
+  local type="$1"
   local base_file="$2"
   local old_user_file="$3"
   local new_user_file="$4"
@@ -206,9 +216,6 @@ cleanup_duplicate_userconfigs() {
     return
   fi
 
-  # Run de-dupe only for existing installs up to and including v2.3.19.
-  # For v2.3.20 and newer, the underlying duplication bug is fixed and
-  # this cleanup is no longer needed (and might mask future issues).
   if version_gte "$current_version" "2.3.20"; then
     echo "${INFO:-[INFO]} Skipping UserConfigs duplicate cleanup for detected version v$current_version (>= 2.3.20)." 2>&1 | tee -a "$log"
     return
@@ -303,8 +310,6 @@ cleanup_duplicate_userconfigs() {
     awk '
       function trim(s){ gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
       FNR==NR {
-        # Match any Hyprland bind variant: bindd, bindmd, bindld, binded,
-        # bindlnd, bindeld, etc.
         if ($0 ~ /^[ \t]*bind[a-z]*[ \t]*=/) {
           line=trim($0)
           base[line]=1
@@ -328,6 +333,7 @@ cleanup_duplicate_userconfigs() {
     fi
   fi
 }
+
 restore_user_configs() {
   local log="$1"
   local express_mode="$2"
@@ -343,8 +349,6 @@ restore_user_configs() {
     exit 1
   fi
 
-  # In express mode we still want to run the de-dupe logic, but we skip
-  # the interactive restoration prompts so the workflow stays non-blocking.
   local SKIP_RESTORE_PROMPTS=0
   if [ -d "$BACKUP_DIR_PATH" ] && [ "$express_mode" -eq 1 ]; then
     echo "${NOTE:-[NOTE]} Express mode: skipping UserConfigs restoration prompts." 2>&1 | tee -a "$log"
@@ -362,14 +366,6 @@ restore_user_configs() {
     local TARGET_VERSION="2.3.19"
 
     echo -e "${NOTE:-[NOTE]} Restoring previous ${MAGENTA:-}User-Configs${RESET:-}... " 2>&1 | tee -a "$log"
-    printf "${WARNING:-}\\
-    █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█\\n\\
-            NOTES for RESTORING PREVIOUS CONFIGS\\n\\
-    █▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█\\n\\n\\
-    The 'UserConfigs' directory is for all your personal settings.\\n\\
-    Files in this directory will override the default configurations,\\n\\
-    so your customizations are not lost when you update.\\n\\
-" >&2
 
     if version_gte "$CURRENT_VERSION" "$TARGET_VERSION"; then
       read -r -p "${CAT:-[ACTION]} Do you want to restore your previous UserConfigs directory? (Y/n): " restore_userconfigs_dir
@@ -427,11 +423,6 @@ restore_user_configs() {
     fi
   fi
 
-  # Always run de-dupe based on the installed dotfiles version so that
-  # express mode and standard mode behave consistently. Prefer the
-  # pre-upgrade version (old_version) if provided so we still clean up
-  # legacy duplicates when upgrading to a newer release that no longer
-  # needs the fix.
   local detected_version="$old_version"
   if [ -z "$detected_version" ]; then
     detected_version=$(get_installed_dotfiles_version)
