@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# A bash script designed to run only once dotfiles installed
-
-# THIS SCRIPT CAN BE DELETED ONCE SUCCESSFULLY BOOTED!! And also, edit ~/.config/hypr/configs/Settings.conf
-# NOT necessary to do since this script is only designed to run only once as long as the marker exists
-# marker file is located at ~/.config/hypr/.initial_startup_done
-# However, I do highly suggest not to touch it since again, as long as the marker exist, script wont run
+# A bash script designed to run only once after dotfiles installation.
+#
+# The script exits immediately after creating ~/.config/hypr/.initial_startup_done.
+# It is intentionally retained for the one-time initialization flow.
+# User-owned persistent configuration belongs in ~/.config/hypr/UserConfigs/.
 
 # Variables
 scriptsDir=$HOME/.config/hypr/scripts
