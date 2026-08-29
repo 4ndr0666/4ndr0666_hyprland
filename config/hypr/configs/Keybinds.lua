@@ -140,7 +140,7 @@ hl.bind(mainMod .. " + X", hl.dsp.exec_cmd(scriptsDir .. "/Wlogout.sh"), { descr
 -- Layout controls are owned by UserConfigs/UserKeybinds.lua.
 
 -- CYCLE; if floating bring to top (Native Dispatchers mapped)
-hl.bind("ALT + Tab", function() hl.dispatch("cyclenext") end, { description = "cycle next window" })
+hl.bind("ALT + Tab", hl.dsp.layout("cyclenext"), { description = "cycle next window" })
 
 -- HOTKEYS
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(scriptsDir .. "/Volume.sh --inc"), { repeating = true, locked = true, description = "volume up" })
