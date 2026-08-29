@@ -52,8 +52,8 @@ hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.
 
 -- J/K retain the established global next/previous-window behavior without
 -- the legacy startup script or layout-dependent branching.
-hl.bind(mainMod .. " + J", function() hl.dispatch("cyclenext") end, { description = "cycle next window" })
-hl.bind(mainMod .. " + K", function() hl.dispatch("cyclenext", "prev") end, { description = "cycle previous window" })
+hl.bind(mainMod .. " + J", hl.dsp.layout("cyclenext"), { description = "cycle next window" })
+hl.bind(mainMod .. " + K", hl.dsp.layout("cycleprev"), { description = "cycle previous window" })
 
 -- Toggle the global compositor layout. This preserves the legacy
 -- ChangeLayout.sh contract while using the native Lua configuration API.
