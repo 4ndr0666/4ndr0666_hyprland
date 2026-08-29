@@ -61,8 +61,14 @@ hl.bind(mainMod .. " + SPACE", hl.dsp.window.float({ action = "toggle" }), { des
 hl.bind(mainMod .. " + ALT + SPACE", hl.dsp.exec_cmd("hyprctl dispatch workspaceopt allfloat"), { description = "Float all windows" })
 
 -- DESKTOP ZOOM
-hl.bind(mainMod .. " + ALT + mouse_down", hl.dsp.exec_cmd("hyprctl keyword cursor:zoom_factor \"$(hyprctl getoption cursor:zoom_factor | awk 'NR==1 {factor = $2; if (factor < 1) {factor = 1}; print factor * 2.0}')\""), { description = "zoom in" })
-hl.bind(mainMod .. " + ALT + mouse_up", hl.dsp.exec_cmd("hyprctl keyword cursor:zoom_factor \"$(hyprctl getoption cursor:zoom_factor | awk 'NR==1 {factor = $2; if (factor < 1) {factor = 1}; print factor / 2.0}')\""), { description = "zoom out" })
+local function zoom_cursor(multiplier)
+    local current = hl.get_config("cursor.zoom_factor")
+    current = math.max(1, current * multiplier)
+    hl.config({ cursor = { zoom_factor = current } })
+end
+
+hl.bind(mainMod .. " + ALT + mouse_down", function() zoom_cursor(2) end, { description = "zoom in" })
+hl.bind(mainMod .. " + ALT + mouse_up", function() zoom_cursor(0.5) end, { description = "zoom out" })
 
 -- BLUR
 hl.bind(mainMod .. " + ALT + O", hl.dsp.exec_cmd(scriptsDir .. "/ChangeBlur.sh"), { description = "toggle blur" })
@@ -177,105 +183,3 @@ hl.bind(mainMod .. " + ALT + down",  hl.dsp.window.swap({ direction = "d" }), { 
 
 -- GROUP (Native Dispatchers mapped)
 hl.bind(mainMod .. " + G", function() hl.dispatch("togglegroup") end, { description = "toggle group" })
-
--- NAVIGATE WITHIN A GROUP
-hl.bind(mainMod .. " + Tab", function() hl.dispatch("changegroupactive", "f") end, { description = "Change Group Forward" })
-hl.bind(mainMod .. " + CTRL + Tab", function() hl.dispatch("changegroupactive", "f") end, { description = "change active in group" })
-hl.bind(mainMod .. " + SHIFT + Tab", function() hl.dispatch("changegroupactive", "b") end, { description = "Change Group Back" })
-
--- MOVE WINDOW INTO/OUT OF GROUP
-hl.bind(mainMod .. " + CTRL + K", function() hl.dispatch("moveintogroup", "l") end, { description = "Move left into group" })
-hl.bind(mainMod .. " + CTRL + L", function() hl.dispatch("moveintogroup", "r") end, { description = "Move Right into group" })
-hl.bind(mainMod .. " + CTRL + H", function() hl.dispatch("moveoutofgroup") end, { description = "Move active out of group" })
-
--- MOVE FOCUS
-hl.bind(mainMod .. " + left",  hl.dsp.focus({ direction = "l" }), { description = "focus left" })
-hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "r" }), { description = "focus right" })
-hl.bind(mainMod .. " + up",    hl.dsp.focus({ direction = "u" }), { description = "focus up" })
-hl.bind(mainMod .. " + down",  hl.dsp.focus({ direction = "d" }), { description = "focus down" })
-
--- WORKSPACES RELATED
-hl.bind(mainMod .. " + Tab",         hl.dsp.focus({ workspace = "m+1" }), { description = "next workspace" })
-hl.bind(mainMod .. " + SHIFT + Tab", hl.dsp.focus({ workspace = "m-1" }), { description = "previous workspace" })
-
--- SPECIAL WORKSPACE
-hl.bind(mainMod .. " + SHIFT + U", hl.dsp.window.move({ workspace = "special" }), { description = "move to special workspace" })
-hl.bind(mainMod .. " + U", function() hl.dispatch("togglespecialworkspace") end, { description = "toggle special workspace" })
-
--- WORKSPACE MAPPING (code:10 to 19)
-for i = 1, 10 do
-    local key  = i % 10
-    local code = 9 + (i == 10 and 10 or i)
-    hl.bind(mainMod .. " + code:" .. code,         hl.dsp.focus({ workspace = i }),                       { description = "workspace " .. key })
-    hl.bind(mainMod .. " + SHIFT + code:" .. code, hl.dsp.window.move({ workspace = i }),                 { description = "move to workspace " .. key })
-    hl.bind(mainMod .. " + CTRL + code:" .. code,  hl.dsp.window.move({ workspace = i, silent = true }),  { description = "move silently to workspace " .. key })
-end
-hl.bind(mainMod .. " + SHIFT + bracketleft",  hl.dsp.window.move({ workspace = "-1" }),               { description = "move to previous workspace" })
-hl.bind(mainMod .. " + SHIFT + bracketright", hl.dsp.window.move({ workspace = "+1" }),               { description = "move to next workspace" })
-hl.bind(mainMod .. " + CTRL + bracketleft",   hl.dsp.window.move({ workspace = "-1", silent = true }), { description = "move silently to previous workspace" })
-hl.bind(mainMod .. " + CTRL + bracketright",  hl.dsp.window.move({ workspace = "+1", silent = true }), { description = "move silently to next workspace" })
-
--- SCROLL THROUGH EXISTING WORKSPACES
-hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }), { description = "next workspace" })
-hl.bind(mainMod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }), { description = "previous workspace" })
-hl.bind(mainMod .. " + period",     hl.dsp.focus({ workspace = "e+1" }), { description = "next workspace" })
-hl.bind(mainMod .. " + comma",      hl.dsp.focus({ workspace = "e-1" }), { description = "previous workspace" })
-
--- MOVE/RESIZE WINDOWS WITH MAINMOD + LMB/RMB
-hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true, description = "move window" })
-hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "resize window" })
-
--- ---------------------------------------------------------------------------
--- J/K LAYOUT-CONDITIONAL WINDOW NAVIGATION (Native Replacement for ChangeLayout.sh runtime bind patching)
--- ---------------------------------------------------------------------------
-local function dispatch_jk_for_current_layout(direction)
-    local layout = hl.get_config("general.layout")
-
-    if layout == "master" then
-        if direction == "next" then
-            hl.dispatch("layoutmsg", "cyclenext")
-        else
-            hl.dispatch("layoutmsg", "cycleprev")
-        end
-        return
-    end
-
-    if direction == "next" then
-        hl.dispatch("movefocus", "d")
-    else
-        hl.dispatch("movefocus", "u")
-    end
-end
-
-hl.bind(mainMod .. " + J", function()
-    dispatch_jk_for_current_layout("next")
-end, { description = "layout-aware next window" })
-
-hl.bind(mainMod .. " + K", function()
-    dispatch_jk_for_current_layout("prev")
-end, { description = "layout-aware previous window" })
-
-local function dispatch_layout_specific_key(key)
-    local layout = hl.get_config("general.layout")
-
-    if key == "M" then
-        if layout == "master" then
-            hl.dispatch("layoutmsg", "mfact 0.3")
-        elseif layout == "dwindle" then
-            hl.dispatch("splitratio", "0.3")
-        end
-        return
-    end
-
-    if key == "O" and layout == "dwindle" then
-        hl.dispatch("togglesplit", "")
-    end
-end
-
-hl.bind(mainMod .. " + M", function()
-    dispatch_layout_specific_key("M")
-end, { description = "layout-specific split ratio" })
-
-hl.bind(mainMod .. " + O", function()
-    dispatch_layout_specific_key("O")
-end, { description = "toggle dwindle split" })
