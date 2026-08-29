@@ -46,17 +46,9 @@ hl.bind(mainMod .. " + SHIFT + F10", hl.dsp.exec_cmd("bash " .. os.getenv("HOME"
 hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.local/bin/wl-record >/dev/null 2>&1"), { description = "Wl-record" })
 
 -- ============================================================================
--- Hyprland 0.56 layout overrides
--- Machine-specific layout controls belong here, not in the defaults.
+-- Hyprland 0.56 layout controls
+-- User-specific controls belong here; defaults remain in configs/Keybinds.lua.
 -- ============================================================================
-
--- Retire transitional layout-aware bindings from configs.Keybinds.lua.
-hl.unbind(mainMod .. " + J")
-hl.unbind(mainMod .. " + K")
-hl.unbind(mainMod .. " + M")
-hl.unbind(mainMod .. " + O")
-hl.unbind(mainMod .. " + ALT + L")
-hl.unbind(mainMod .. " + SHIFT + I")
 
 -- J/K retain the established global next/previous-window behavior without
 -- the legacy startup script or layout-dependent branching.
