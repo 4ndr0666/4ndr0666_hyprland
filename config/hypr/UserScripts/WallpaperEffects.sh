@@ -2,7 +2,6 @@
 # /* ----  https://github.com/4ndr0666  ---- */  #
 # Wallpaper Effects using ImageMagick (SUPER SHIFT W)
 
-# Variables
 terminal=kitty
 wallpaper_current="$HOME/.config/hypr/wallpaper_effects/.wallpaper_current"
 wallpaper_output="$HOME/.config/hypr/wallpaper_effects/.wallpaper_modified"
@@ -10,7 +9,6 @@ SCRIPTSDIR="$HOME/.config/hypr/scripts"
 focused_monitor=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
 rofi_theme="$HOME/.config/rofi/config-wallpaper-effect.rasi"
 
-# Directory for mako
 iDIR="$HOME/.config/mako/images"
 iDIRi="$HOME/.config/mako/icons"
 
@@ -19,9 +17,8 @@ FPS=60
 TYPE="wipe"
 DURATION=2
 BEZIER=".43,1.19,1,.4"
-SWWW_PARAMS="--transition-fps $FPS --transition-type $TYPE --transition-duration $DURATION --transition-bezier $BEZIER"
+AWWW_PARAMS="--transition-fps $FPS --transition-type $TYPE --transition-duration $DURATION --transition-bezier $BEZIER"
 
-# Define ImageMagick effects
 declare -A effects=(
     ["No Effects"]="no-effects"
     ["Black & White"]="magick $wallpaper_current -colorspace gray -sigmoidal-contrast 10,40% $wallpaper_output"
@@ -43,24 +40,18 @@ declare -A effects=(
     ["Zoomed"]="magick $wallpaper_current -gravity Center -extent 1:1 $wallpaper_output"
 )
 
-# Function to apply no effects
 no-effects() {
-    awww img -o "$focused_monitor" "$wallpaper_current" $SWWW_PARAMS &&
+    awww img -o "$focused_monitor" "$wallpaper_current" $AWWW_PARAMS &&
     wait $!
     wallust run "$wallpaper_current" -s &&
     wait $!
-    # Refresh rofi, waybar, wallust palettes
-	sleep 2
-	"$SCRIPTSDIR/Refresh.sh"
-
+    sleep 2
+    "$SCRIPTSDIR/Refresh.sh"
     notify-send -u low -i "$iDIR/ja.png" "No wallpaper" "effects applied"
-    # copying wallpaper for rofi menu
     cp "$wallpaper_current" "$wallpaper_output"
 }
 
-# Function to run rofi menu
 main() {
-    # Populate rofi menu options
     options=("No Effects")
     for effect in "${!effects[@]}"; do
         [[ "$effect" != "No Effects" ]] && options+=("$effect")
@@ -68,29 +59,23 @@ main() {
 
     choice=$(printf "%s\n" "${options[@]}" | LC_COLLATE=C sort | rofi -dmenu -i -config $rofi_theme)
 
-    # Process user choice
     if [[ -n "$choice" ]]; then
         if [[ "$choice" == "No Effects" ]]; then
             no-effects
         elif [[ "${effects[$choice]+exists}" ]]; then
-            # Apply selected effect
-            notify-send -u normal -i "$iDIR/ja.png"  "Applying:" "$choice effects"
+            notify-send -u normal -i "$iDIR/ja.png" "Applying:" "$choice effects"
             eval "${effects[$choice]}"
 
-            # intial kill process
             for pid in swaybg mpvpaper; do
-            killall -SIGUSR1 "$pid"
+                killall -SIGUSR1 "$pid"
             done
 
             sleep 1
-            awww img -o "$focused_monitor" "$wallpaper_output" $SWWW_PARAMS &
-
+            awww img -o "$focused_monitor" "$wallpaper_output" $AWWW_PARAMS &
             sleep 2
-
             wallust run "$wallpaper_output" -s &
             sleep 1
-            # Refresh rofi, waybar, wallust palettes
-            "${SCRIPTSDIR}/Refresh.sh"
+            "$SCRIPTSDIR/Refresh.sh"
             notify-send -u low -i "$iDIR/ja.png" "$choice" "effects applied"
         else
             echo "Effect '$choice' not recognized."
@@ -98,7 +83,6 @@ main() {
     fi
 }
 
-# Check if rofi is already running and kill it
 if pidof rofi > /dev/null; then
     pkill rofi
 fi
