@@ -30,7 +30,6 @@ source("configs.ENVariables")
 
 -- Window Rules and Layer Rules
 source("configs.WindowRules")
-source("UserConfigs.WindowRules")
 
 -- Default config for hypr
 source("configs.SystemSettings")
