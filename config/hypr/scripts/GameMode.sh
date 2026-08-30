@@ -31,7 +31,7 @@ if [ "$HYPRGAMEMODE" = 1 ]; then
 else
     awww-daemon --format xrgb && awww img "$HOME/.config/rofi/.current_wallpaper" &
     sleep 0.1
-    "$SCRIPTSDIR/WallustAwww.sh"
+    "$SCRIPTSDIR/WallustSwww.sh"
     sleep 0.5
     hyprctl reload
     "$SCRIPTSDIR/Refresh.sh"
