@@ -1,5 +1,5 @@
 -- File: configs/Startup_Apps.lua
--- /* ----  https://github.com/4ndr0666  ---- */  #
+-- /* ----  https://github.com/4ndr0666  ---- */
 -- Startup Apps
 
 local scriptsDir = os.getenv("HOME") .. "/.config/hypr/scripts"
@@ -7,7 +7,8 @@ local UserScripts = os.getenv("HOME") .. "/.config/hypr/UserScripts"
 local wallDIR = os.getenv("HOME") .. "/Wallpapers"
 
 hl.on("hyprland.start", function ()
-    hl.exec_cmd(UserScripts .. "/WallpaperAutoChange.sh " .. wallDIR)
+    -- WallpaperAutoChange is an optional initial-install setup and remains disabled by default.
+    -- hl.exec_cmd(UserScripts .. "/WallpaperAutoChange.sh " .. wallDIR)
     hl.exec_cmd("awww-daemon --format xrgb")
     hl.exec_cmd(UserScripts .. "/4ndr0init.sh")
 
@@ -26,4 +27,3 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
     hl.exec_cmd("/usr/bin/mem-police")
 end)
--- Segment 1

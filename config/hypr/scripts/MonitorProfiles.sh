@@ -21,7 +21,7 @@ ignore_files=(
 )
 
 # list of Monitor Profiles, sorted alphabetically with numbers first
-mon_profiles_list=$(find -L "$monitor_dir" -maxdepth 1 -type f | sed 's/.*\///' | sed 's/\.conf$//' | sort -V)
+mon_profiles_list=$(find -L "$monitor_dir" -maxdepth 1 -type f -name '*.lua' -printf '%f\n' | sed 's/\.lua$//' | sort -V)
 
 # Remove ignored files from the list
 for ignored_file in "${ignore_files[@]}"; do
@@ -32,7 +32,7 @@ done
 chosen_file=$(echo "$mon_profiles_list" | rofi -i -dmenu -config $rofi_theme -mesg "$msg")
 
 if [[ -n "$chosen_file" ]]; then
-    full_path="$monitor_dir/$chosen_file.conf"
+    full_path="$monitor_dir/$chosen_file.lua"
     cp "$full_path" "$target"
     
     notify-send -u low -i "$iDIR/ja.png" "$chosen_file" "Monitor Profile Loaded"

@@ -6,19 +6,19 @@
 local home = os.getenv("HOME")
 package.path = package.path .. ";" .. home .. "/.config/hypr/?.lua;" .. home .. "/.config/hypr/?/init.lua"
 
--- Safe require wrapper: Emulates Hyprland's native `source` directive
--- Prevents fatal compositor crashes if a user deletes an optional config file or if an update script hasn't generated it yet.
+-- Required configuration modules must fail loudly.  The migration is now
+-- native Lua; silently swallowing require() failures creates a partial,
+-- invalid compositor configuration that is difficult to diagnose.
 local function source(module_name)
-    local success, err = pcall(require, module_name)
-    if not success then
-        -- Silently fail or log to standard output, mirroring native Hyprland missing source behavior
-        print("Warning: Could not source '" .. module_name .. "'. File may not exist. (" .. tostring(err) .. ")")
-    end
+    return require(module_name)
 end
 
--- Initial boot script (Asynchronous hook to prevent blocking)
+-- User defaults must exist before any module that consumes them.
+source("UserConfigs.01-UserDefaults")
+
+-- Initial boot script (asynchronous hook; the script owns marker semantics).
 hl.on("hyprland.start", function ()
-    hl.exec_cmd("[ ! -f " .. home .. "/.config/hypr/.initial_startup_done ] && " .. home .. "/.config/hypr/initial-boot.sh || true")
+    hl.exec_cmd(home .. "/.config/hypr/initial-boot.sh")
 end)
 
 -- Pre-configured keybinds
@@ -30,7 +30,6 @@ source("configs.ENVariables")
 
 -- Window Rules and Layer Rules
 source("configs.WindowRules")
-source("UserConfigs.WindowRules")
 
 -- Default config for hypr
 source("configs.SystemSettings")
@@ -40,7 +39,6 @@ source("UserConfigs.UserDecorations")
 source("UserConfigs.UserAnimations")
 source("UserConfigs.UserKeybinds")
 source("UserConfigs.UserSettings")
-source("UserConfigs.01-UserDefaults")
 
 -- Hardware & Workspaces (nwg-displays)
 source("monitors")

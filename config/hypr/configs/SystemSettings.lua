@@ -95,10 +95,38 @@ hl.config({
     },
 })
 
+local function adjust_cursor_zoom(factor)
+    local zoom = hl.get_config("cursor.zoom_factor")
+    if zoom < 1 then
+        zoom = 1
+    end
+    hl.config({ cursor = { zoom_factor = zoom * factor } })
+end
+
+-- Native 0.56 gesture declarations. Runtime cursor zoom is changed directly
+-- through the Lua configuration API; no hyprctl keyword IPC is required.
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
 
-hl.on("hyprland.start", function ()
-    hl.exec_cmd("hyprctl keyword gesture '4, up, dispatcher, exec, hyprctl keyword cursor:zoom_factor \"$(hyprctl getoption cursor:zoom_factor | awk '\\''NR==1 {factor = $2; if (factor < 1) {factor = 1}; print factor * 1.5}'\\'')\"'")
-    hl.exec_cmd("hyprctl keyword gesture '4, down, dispatcher, exec, hyprctl keyword cursor:zoom_factor \"$(hyprctl getoption cursor:zoom_factor | awk '\\''NR==1 {factor = $2; if (factor < 1) {factor = 1}; print factor / 1.5}'\\'')\"'")
-    hl.exec_cmd("hyprctl keyword gesture '3, up, dispatcher, exec, " .. scriptsDir .. "/OverviewToggle.sh'")
-end)
+hl.gesture({
+    fingers = 4,
+    direction = "up",
+    action = function()
+        adjust_cursor_zoom(1.5)
+    end,
+})
+
+hl.gesture({
+    fingers = 4,
+    direction = "down",
+    action = function()
+        adjust_cursor_zoom(1 / 1.5)
+    end,
+})
+
+hl.gesture({
+    fingers = 3,
+    direction = "up",
+    action = function()
+        hl.exec_cmd(scriptsDir .. "/OverviewToggle.sh")
+    end,
+})
