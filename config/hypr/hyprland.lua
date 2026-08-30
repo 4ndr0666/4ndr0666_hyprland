@@ -16,9 +16,9 @@ end
 -- User defaults must exist before any module that consumes them.
 source("UserConfigs.01-UserDefaults")
 
--- Initial boot script (Asynchronous hook to prevent blocking)
+-- Initial boot script (asynchronous hook; the script owns marker semantics).
 hl.on("hyprland.start", function ()
-    hl.exec_cmd("[ ! -f " .. home .. "/.config/hypr/.initial_startup_done ] && " .. home .. "/.config/hypr/initial-boot.sh || true")
+    hl.exec_cmd(home .. "/.config/hypr/initial-boot.sh")
 end)
 
 -- Pre-configured keybinds
