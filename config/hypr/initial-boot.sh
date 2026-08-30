@@ -23,7 +23,7 @@ if [ ! -f "$HOME/.config/hypr/.initial_startup_done" ]; then
     if [ -f "$wallpaper" ]; then
         wallust run -s "$wallpaper" > /dev/null
         awww query || awww-daemon && $awww "$wallpaper" $effect
-        "$scriptsDir/WallustAwww.sh" > /dev/null 2>&1 &
+        "$scriptsDir/WallustSwww.sh" > /dev/null 2>&1 &
     fi
 
     gsettings set org.gnome.desktop.interface color-scheme "$color_scheme" > /dev/null 2>&1 &
