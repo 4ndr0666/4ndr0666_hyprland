@@ -7,12 +7,10 @@ local scriptsDir = os.getenv("HOME") .. "/.config/hypr/scripts"
 hl.config({
     dwindle = {
         preserve_split = true,
-        special_scale_factor = 0.8,
     },
     master = {
         mfact = 0.65,
         new_status = "slave",
-        new_on_top = true,
         orientation = "left",
         slave_count_for_center_master = 2,
         center_master_fallback = "left",

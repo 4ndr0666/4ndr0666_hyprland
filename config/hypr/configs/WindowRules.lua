@@ -121,7 +121,7 @@ hl.window_rule({ match = { class = "^(mpv|com.github.rafostar.Clapper)$" }, floa
 hl.window_rule({ match = { class = "^([Qq]alculate-gtk)$" }, float = true })
 hl.window_rule({ match = { class = "^([Ff]erdium)$" }, float = true })
 
--- popups and dialogue 
+-- popups and dialogue
 hl.window_rule({ match = { title = "^(Authentication Required)$" }, float = true, center = true })
 hl.window_rule({ match = { class = "(codium|codium-url-handler|VSCodium)", title = "negative:(.*codium.*|.*VSCodium.*)" }, float = true })
 hl.window_rule({ match = { class = "^(com.heroicgameslauncher.hgl)$", title = "negative:(Heroic Games Launcher)" }, float = true })
@@ -168,7 +168,7 @@ hl.layer_rule({ match = { namespace = "notifications" }, blur = true })
 hl.layer_rule({ match = { namespace = "quickshell:overview" }, blur = true })
 hl.layer_rule({ match = { namespace = "quickshell:overview" }, ignore_alpha = 0.5 })
 
--- Named rules for special cases 
+-- Named rules for special cases
 hl.window_rule({
     name = "Whatsapp-zapzap",
     match = { class = "^([Ww]hatsapp-for-linux|ZapZap|com.rtosta.zapzap)$" },

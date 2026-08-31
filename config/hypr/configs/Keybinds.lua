@@ -136,11 +136,18 @@ hl.bind("CTRL + ALT + L", hl.dsp.exec_cmd(scriptsDir .. "/LockScreen.sh"), { des
 -- WLOGOUT
 hl.bind(mainMod .. " + X", hl.dsp.exec_cmd(scriptsDir .. "/Wlogout.sh"), { description = "powermenu" })
 
--- LAYOUTS
--- Layout controls are owned by UserConfigs/UserKeybinds.lua.
+-- LAYOUTs & J/K LAYOUT-AWARE CYCLING
+local function cycle_window(direction)
+    local layout = hl.get_config("general.layout")
+    if layout == "master" then
+        hl.dispatch("layoutmsg", direction == "next" and "cyclenext" or "cycleprev")
+    else
+        hl.dispatch("cyclenext", direction == "next" and "" or "prev")
+    end
+end
 
--- CYCLE; if floating bring to top (Native Dispatchers mapped)
-hl.bind("ALT + Tab", hl.dsp.layout("cyclenext"), { description = "cycle next window" })
+hl.bind(mainMod .. " + J", function() cycle_window("next") end, { description = "cycle next window" })
+hl.bind(mainMod .. " + K", function() cycle_window("prev") end, { description = "cycle previous window" })
 
 -- HOTKEYS
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(scriptsDir .. "/Volume.sh --inc"), { repeating = true, locked = true, description = "volume up" })
@@ -153,7 +160,6 @@ hl.bind("XF86Sleep", hl.dsp.exec_cmd("systemctl suspend"), { locked = true, desc
 hl.bind("XF86Rfkill", hl.dsp.exec_cmd(scriptsDir .. "/AirplaneMode.sh"), { locked = true, description = "airplane mode" })
 
 -- media controls using keyboards
--- hl.bind("XF86AudioPlayPause", hl.dsp.exec_cmd(scriptsDir .. "/MediaCtrl.sh --pause"), { locked = true, description = "play/pause" }) -- Disabled: Invalid xkbcommon keysym
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd(scriptsDir .. "/MediaCtrl.sh --pause"), { locked = true, description = "pause" })
 hl.bind("XF86AudioPlay", hl.dsp.exec_cmd(scriptsDir .. "/MediaCtrl.sh --pause"), { locked = true, description = "play" })
 hl.bind("XF86AudioNext", hl.dsp.exec_cmd(scriptsDir .. "/MediaCtrl.sh --nxt"), { locked = true, description = "next track" })
@@ -163,11 +169,11 @@ hl.bind("XF86AudioStop", hl.dsp.exec_cmd(scriptsDir .. "/MediaCtrl.sh --stop"), 
 -- SCREENSHOTS
 hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(UserScripts .. "/RofiScreenshot.sh"), { description = "screenshot (Rofi)" })
 
--- RESIZE WINDOWS
-hl.bind(mainMod .. " + SHIFT + left",  hl.dsp.window.resize({ x = -50, y = 0 }),  { repeating = true, description = "resize left (-50)" })
-hl.bind(mainMod .. " + SHIFT + right", hl.dsp.window.resize({ x = 50,  y = 0 }),  { repeating = true, description = "resize right (+50)" })
-hl.bind(mainMod .. " + SHIFT + up",    hl.dsp.window.resize({ x = 0,   y = -50 }), { repeating = true, description = "resize up (-50)" })
-hl.bind(mainMod .. " + SHIFT + down",  hl.dsp.window.resize({ x = 0,   y = 50 }),  { repeating = true, description = "resize down (+50)" })
+-- RESIZE WINDOWS (Using native 0.56 hl.dispatch factory object for smooth repeating)
+hl.bind(mainMod .. " + SHIFT + left",  function() hl.dispatch(hl.dsp.window.resize({ x = -50, y = 0, relative = true })) end, { repeating = true, description = "resize left (-50)" })
+hl.bind(mainMod .. " + SHIFT + right", function() hl.dispatch(hl.dsp.window.resize({ x = 50, y = 0, relative = true })) end,  { repeating = true, description = "resize right (+50)" })
+hl.bind(mainMod .. " + SHIFT + up",    function() hl.dispatch(hl.dsp.window.resize({ x = 0, y = -50, relative = true })) end, { repeating = true, description = "resize up (-50)" })
+hl.bind(mainMod .. " + SHIFT + down",  function() hl.dispatch(hl.dsp.window.resize({ x = 0, y = 50, relative = true })) end,  { repeating = true, description = "resize down (+50)" })
 
 -- MOVE WINDOWS
 hl.bind(mainMod .. " + CTRL + left",  hl.dsp.window.move({ direction = "l" }), { description = "move window left" })
@@ -181,5 +187,34 @@ hl.bind(mainMod .. " + ALT + right", hl.dsp.window.swap({ direction = "r" }), { 
 hl.bind(mainMod .. " + ALT + up",    hl.dsp.window.swap({ direction = "u" }), { description = "swap window up" })
 hl.bind(mainMod .. " + ALT + down",  hl.dsp.window.swap({ direction = "d" }), { description = "swap window down" })
 
--- GROUP (Native Dispatchers mapped)
+-- GROUP
 hl.bind(mainMod .. " + G", function() hl.dispatch("togglegroup") end, { description = "toggle group" })
+
+-- WORKSPACES
+hl.bind(mainMod .. " + Tab", hl.dsp.focus({ workspace = "m+1" }), { description = "next workspace" })
+hl.bind(mainMod .. " + SHIFT + Tab", hl.dsp.focus({ workspace = "m-1" }), { description = "previous workspace" })
+hl.bind(mainMod .. " + SHIFT + U", hl.dsp.window.move({ workspace = "special" }), { description = "move to special workspace" })
+hl.bind(mainMod .. " + U", function() hl.dispatch("togglespecialworkspace") end, { description = "toggle special workspace" })
+
+-- WORKSPACE MAPPING (code:10 to 19)
+for i = 1, 10 do
+    local key = i % 10
+    local code = 9 + (i == 10 and 10 or i)
+    hl.bind(mainMod .. " + SHIFT + code:" .. code, hl.dsp.window.move({ workspace = i }), { description = "move to workspace " .. key })
+    hl.bind(mainMod .. " + CTRL + code:" .. code, hl.dsp.window.move({ workspace = i, follow = false }), { description = "move silently to workspace " .. key })
+end
+
+hl.bind(mainMod .. " + SHIFT + bracketleft", hl.dsp.window.move({ workspace = "-1" }), { description = "move to previous workspace" })
+hl.bind(mainMod .. " + SHIFT + bracketright", hl.dsp.window.move({ workspace = "+1" }), { description = "move to next workspace" })
+hl.bind(mainMod .. " + CTRL + bracketleft", hl.dsp.window.move({ workspace = "-1", follow = false }), { description = "move silently to previous workspace" })
+hl.bind(mainMod .. " + CTRL + bracketright", hl.dsp.window.move({ workspace = "+1", follow = false }), { description = "move silently to next workspace" })
+
+-- SCROLL WORKSPACES
+hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }), { description = "next workspace" })
+hl.bind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }), { description = "previous workspace" })
+hl.bind(mainMod .. " + period", hl.dsp.focus({ workspace = "e+1" }), { description = "next workspace" })
+hl.bind(mainMod .. " + comma", hl.dsp.focus({ workspace = "e-1" }), { description = "previous workspace" })
+
+-- MOUSE MOVE/RESIZE
+hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "move window" })
+hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "resize window" })

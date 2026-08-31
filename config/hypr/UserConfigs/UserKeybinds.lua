@@ -13,7 +13,7 @@ hl.bind(mainMod .. " + SHIFT + H", hl.dsp.exec_cmd(UserScripts .. "/Fkeyhints.sh
 hl.bind(mainMod .. " + P", hl.dsp.exec_cmd(UserScripts .. "/colorpicker"), { description = "Colorpicker" })
 
 -- F2
-hl.bind(mainMod .. " + F2", hl.dsp.exec_cmd(term .. " -e yazi --cwd-file " .. os.getenv("HOME") .. "/.cache/yazi/cwd_file"), { description = "Yazi" })
+hl.bind(mainMod .. " + F2", hl.dsp.exec_cmd(term .. " -e yazi " .. os.getenv("HOME") .. "/.cache/yazi"), { description = "Yazi" })
 
 -- F3
 hl.bind(mainMod .. " + F3", hl.dsp.exec_cmd(term .. " -e micro"), { description = "Micro" })
@@ -65,10 +65,19 @@ hl.bind(mainMod .. " + 8", hl.dsp.focus({ workspace = 8 }), { description = "foc
 hl.bind(mainMod .. " + 9", hl.dsp.focus({ workspace = 9 }), { description = "focus workspace 9" })
 hl.bind(mainMod .. " + 0", hl.dsp.focus({ workspace = 10 }), { description = "focus workspace 10" })
 
--- J/K retain the established global next/previous-window behavior without
--- the legacy startup script or layout-dependent branching.
-hl.bind(mainMod .. " + J", hl.dsp.layout("cyclenext"), { description = "cycle next window" })
-hl.bind(mainMod .. " + K", hl.dsp.layout("cycleprev"), { description = "cycle previous window" })
+-- J/K Global Window Cycling
+-- Dynamically routes the shell command based on layout to bypass Lua API strict validation.
+local function cycle_window(direction)
+    local layout = hl.get_config("general.layout")
+    if layout == "master" then
+        hl.dispatch(hl.dsp.exec_cmd("hyprctl dispatch layoutmsg " .. (direction == "next" and "cyclenext" or "cycleprev")))
+    else
+        hl.dispatch(hl.dsp.exec_cmd("hyprctl dispatch " .. (direction == "next" and "cyclenext" or "cycleprev")))
+    end
+end
+
+hl.bind(mainMod .. " + J", function() cycle_window("next") end, { description = "cycle next window" })
+hl.bind(mainMod .. " + K", function() cycle_window("prev") end, { description = "cycle previous window" })
 
 -- Toggle the global compositor layout. This preserves the legacy
 -- ChangeLayout.sh contract while using the native Lua configuration API.
@@ -98,16 +107,15 @@ local function toggle_layout()
 end
 
 hl.bind(mainMod .. " + ALT + L", toggle_layout, { description = "toggle master/dwindle layout" })
-hl.bind(mainMod .. " + SHIFT + I", hl.dsp.layout("removemaster"), { description = "remove master" })
+hl.bind(mainMod .. " + SHIFT + I", hl.dsp.exec_cmd("hyprctl dispatch layoutmsg removemaster"), { description = "remove master" })
 
--- Preserve the established layout-ratio control using native 0.56 layout messages.
+-- Preserve the established layout-ratio control utilizing safe shell fallback.
 hl.bind(mainMod .. " + M", function()
     local layout = hl.get_config("general.layout")
-
     if layout == "master" then
-        hl.dispatch(hl.dsp.layout("mfact +0.3"))
+        hl.dispatch(hl.dsp.exec_cmd("hyprctl dispatch layoutmsg mfact +0.3"))
     elseif layout == "dwindle" then
-        hl.dispatch(hl.dsp.layout("splitratio +0.3"))
+        hl.dispatch(hl.dsp.exec_cmd("hyprctl dispatch splitratio +0.3"))
     end
 end, { description = "adjust current layout ratio" })
 
