@@ -110,6 +110,33 @@ package_install_aur() {
   package_record_newly_owned "${newly_owned[@]}"
 }
 
+package_remove() {
+  local package tmp
+  local -a requested=() installed=()
+  package_core_init
+  mapfile -t requested < <(package_normalize "$@")
+  ((${#requested[@]})) || return 0
+  for package in "${requested[@]}"; do
+    if package_is_installed "$package"; then
+      installed+=("$package")
+    else
+      package_core_log "[INFO] Package already absent: ${package}"
+    fi
+  done
+  ((${#installed[@]})) || return 0
+  package_core_log "[INFO] Removing requested packages: ${installed[*]}"
+  package_run_with_log sudo pacman -Rnsdd --noconfirm -- "${installed[@]}" || return $?
+  for package in "${installed[@]}"; do
+    if package_is_installed "$package"; then
+      package_core_log "[ERROR] Package remains installed after removal transaction: ${package}"
+      return 1
+    fi
+  done
+  tmp="$(mktemp "${PACKAGE_MANIFEST}.tmp.XXXXXX")"
+  awk -v packages="$(printf '%s\034' "${installed[@]}")" 'BEGIN { n=split(packages,a,"\034"); for (i=1;i<=n;i++) if (a[i] != "") remove[a[i]]=1 } !remove[$0]' "$PACKAGE_MANIFEST" > "$tmp"
+  mv -- "$tmp" "$PACKAGE_MANIFEST"
+}
+
 package_remove_owned() {
   local package
   local -a owned=() installed=()
