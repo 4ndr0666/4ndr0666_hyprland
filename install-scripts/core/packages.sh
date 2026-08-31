@@ -111,7 +111,7 @@ package_install_aur() {
 }
 
 package_remove() {
-  local package
+  local package tmp
   local -a requested=() installed=()
   package_core_init
   mapfile -t requested < <(package_normalize "$@")
@@ -132,12 +132,9 @@ package_remove() {
       return 1
     fi
   done
-  for package in "${installed[@]}"; do
-    local tmp
-    tmp="$(mktemp "${PACKAGE_MANIFEST}.tmp.XXXXXX")"
-    awk -v package="$package" '$0 != package' "$PACKAGE_MANIFEST" > "$tmp"
-    mv -- "$tmp" "$PACKAGE_MANIFEST"
-  done
+  tmp="$(mktemp "${PACKAGE_MANIFEST}.tmp.XXXXXX")"
+  awk -v packages="$(printf '%s\034' "${installed[@]}")" 'BEGIN { n=split(packages,a,"\034"); for (i=1;i<=n;i++) if (a[i] != "") remove[a[i]]=1 } !remove[$0]' "$PACKAGE_MANIFEST" > "$tmp"
+  mv -- "$tmp" "$PACKAGE_MANIFEST"
 }
 
 package_remove_owned() {
