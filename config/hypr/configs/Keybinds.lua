@@ -19,7 +19,7 @@ hl.bind(mainMod .. " + SHIFT + K", hl.dsp.exec_cmd(scriptsDir .. "/KeyBinds.sh")
 hl.bind(mainMod .. " + H", hl.dsp.exec_cmd(UserScripts .. "/KeyHints.sh"), { description = "help / cheat sheet" })
 
 -- QUICK SETTINGS
-hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(scriptsDir .. "/Kool_Quick_Settings.sh"), { description = "Quick settings menu" })
+hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(scriptsDir .. "/4ndr0666_Quick_Settings.sh"), { description = "Quick settings menu" })
 
 -- KEYBOARD LAYOUT
 hl.bind("ALT_L + SHIFT_L", hl.dsp.exec_cmd(scriptsDir .. "/KeyboardLayout.sh switch"), { locked = true, non_consuming = true, description = "switch keyboard layout globally" })
