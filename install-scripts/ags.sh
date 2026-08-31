@@ -32,11 +32,9 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PARENT_DIR="$SCRIPT_DIR/.."
 cd "$PARENT_DIR" || { echo "${ERROR} Failed to change directory to $PARENT_DIR"; exit 1; }
 
-# Source the global functions script
-if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
-  echo "Failed to source Global_functions.sh"
-  exit 1
-fi
+# Source installer core modules
+source "$SCRIPT_DIR/core/ui.sh"
+source "$SCRIPT_DIR/core/packages.sh"
 
 # Fail early and make pipelines fail if any command fails
 set -eo pipefail
@@ -53,7 +51,7 @@ printf "\n%s - Installing ${SKY_BLUE}Aylur's GTK shell $ags_tag${RESET} Dependen
 
 # Installing ags Dependencies
 for PKG1 in "${ags[@]}"; do
-    install_package "$PKG1" "$LOG"
+    package_install "$PKG1"
 done
 
 printf "\n%.0s" {1..1}
