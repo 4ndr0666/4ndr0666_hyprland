@@ -51,8 +51,19 @@ hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.
 -- ============================================================================
 
 -- WORKSPACES
--- Native Lua focus dispatcher; the key name is the XKB key, not KEY_1.
+-- Focus uses the native Lua workspace dispatcher. The key name is the XKB
+-- key, not the legacy KEY_1 form. Keep all numbered workspaces explicit so
+-- SUPER+1 through SUPER+0 retain the standard direct workspace behavior.
 hl.bind(mainMod .. " + 1", hl.dsp.focus({ workspace = 1 }), { description = "focus workspace 1" })
+hl.bind(mainMod .. " + 2", hl.dsp.focus({ workspace = 2 }), { description = "focus workspace 2" })
+hl.bind(mainMod .. " + 3", hl.dsp.focus({ workspace = 3 }), { description = "focus workspace 3" })
+hl.bind(mainMod .. " + 4", hl.dsp.focus({ workspace = 4 }), { description = "focus workspace 4" })
+hl.bind(mainMod .. " + 5", hl.dsp.focus({ workspace = 5 }), { description = "focus workspace 5" })
+hl.bind(mainMod .. " + 6", hl.dsp.focus({ workspace = 6 }), { description = "focus workspace 6" })
+hl.bind(mainMod .. " + 7", hl.dsp.focus({ workspace = 7 }), { description = "focus workspace 7" })
+hl.bind(mainMod .. " + 8", hl.dsp.focus({ workspace = 8 }), { description = "focus workspace 8" })
+hl.bind(mainMod .. " + 9", hl.dsp.focus({ workspace = 9 }), { description = "focus workspace 9" })
+hl.bind(mainMod .. " + 0", hl.dsp.focus({ workspace = 10 }), { description = "focus workspace 10" })
 
 -- J/K retain the established global next/previous-window behavior without
 -- the legacy startup script or layout-dependent branching.
