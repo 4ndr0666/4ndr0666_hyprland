@@ -15,11 +15,9 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PARENT_DIR="$SCRIPT_DIR/.."
 cd "$PARENT_DIR" || { echo "${ERROR} Failed to change directory to $PARENT_DIR"; exit 1; }
 
-# Source the global functions script
-if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
-  echo "Failed to source Global_functions.sh"
-  exit 1
-fi
+# Source installer core modules
+source "$SCRIPT_DIR/core/ui.sh"
+source "$SCRIPT_DIR/core/packages.sh"
 
 # Set the name of the log file to include the current date and time
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_battery-monitor.log"
@@ -27,7 +25,7 @@ LOG="Install-Logs/install-$(date +%d-%H%M%S)_battery-monitor.log"
 # Battery Monitor
 printf "${NOTE} Installing ${SKY_BLUE}Battery Monitor${RESET} Packages...\n"
 for BAT in "${battery[@]}"; do
-  install_package "$BAT" "$LOG"
+  package_install "$BAT"
 done
 
 # Create battery monitoring script
