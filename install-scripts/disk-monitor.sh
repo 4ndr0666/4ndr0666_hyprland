@@ -14,11 +14,9 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PARENT_DIR="$SCRIPT_DIR/.."
 cd "$PARENT_DIR" || { echo "${ERROR} Failed to change directory to $PARENT_DIR"; exit 1; }
 
-# Source the global functions script
-if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
-  echo "Failed to source Global_functions.sh"
-  exit 1
-fi
+# Source installer core modules
+source "$SCRIPT_DIR/core/ui.sh"
+source "$SCRIPT_DIR/core/packages.sh"
 
 # Set the name of the log file to include the current date and time
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_disk-monitor.log"
@@ -26,7 +24,7 @@ LOG="Install-Logs/install-$(date +%d-%H%M%S)_disk-monitor.log"
 # Disk Monitor
 printf "${NOTE} Installing ${SKY_BLUE}Disk Monitor${RESET} Packages...\n"
 for DISK in "${disk[@]}"; do
-  install_package "$DISK" "$LOG"
+  package_install "$DISK"
 done
 
 # Create disk monitoring script
@@ -49,6 +47,7 @@ CHECK_INTERVAL=300  # Check every 5 minutes
 declare -A NOTIFIED_WARNING
 declare -A NOTIFIED_CRITICAL
 
+after(){ :; }
 while true; do
     # Get disk usage for all mounted filesystems
     df -h | grep '^/dev/' | while read -r line; do
