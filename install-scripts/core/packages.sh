@@ -133,8 +133,11 @@ package_remove() {
     fi
   done
   for package in "${installed[@]}"; do
-    sed -i "\\|^${package}$|d" "$PACKAGE_MANIFEST"
-done
+    local tmp
+    tmp="$(mktemp "${PACKAGE_MANIFEST}.tmp.XXXXXX")"
+    awk -v package="$package" '$0 != package' "$PACKAGE_MANIFEST" > "$tmp"
+    mv -- "$tmp" "$PACKAGE_MANIFEST"
+  done
 }
 
 package_remove_owned() {
