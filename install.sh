@@ -1,24 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # https://github.com/4ndr0666
+set -Eeuo pipefail
 
 clear
 
-# Set some colors for output messages
 OK="$(tput setaf 2)[OK]$(tput sgr0)"
 ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
-NOTE="$(tput setaf 3)[NOTE]$(tput sgr0)"
 INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
-WARN="$(tput setaf 1)[WARN]$(tput sgr0)"
-CAT="$(tput setaf 6)[ACTION]$(tput sgr0)"
-MAGENTA="$(tput setaf 5)"
-ORANGE="$(tput setaf 214)"
-WARNING="$(tput setaf 1)"
-YELLOW="$(tput setaf 3)"
-GREEN="$(tput setaf 2)"
-BLUE="$(tput setaf 4)"
-SKY_BLUE="$(tput setaf 6)"
-RESET="$(tput sgr0)"
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_DIR="$ROOT/install-scripts"
 LOG_DIR="$ROOT/Install-Logs"
@@ -139,30 +127,35 @@ while true; do
   whiptail --title 'Confirm Choices' --yesno "$confirm_message" 25 80 && break
 done
 
-execute_script 00-base.sh
-execute_script pacman.sh
-execute_script yay.sh
-execute_script 01-hypr-pkgs.sh
-execute_script pipewire.sh
-execute_script fonts.sh
-execute_script hyprland.sh
+run_module() {
+  execute_script "$1"
+}
+
+# Canonical installation sequence. Any module failure terminates the installer.
+run_module 00-base.sh
+run_module pacman.sh
+run_module yay.sh
+run_module 01-hypr-pkgs.sh
+run_module pipewire.sh
+run_module fonts.sh
+run_module hyprland.sh
 
 for option in "${options[@]}"; do
   case "$option" in
-    sddm) execute_script sddm.sh ;;
-    nvidia) execute_script nvidia.sh ;;
-    nouveau) execute_script nvidia_nouveau.sh ;;
-    gtk_themes) execute_script gtk_themes.sh ;;
-    input_group) execute_script InputGroup.sh ;;
-    quickshell) execute_script quickshell.sh ;;
-    xdph) execute_script xdph.sh ;;
-    bluetooth) execute_script bluetooth.sh ;;
-    thunar) execute_script thunar.sh; execute_script thunar_default.sh ;;
-    sddm_theme) execute_script sddm_theme.sh ;;
-    zsh) execute_script zsh.sh ;;
-    pokemon) execute_script zsh_pokemon.sh ;;
-    rog) execute_script rog.sh ;;
-    dots) execute_script dotfiles-main.sh ;;
+    sddm) run_module sddm.sh ;;
+    nvidia) run_module nvidia.sh ;;
+    nouveau) run_module nvidia_nouveau.sh ;;
+    gtk_themes) run_module gtk_themes.sh ;;
+    input_group) run_module InputGroup.sh ;;
+    quickshell) run_module quickshell.sh ;;
+    xdph) run_module xdph.sh ;;
+    bluetooth) run_module bluetooth.sh ;;
+    thunar) run_module thunar.sh; run_module thunar_default.sh ;;
+    sddm_theme) run_module sddm_theme.sh ;;
+    zsh) run_module zsh.sh ;;
+    pokemon) run_module zsh_pokemon.sh ;;
+    rog) run_module rog.sh ;;
+    dots) run_module dotfiles-main.sh ;;
     *) printf '[ERROR] Unknown option: %s\n' "$option" >&2; exit 1 ;;
   esac
 done
@@ -172,7 +165,7 @@ if [[ ! -f "$HOME/.config/fastfetch/arch.png" ]]; then
   cp -a -- "$ROOT/assets/fastfetch" "$HOME/.config/"
 fi
 
-execute_script 02-Final-Check.sh
+run_module 02-Final-Check.sh
 
 if package_is_installed hyprland || package_is_installed hyprland-git; then
   printf '[OK] Hyprland is installed.\n' | tee -a "$LOG"
