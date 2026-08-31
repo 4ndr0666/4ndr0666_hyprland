@@ -1,8 +1,6 @@
 #!/bin/bash
-# === 4ndr0666 === #
-# GTK Themes & ICONS and Sourcing from a different Repo #
-
-set -Eeuo pipefail
+# 💫 https://github.com/4ndr0666 💫 #
+# GTK Themes & ICONS and  Sourcing from a different Repo #
 
 engine=(
   unzip

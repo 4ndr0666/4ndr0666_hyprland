@@ -1,8 +1,7 @@
 #!/bin/bash
-# === 4ndr0666 === #
-# Pipewire and Pipewire Audio Stuff
+# 💫 https://github.com/4ndr0666 💫 #
+# Pipewire and Pipewire Audio Stuff #
 
-set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$SCRIPT_DIR/.."

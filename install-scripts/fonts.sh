@@ -1,8 +1,10 @@
 #!/bin/bash
-# === 4ndr0666 === #
+# 💫 https://github.com/4ndr0666 💫 #
 # Fonts #
 
-set -Eeuo pipefail
+# These fonts are minimun required for pre-configured dots to work. You can add here as required
+# WARNING! If you remove packages here, dotfiles may not work properly.
+# and also, ensure that packages are present in AUR and official Arch Repo
 
 fonts=(
   adobe-source-code-pro-fonts

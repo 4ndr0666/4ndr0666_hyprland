@@ -1,8 +1,7 @@
-#!/usr/bin/env bash
-# === 4ndr0666 === #
-# Dotfiles deployment from local Monorepo.
+#!/bin/bash
+# 💫 https://github.com/4ndr0666 💫 #
+# Hyprland-Dots to download from main #
 
-set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$SCRIPT_DIR/.."

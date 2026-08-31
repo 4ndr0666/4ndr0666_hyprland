@@ -1,9 +1,7 @@
 #!/bin/bash
-# NVIDIA system integration.
-# Boot configuration is treated as a stateful operation: capture first,
-# prepare replacements, then regenerate the derived boot artifacts.
+# 💫 https://github.com/4ndr0666 💫 #
+# Nvidia Stuffs #
 
-set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$SCRIPT_DIR/.."

@@ -1,8 +1,10 @@
 #!/bin/bash
-# === 4ndr0666 === #
-# Hyprland package specification.
+# 💫 https://github.com/4ndr0666 💫 #
+# Hyprland Packages #
 
-set -Eeuo pipefail
+# edit your packages desired here. 
+# WARNING! If you remove packages here, dotfiles may not work properly.
+# and also, ensure that packages are present in AUR and official Arch Repo
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$SCRIPT_DIR/.."

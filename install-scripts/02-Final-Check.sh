@@ -1,6 +1,8 @@
-#!/usr/bin/env bash
-# Final checking if essential packages are installed.
-set -Eeuo pipefail
+#!/bin/bash
+# 💫 https://github.com/4ndr0666 💫 #
+# Final checking if packages are installed
+# NOTE: These package check are only the essentials
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$SCRIPT_DIR/.."
 cd "$ROOT"

@@ -1,6 +1,6 @@
 #!/bin/bash
-# === 4ndr0666 === #
-# base-devel + archlinux-keyring
+# 💫 https://github.com/4ndr0666 💫 #
+# base-devel + archlinux-keyring #
 
 set -Eeuo pipefail
 

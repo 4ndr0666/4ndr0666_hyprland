@@ -1,8 +1,7 @@
 #!/bin/bash
-# === 4ndr0666 === #
+# 💫 https://github.com/4ndr0666 💫 #
 # quickshell - for desktop overview replacing AGS
 
-set -Eeuo pipefail
 
 if [[ ${USE_PRESET:-} = [Yy] ]]; then
   source ./preset.sh

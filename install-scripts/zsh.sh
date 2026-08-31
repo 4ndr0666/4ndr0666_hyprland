@@ -1,8 +1,7 @@
-#!/usr/bin/env bash
-# === 4ndr0666 === #
-# zsh and oh-my-zsh
+#!/bin/bash
+# 💫 https://github.com/4ndr0666 💫 #
+# zsh and oh my zsh#
 
-set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"

@@ -1,8 +1,7 @@
 #!/bin/bash
-# === 4ndr0666 === #
+# 💫 https://github.com/4ndr0666 💫 #
 # Thunar-default #
 
-set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/core/ui.sh"

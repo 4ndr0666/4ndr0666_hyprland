@@ -1,8 +1,7 @@
 #!/bin/bash
-# === 4ndr0666 === #
+# 💫 https://github.com/4ndr0666 💫 #
 # SDDM themes #
 
-set -Eeuo pipefail
 
 source_theme="https://github.com/4ndr0666/simple-sddm-2.git"
 theme_name="simple_sddm_2"

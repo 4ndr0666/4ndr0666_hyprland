@@ -1,8 +1,7 @@
 #!/bin/bash
-# === 4ndr0666 === #
-# SDDM Login Manager
+# 💫 https://github.com/4ndr0666 💫 #
+# SDDM Log-in Manager #
 
-set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$SCRIPT_DIR/.."

@@ -1,8 +1,6 @@
 #!/bin/bash
-# === 4ndr0666 === #
+# 💫 https://github.com/4ndr0666 💫 #
 # Main Hyprland Package #
-
-set -Eeuo pipefail
 
 hypr_eco=(
   hypridle

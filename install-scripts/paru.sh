@@ -1,7 +1,8 @@
 #!/bin/bash
-# Bootstrap paru only. Normal AUR package transactions belong to core/packages.sh.
+# 💫 https://github.com/4ndr0666 💫 #
+# Paru AUR Helper #
+# NOTE: If yay is already installed, paru will not be installed #
 
-set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$SCRIPT_DIR/.."

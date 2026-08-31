@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
-# Configure pacman presentation settings and synchronize package databases.
+#!/bin/bash
+# 💫 https://github.com/4ndr0666 💫 #
+# pacman adding up extra-spices #
 
-set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$SCRIPT_DIR/.."

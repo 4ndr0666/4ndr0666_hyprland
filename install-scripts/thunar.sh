@@ -1,8 +1,6 @@
 #!/bin/bash
-# === 4ndr0666 === #
+# 💫 https://github.com/4ndr0666 💫 #
 # Thunar #
-
-set -Eeuo pipefail
 
 thunar=(
   thunar

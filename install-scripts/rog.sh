@@ -1,8 +1,7 @@
 #!/bin/bash
-# === 4ndr0666 === #
+# 💫 https://github.com/4ndr0666 💫 #
 # Asus ROG Laptops #
 
-set -Eeuo pipefail
 
 rog=(
   power-profiles-daemon
