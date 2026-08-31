@@ -1,4 +1,4 @@
-//* ---- 💫 https://github.com/JaKooLit 💫 ---- *//
+//* ----  https://github.com/4ndr0666  ---- *//
 /* Waybar Modules - Custom Modules */
 /* Basically created to reduce the lines in Waybar Modules bank */
 /* NOTE: This is only for Custom Modules */
@@ -26,7 +26,7 @@
 },
 
 "custom/file_manager": {
-	"format": " ",
+	"format": " ",
 	"on-click": "$HOME/.config/hypr/scripts/WaybarScripts.sh --files",
 	"tooltip": true,
 	"tooltip-format": "File Manager",
@@ -50,7 +50,7 @@
 	"format": " ",
 	"on-click": "$HOME/.config/hypr/scripts/Kool_Quick_Settings.sh",
 	"tooltip": true,
-	"tooltip-format": "Launch KooL Hyprland Settings Menu",
+	"tooltip-format": "Launch 4ndr0666 Hyprland Settings Menu",
 },
 
 "custom/cycle_wall": {
@@ -74,7 +74,7 @@
 	"format": " 󰁈 ",
 	"on-click": "$HOME/.config/hypr/scripts/KooLsDotsUpdate.sh",
 	"tooltip": true,
-	"tooltip-format": "Check KooL Dots update\nIf available",
+	"tooltip-format": "Check 4ndr0666 Dots update\nIf available",
 },
 
 // Hypridle inhibitor
@@ -126,7 +126,7 @@
 },
 
 "custom/menu": {
-	"format": "  ",
+	"format": "  ",
 	"on-click": "pkill rofi || rofi -show drun -modi run,drun,filebrowser,window",
 	"on-click-middle": "$HOME/.config/hypr/UserScripts/WallpaperSelect.sh",
 	"on-click-right": "$HOME/.config/hypr/scripts/WaybarLayout.sh",
