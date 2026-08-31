@@ -50,6 +50,10 @@ hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.
 -- User-specific controls belong here; defaults remain in configs/Keybinds.lua.
 -- ============================================================================
 
+-- WORKSPACES
+-- Native Lua focus dispatcher; the key name is the XKB key, not KEY_1.
+hl.bind(mainMod .. " + 1", hl.dsp.focus({ workspace = 1 }), { description = "focus workspace 1" })
+
 -- J/K retain the established global next/previous-window behavior without
 -- the legacy startup script or layout-dependent branching.
 hl.bind(mainMod .. " + J", hl.dsp.layout("cyclenext"), { description = "cycle next window" })
