@@ -47,7 +47,6 @@ CHECK_INTERVAL=300  # Check every 5 minutes
 declare -A NOTIFIED_WARNING
 declare -A NOTIFIED_CRITICAL
 
-after(){ :; }
 while true; do
     # Get disk usage for all mounted filesystems
     df -h | grep '^/dev/' | while read -r line; do
