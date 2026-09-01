@@ -3,6 +3,7 @@
 # Package transaction primitives.
 
 PACKAGE_MANIFEST_DEFAULT="${XDG_STATE_HOME:-$HOME/.local/state}/4ndr0666-hyprland/packages.manifest"
+PACKAGE_COMMAND_TIMEOUT="${PACKAGE_COMMAND_TIMEOUT:-900}"
 
 package_core_init() {
   : "${PACKAGE_MANIFEST:=$PACKAGE_MANIFEST_DEFAULT}"
@@ -36,8 +37,10 @@ package_manifest_record() {
   ((${#updated[@]})) || return 0
   local tmp
   tmp="$(mktemp "${PACKAGE_MANIFEST}.tmp.XXXXXX")"
+  trap 'rm -f -- "$tmp"' RETURN
   printf '%s\n' "${updated[@]}" > "$tmp"
   mv -- "$tmp" "$PACKAGE_MANIFEST"
+  trap - RETURN
 }
 
 package_normalize() {
@@ -48,9 +51,17 @@ package_normalize() {
 package_run_with_log() {
   local rc had_errexit=0
   case $- in *e*) had_errexit=1; set +e ;; esac
-  "$@" 2>&1 | tee -a "$LOG"
-  rc=${PIPESTATUS[0]}
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --signal=TERM --kill-after=15s "$PACKAGE_COMMAND_TIMEOUT" "$@" 2>&1 | tee -a "$LOG"
+    rc=${PIPESTATUS[0]}
+  else
+    package_core_log '[ERROR] Required timeout(1) utility is unavailable; refusing unbounded external execution.'
+    rc=127
+  fi
   ((had_errexit)) && set -e
+  if ((rc == 124 || rc == 137)); then
+    package_core_log "[ERROR] External command exceeded ${PACKAGE_COMMAND_TIMEOUT}s timeout: $*"
+  fi
   return "$rc"
 }
 
@@ -133,8 +144,10 @@ package_remove() {
     fi
   done
   tmp="$(mktemp "${PACKAGE_MANIFEST}.tmp.XXXXXX")"
+  trap 'rm -f -- "$tmp"' RETURN
   awk -v packages="$(printf '%s\034' "${installed[@]}")" 'BEGIN { n=split(packages,a,"\034"); for (i=1;i<=n;i++) if (a[i] != "") remove[a[i]]=1 } !remove[$0]' "$PACKAGE_MANIFEST" > "$tmp"
   mv -- "$tmp" "$PACKAGE_MANIFEST"
+  trap - RETURN
 }
 
 package_remove_owned() {
