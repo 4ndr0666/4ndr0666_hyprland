@@ -48,6 +48,15 @@ hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.
 -- ============================================================================
 -- Hyprland 0.56 layout controls
 -- User-specific controls belong here; defaults remain in configs/Keybinds.lua.
+--
+-- NOTE: the numbered-workspace focus binds (SUPER+1..0) and the arrow-key
+-- window-move binds (SUPER+left/right/up/down) that used to live in this
+-- file were removed. They duplicated, and directly collided with,
+-- bindings already owned by configs/Keybinds.lua:
+--   - SUPER+1..0 (keysym) duplicated the SUPER+code:10..19 loop
+--   - SUPER+arrow -> window.move collided with SUPER+arrow -> focus
+-- Workspace switching and directional focus/move now live exclusively in
+-- Keybinds.lua; window move stays on SUPER+CTRL+arrow there.
 -- ============================================================================
 
 -- WORKSPACES

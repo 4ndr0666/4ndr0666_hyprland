@@ -8,19 +8,20 @@ if pidof rofi > /dev/null; then
 fi
 
 # Variables
-iDIR="$HOME/.config/mako/images"
+iDIR="$HOME/.config/swaync/images"
 SCRIPTSDIR="$HOME/.config/hypr/scripts"
 animations_dir="$HOME/.config/hypr/animations"
 UserConfigs="$HOME/.config/hypr/UserConfigs"
 rofi_theme="$HOME/.config/rofi/config-Animations.rasi"
-msg='❗NOTE:❗ This will copy animations into UserAnimations.lua'
+msg='NOTE: This will copy animations into UserAnimations.lua'
 
 # list of animation profiles, sorted alphabetically with numbers first
 animations_list=$(find -L "$animations_dir" -maxdepth 1 -type f -name '*.lua' -printf '%f\n' | sed 's/\.lua$//' | sort -V)
 
 # Rofi Menu
-chosen_file=$(echo "$animations_list" | rofi -i -dmenu -config "$rofi_theme" -mesg "$msg")
+chosen_file=$(echo "$animations_list" | rofi -i -dmenu -config $rofi_theme -mesg "$msg")
 
+# Check if a file was selected
 if [[ -n "$chosen_file" ]]; then
     full_path="$animations_dir/$chosen_file.lua"
     cp "$full_path" "$UserConfigs/UserAnimations.lua"

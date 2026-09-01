@@ -14,7 +14,7 @@
 
 MAP_FILE="$HOME/.cache/kb_layout_per_window"
 CFG_FILE="$HOME/.config/hypr/configs/SystemSettings.lua"
-ICON="$HOME/.config/mako/images/ja.png"
+ICON="$HOME/.config/swaync/images/ja.png"
 SCRIPT_NAME="$(basename "$0")"
 
 # Ensure map file exists

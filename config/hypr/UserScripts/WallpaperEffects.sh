@@ -9,8 +9,9 @@ SCRIPTSDIR="$HOME/.config/hypr/scripts"
 focused_monitor=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
 rofi_theme="$HOME/.config/rofi/config-wallpaper-effect.rasi"
 
-iDIR="$HOME/.config/mako/images"
-iDIRi="$HOME/.config/mako/icons"
+# Directory for swaync
+iDIR="$HOME/.config/swaync/images"
+iDIRi="$HOME/.config/swaync/icons"
 
 # awww transition config
 FPS=60
@@ -19,6 +20,7 @@ DURATION=2
 BEZIER=".43,1.19,1,.4"
 AWWW_PARAMS="--transition-fps $FPS --transition-type $TYPE --transition-duration $DURATION --transition-bezier $BEZIER"
 
+# Define ImageMagick effects
 declare -A effects=(
     ["No Effects"]="no-effects"
     ["Black & White"]="magick $wallpaper_current -colorspace gray -sigmoidal-contrast 10,40% $wallpaper_output"
@@ -40,6 +42,7 @@ declare -A effects=(
     ["Zoomed"]="magick $wallpaper_current -gravity Center -extent 1:1 $wallpaper_output"
 )
 
+# Function to apply no effects
 no-effects() {
     awww img -o "$focused_monitor" "$wallpaper_current" $AWWW_PARAMS &&
     wait $!
@@ -48,10 +51,13 @@ no-effects() {
     sleep 2
     "$SCRIPTSDIR/Refresh.sh"
     notify-send -u low -i "$iDIR/ja.png" "No wallpaper" "effects applied"
+    # copying wallpaper for rofi menu
     cp "$wallpaper_current" "$wallpaper_output"
 }
 
+# Function to run rofi menu
 main() {
+    # Populate rofi menu options
     options=("No Effects")
     for effect in "${!effects[@]}"; do
         [[ "$effect" != "No Effects" ]] && options+=("$effect")
@@ -59,13 +65,15 @@ main() {
 
     choice=$(printf "%s\n" "${options[@]}" | LC_COLLATE=C sort | rofi -dmenu -i -config $rofi_theme)
 
+    # Process user choice
     if [[ -n "$choice" ]]; then
         if [[ "$choice" == "No Effects" ]]; then
             no-effects
         elif [[ "${effects[$choice]+exists}" ]]; then
             notify-send -u normal -i "$iDIR/ja.png" "Applying:" "$choice effects"
             eval "${effects[$choice]}"
-
+            
+            # intial kill process
             for pid in swaybg mpvpaper; do
                 killall -SIGUSR1 "$pid"
             done
@@ -73,6 +81,7 @@ main() {
             sleep 1
             awww img -o "$focused_monitor" "$wallpaper_output" $AWWW_PARAMS &
             sleep 2
+  
             wallust run "$wallpaper_output" -s &
             sleep 1
             "$SCRIPTSDIR/Refresh.sh"
@@ -83,6 +92,7 @@ main() {
     fi
 }
 
+# Check if rofi is already running and kill it
 if pidof rofi > /dev/null; then
     pkill rofi
 fi

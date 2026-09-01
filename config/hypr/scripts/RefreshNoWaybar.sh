@@ -35,8 +35,8 @@ done
 ${SCRIPTSDIR}/WallustSwww.sh
 sleep 0.2
 
-# reload mako
-mako 
+# reload swaync
+swaync-client --reload-config
 
 # Relaunching rainbow borders if the script exists
 sleep 1

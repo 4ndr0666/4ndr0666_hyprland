@@ -33,10 +33,10 @@ while true; do
 		| while read -r img; do
 			awww img -o $focused_monitor "$img"
 			# Regenerate colors from the exact image path to avoid cache races
-			$HOME/.config/hypr/scripts/WallustSwww.sh "$img"
+			$HOME/.config/hypr/scripts/WallustAwww.sh "$img"
 			# Refresh UI components that depend on wallust output
 			$wallust_refresh
 			sleep $INTERVAL
-
+			
 		done
 done

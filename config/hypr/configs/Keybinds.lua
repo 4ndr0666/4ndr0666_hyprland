@@ -62,13 +62,14 @@ hl.bind(mainMod .. " + ALT + SPACE", hl.dsp.exec_cmd("hyprctl dispatch workspace
 
 -- DESKTOP ZOOM
 local function zoom_cursor(multiplier)
-    local current = hl.get_config("cursor.zoom_factor")
+    local current = hl.get_config("cursor.zoom_factor") or 1
     current = math.max(1, current * multiplier)
     hl.config({ cursor = { zoom_factor = current } })
 end
 
-hl.bind(mainMod .. " + ALT + mouse_down", function() zoom_cursor(2) end, { description = "zoom in" })
-hl.bind(mainMod .. " + ALT + mouse_up", function() zoom_cursor(0.5) end, { description = "zoom out" })
+-- Reduced from 2x to 1.1x to account for native execution speed
+hl.bind(mainMod .. " + SHIFT + mouse_up", function() zoom_cursor(1.2) end, { description = "zoom in" })
+hl.bind(mainMod .. " + SHIFT + mouse_down", function() zoom_cursor(0.8) end, { description = "zoom out" })
 
 -- BLUR
 hl.bind(mainMod .. " + ALT + O", hl.dsp.exec_cmd(scriptsDir .. "/ChangeBlur.sh"), { description = "toggle blur" })
@@ -109,7 +110,7 @@ hl.bind(mainMod .. " + N", hl.dsp.exec_cmd(UserScripts .. "/RofiNetwork.sh"), { 
 -- ROFI CALULATOR
 hl.bind(mainMod .. " + ALT + C", hl.dsp.exec_cmd(UserScripts .. "/RofiCalc.sh"), { description = "calculator" })
 
--- HYPERSUNSET (Duplicate bind in legacy conf)
+-- HYPERSUNSET
 hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd(scriptsDir .. "/Hyprsunset.sh toggle"), { description = "toggle night light" })
 
 -- ONLINE MUSIC
@@ -136,19 +137,6 @@ hl.bind("CTRL + ALT + L", hl.dsp.exec_cmd(scriptsDir .. "/LockScreen.sh"), { des
 -- WLOGOUT
 hl.bind(mainMod .. " + X", hl.dsp.exec_cmd(scriptsDir .. "/Wlogout.sh"), { description = "powermenu" })
 
--- LAYOUTs & J/K LAYOUT-AWARE CYCLING
-local function cycle_window(direction)
-    local layout = hl.get_config("general.layout")
-    if layout == "master" then
-        hl.dispatch("layoutmsg", direction == "next" and "cyclenext" or "cycleprev")
-    else
-        hl.dispatch("cyclenext", direction == "next" and "" or "prev")
-    end
-end
-
-hl.bind(mainMod .. " + J", function() cycle_window("next") end, { description = "cycle next window" })
-hl.bind(mainMod .. " + K", function() cycle_window("prev") end, { description = "cycle previous window" })
-
 -- HOTKEYS
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(scriptsDir .. "/Volume.sh --inc"), { repeating = true, locked = true, description = "volume up" })
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(scriptsDir .. "/Volume.sh --dec"), { repeating = true, locked = true, description = "volume down" })
@@ -159,7 +147,7 @@ hl.bind("XF86AudioMute", hl.dsp.exec_cmd(scriptsDir .. "/Volume.sh --toggle"), {
 hl.bind("XF86Sleep", hl.dsp.exec_cmd("systemctl suspend"), { locked = true, description = "sleep" })
 hl.bind("XF86Rfkill", hl.dsp.exec_cmd(scriptsDir .. "/AirplaneMode.sh"), { locked = true, description = "airplane mode" })
 
--- media controls using keyboards
+-- MEDIA CONTROLS
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd(scriptsDir .. "/MediaCtrl.sh --pause"), { locked = true, description = "pause" })
 hl.bind("XF86AudioPlay", hl.dsp.exec_cmd(scriptsDir .. "/MediaCtrl.sh --pause"), { locked = true, description = "play" })
 hl.bind("XF86AudioNext", hl.dsp.exec_cmd(scriptsDir .. "/MediaCtrl.sh --nxt"), { locked = true, description = "next track" })
@@ -191,36 +179,48 @@ hl.bind(mainMod .. " + ALT + down",  hl.dsp.window.swap({ direction = "d" }), { 
 hl.bind(mainMod .. " + G", function() hl.dispatch("togglegroup") end, { description = "toggle group" })
 
 -- MOVE FOCUS
-hl.bind(mainMod .. " + left", hl.dsp.focus({ direction = "l" }), { description = "focus left" })
+hl.bind(mainMod .. " + left",  hl.dsp.focus({ direction = "l" }), { description = "focus left" })
 hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "r" }), { description = "focus right" })
-hl.bind(mainMod .. " + up", hl.dsp.focus({ direction = "u" }), { description = "focus up" })
-hl.bind(mainMod .. " + down", hl.dsp.focus({ direction = "d" }), { description = "focus down" })
+hl.bind(mainMod .. " + up",    hl.dsp.focus({ direction = "u" }), { description = "focus up" })
+hl.bind(mainMod .. " + down",  hl.dsp.focus({ direction = "d" }), { description = "focus down" })
 
 -- WORKSPACES
-hl.bind(mainMod .. " + Tab", hl.dsp.focus({ workspace = "m+1" }), { description = "next workspace" })
+hl.bind(mainMod .. " + Tab",         hl.dsp.focus({ workspace = "m+1" }), { description = "next workspace" })
 hl.bind(mainMod .. " + SHIFT + Tab", hl.dsp.focus({ workspace = "m-1" }), { description = "previous workspace" })
-hl.bind(mainMod .. " + SHIFT + U", hl.dsp.window.move({ workspace = "special" }), { description = "move to special workspace" })
-hl.bind(mainMod .. " + U", function() hl.dispatch("togglespecialworkspace") end, { description = "toggle special workspace" })
+hl.bind(mainMod .. " + SHIFT + U",   hl.dsp.window.move({ workspace = "special" }), { description = "move to special workspace" })
+hl.bind(mainMod .. " + U",           hl.dsp.workspace.toggle_special(), { description = "toggle special workspace" })
 
 -- WORKSPACE MAPPING (code:10 to 19)
 for i = 1, 10 do
-    local key = i % 10
+    local key  = i % 10
     local code = 9 + (i == 10 and 10 or i)
-    hl.bind(mainMod .. " + SHIFT + code:" .. code, hl.dsp.window.move({ workspace = i }), { description = "move to workspace " .. key })
-    hl.bind(mainMod .. " + CTRL + code:" .. code, hl.dsp.window.move({ workspace = i, follow = false }), { description = "move silently to workspace " .. key })
+    hl.bind(mainMod .. " + SHIFT + code:" .. code, hl.dsp.window.move({ workspace = i }),         { description = "move to workspace " .. key })
+    hl.bind(mainMod .. " + CTRL + code:" .. code,  hl.dsp.window.move({ workspace = i, follow = false }), { description = "move silently to workspace " .. key })
 end
 
-hl.bind(mainMod .. " + SHIFT + bracketleft", hl.dsp.window.move({ workspace = "-1" }), { description = "move to previous workspace" })
-hl.bind(mainMod .. " + SHIFT + bracketright", hl.dsp.window.move({ workspace = "+1" }), { description = "move to next workspace" })
-hl.bind(mainMod .. " + CTRL + bracketleft", hl.dsp.window.move({ workspace = "-1", follow = false }), { description = "move silently to previous workspace" })
-hl.bind(mainMod .. " + CTRL + bracketright", hl.dsp.window.move({ workspace = "+1", follow = false }), { description = "move silently to next workspace" })
+hl.bind(mainMod .. " + SHIFT + bracketleft",  hl.dsp.window.move({ workspace = "-1" }),                 { description = "move to previous workspace" })
+hl.bind(mainMod .. " + SHIFT + bracketright", hl.dsp.window.move({ workspace = "+1" }),                 { description = "move to next workspace" })
+hl.bind(mainMod .. " + CTRL + bracketleft",   hl.dsp.window.move({ workspace = "-1", follow = false }), { description = "move silently to previous workspace" })
+hl.bind(mainMod .. " + CTRL + bracketright",  hl.dsp.window.move({ workspace = "+1", follow = false }), { description = "move silently to next workspace" })
 
 -- SCROLL WORKSPACES
 hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }), { description = "next workspace" })
-hl.bind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }), { description = "previous workspace" })
-hl.bind(mainMod .. " + period", hl.dsp.focus({ workspace = "e+1" }), { description = "next workspace" })
-hl.bind(mainMod .. " + comma", hl.dsp.focus({ workspace = "e-1" }), { description = "previous workspace" })
+hl.bind(mainMod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }), { description = "previous workspace" })
+hl.bind(mainMod .. " + period",     hl.dsp.focus({ workspace = "e+1" }), { description = "next workspace" })
+hl.bind(mainMod .. " + comma",      hl.dsp.focus({ workspace = "e-1" }), { description = "previous workspace" })
 
 -- MOUSE MOVE/RESIZE
-hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "move window" })
+hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true, description = "move window" })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "resize window" })
+-- J/K LAYOUT-CONDITIONAL WINDOW NAVIGATION
+local function cycle_or_focus(direction)
+    local layout = hl.get_config("general.layout")
+    if layout == "master" then
+        hl.dispatch(hl.dsp.layout({ action = (direction == "down" and "cyclenext" or "cycleprev") }))
+    else
+        hl.dispatch(hl.dsp.focus({ direction = (direction == "down" and "d" or "u") }))
+    end
+end
+
+hl.bind(mainMod .. " + J", function() cycle_or_focus("down") end, { description = "focus down / cycle next" })
+hl.bind(mainMod .. " + K", function() cycle_or_focus("up") end,   { description = "focus up / cycle prev" })

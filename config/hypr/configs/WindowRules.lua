@@ -156,7 +156,7 @@ hl.window_rule({ match = { tag = "settings" }, size = "(monitor_w*0.7) (monitor_
 hl.window_rule({ match = { class = "^([Ff]erdium)$" }, size = "(monitor_w*0.6) (monitor_h*0.7)" })
 
 -- BLUR & FULLSCREEN
-hl.window_rule({ match = { tag = "games" }, no_blur = true, fullscreen = false })
+hl.window_rule({ match = { tag = "games" }, no_blur = true, fullscreen = 0 })
 
 -- Focus
 hl.window_rule({ match = { class = "^(jetbrains-.*)$" }, no_initial_focus = true })

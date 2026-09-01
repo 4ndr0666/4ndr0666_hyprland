@@ -5,34 +5,54 @@
 SCRIPTSDIR="$HOME/.config/hypr/scripts"
 UserScripts="$HOME/.config/hypr/UserScripts"
 
+# Define file_exists function
 file_exists() {
-  [[ -e "$1" ]]
+  if [ -e "$1" ]; then
+    return 0 # File exists
+  else
+    return 1 # File does not exist
+  fi
 }
 
-# Cleanly terminate running UI instances
-pkill -x waybar 2>/dev/null || true
-pkill -x rofi 2>/dev/null || true
-pkill -x mako 2>/dev/null || true
+# Kill already running processes
+_ps=(waybar rofi swaync ags)
+for _prs in "${_ps[@]}"; do
+  if pidof "${_prs}" >/dev/null; then
+    pkill "${_prs}"
+  fi
+done
 
-sleep 0.2
+# added since wallust sometimes not applying
+killall -SIGUSR2 waybar
+# Added sleep for GameMode causing multiple waybar
+sleep 0.1
 
-# Wallust color regeneration
-if [[ -x "${SCRIPTSDIR}/WallustSwww.sh" ]]; then
-  "${SCRIPTSDIR}/WallustSwww.sh"
-fi
+# quit ags & relaunch ags
+#ags -q && ags &
 
-# Relaunch Waybar
-waybar >/dev/null 2>&1 &
+# quit quickshell & relaunch quickshell
+pkill qs && qs &
 
-# Relaunch Mako
-sleep 0.2
-mako >/dev/null 2>&1 &
+# some process to kill
+for pid in $(pidof waybar rofi swaync ags swaybg); do
+  kill -SIGUSR1 "$pid"
+  sleep 0.1
+done
 
-# Relaunch Rainbow Borders if active
-sleep 0.5
+#Restart waybar
+sleep 0.1
+waybar &
+
+# relaunch swaync
+sleep 0.3
+swaync >/dev/null 2>&1 &
+# reload swaync
+swaync-client --reload-config
+
+# Relaunching rainbow borders if the script exists
+sleep 1
 if file_exists "${UserScripts}/RainbowBorders.sh"; then
-  "${UserScripts}/RainbowBorders.sh" >/dev/null 2>&1 &
+  ${UserScripts}/RainbowBorders.sh &
 fi
 
 exit 0
--- Segment 5

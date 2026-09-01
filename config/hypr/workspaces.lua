@@ -30,4 +30,3 @@ hl.workspace_rule({ workspace = 9, monitor = "desc:Toshiba America Info Systems 
 
 -- workspace=10,monitor:desc:Hewlett Packard HP 23er 3CM944167G
 hl.workspace_rule({ workspace = 10, monitor = "desc:Hewlett Packard HP 23er 3CM944167G" })
--- Segment 1

@@ -2,6 +2,7 @@
 # /* ----  https://github.com/JaKooLit  ---- */
 # This script for selecting wallpapers (SUPER W)
 
+# WALLPAPERS PATH
 terminal=kitty
 PICTURES_DIR="$HOME/Pictures"
 wallDIR="$HOME/Wallpapers"
@@ -18,19 +19,23 @@ DURATION=2
 BEZIER=".43,1.19,1,.4"
 AWWW_PARAMS="--transition-fps $FPS --transition-type $TYPE --transition-duration $DURATION --transition-bezier $BEZIER"
 
+# Check if package bc exists
 if ! command -v bc &>/dev/null; then
   notify-send -i "$iDIR/error.png" "bc missing" "Install package bc first"
   exit 1
 fi
 
+# Variables
 rofi_theme="$HOME/.config/rofi/config-wallpaper.rasi"
 focused_monitor=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
 
+# Ensure focused_monitor is detected
 if [[ -z "$focused_monitor" ]]; then
   notify-send -i "$iDIR/error.png" "E-R-R-O-R" "Could not detect focused monitor"
   exit 1
 fi
 
+# Monitor details
 scale_factor=$(hyprctl monitors -j | jq -r --arg mon "$focused_monitor" '.[] | select(.name == $mon) | .scale')
 monitor_height=$(hyprctl monitors -j | jq -r --arg mon "$focused_monitor" '.[] | select(.name == $mon) | .height')
 
@@ -38,6 +43,7 @@ icon_size=$(echo "scale=1; ($monitor_height * 3) / ($scale_factor * 150)" | bc)
 adjusted_icon_size=$(echo "$icon_size" | awk '{if ($1 < 15) $1 = 20; if ($1 > 25) $1 = 25; print $1}')
 rofi_override="element-icon{size:${adjusted_icon_size}%;}"
 
+# Kill existing wallpaper daemons for video
 kill_wallpaper_for_video() {
   awww kill 2>/dev/null
   pkill mpvpaper 2>/dev/null
@@ -45,12 +51,14 @@ kill_wallpaper_for_video() {
   pkill hyprpaper 2>/dev/null
 }
 
+# Kill existing wallpaper daemons for image
 kill_wallpaper_for_image() {
   pkill mpvpaper 2>/dev/null
   pkill swaybg 2>/dev/null
   pkill hyprpaper 2>/dev/null
 }
 
+# Retrieve wallpapers (both images & videos)
 mapfile -d '' PICS < <(find -L "${wallDIR}" -type f \( \
   -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o \
   -iname "*.bmp" -o -iname "*.tiff" -o -iname "*.webp" -o \
@@ -59,8 +67,10 @@ mapfile -d '' PICS < <(find -L "${wallDIR}" -type f \( \
 RANDOM_PIC="${PICS[$((RANDOM % ${#PICS[@]}))]}"
 RANDOM_PIC_NAME=". random"
 
+# Rofi command
 rofi_command="rofi -i -show -dmenu -config $rofi_theme -theme-str $rofi_override"
 
+# Sorting Wallpapers
 menu() {
   IFS=$'\n' sorted_options=($(sort <<<"${PICS[*]}"))
 
@@ -105,19 +115,24 @@ apply_image_wallpaper() {
   sleep 2
   "$SCRIPTSDIR/Refresh.sh"
   sleep 1
+
 }
 
 apply_video_wallpaper() {
   local video_path="$1"
 
+  # Check if mpvpaper is installed
   if ! command -v mpvpaper &>/dev/null; then
     notify-send -i "$iDIR/error.png" "E-R-R-O-R" "mpvpaper not found"
     return 1
   fi
   kill_wallpaper_for_video
+
+  # Apply video wallpaper using mpvpaper
   mpvpaper '*' -o "load-scripts=no no-audio --loop" "$video_path" &
 }
 
+# Main function
 main() {
   choice=$(menu | $rofi_command)
   choice=$(echo "$choice" | xargs)
@@ -128,11 +143,14 @@ main() {
     exit 0
   fi
 
+  # Handle random selection correctly
   if [[ "$choice" == "$RANDOM_PIC_NAME" ]]; then
     choice=$(basename "$RANDOM_PIC")
   fi
 
   choice_basename=$(basename "$choice" | sed 's/\(.*\)\.[^.]*$/\1/')
+
+  # Search for the selected file in the wallpapers directory, including subdirectories
   selected_file=$(find "$wallDIR" -iname "$choice_basename.*" -print -quit)
 
   if [[ -z "$selected_file" ]]; then
@@ -140,6 +158,10 @@ main() {
     exit 1
   fi
 
+  # Modify the Startup_Apps.conf file based on wallpaper type
+  modify_startup_config "$selected_file"
+
+  # **CHECK FIRST** if it's a video or an image **before calling any function**
   if [[ "$selected_file" =~ \.(mp4|mkv|mov|webm|MP4|MKV|MOV|WEBM)$ ]]; then
     apply_video_wallpaper "$selected_file"
   else
@@ -147,6 +169,7 @@ main() {
   fi
 }
 
+# Check if rofi is already running
 if pidof rofi >/dev/null; then
   pkill rofi
 fi

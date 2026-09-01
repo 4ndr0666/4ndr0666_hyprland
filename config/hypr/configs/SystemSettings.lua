@@ -1,5 +1,5 @@
 -- File: configs/SystemSettings.lua
--- /* ----  https://github.com/4ndr0666  ---- */  #
+-- /* ---- https://github.com/4ndr0666 ---- */ #
 -- Default settings
 
 local scriptsDir = os.getenv("HOME") .. "/.config/hypr/scripts"
@@ -94,7 +94,7 @@ hl.config({
 })
 
 local function adjust_cursor_zoom(factor)
-    local zoom = hl.get_config("cursor.zoom_factor")
+    local zoom = hl.get_config("cursor.zoom_factor") or 1
     if zoom < 1 then
         zoom = 1
     end
