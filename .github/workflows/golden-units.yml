@@ -6,6 +6,7 @@ on:
       - main
       - 'refactor/**'
       - 'audit/**'
+      - 'gup/**'
   pull_request:
 
 permissions:
@@ -45,6 +46,8 @@ jobs:
         run: bash tests/unit/test-aur-bootstrap.sh
       - name: Run installer entry-point architecture tests
         run: bash tests/unit/test-installer-entrypoint.sh
+      - name: Run installer fail-closed execution boundary test
+        run: bash tests/unit/test-installer-fail-closed.sh
       - name: Run package-boundary architecture tests
         run: bash tests/unit/test-package-boundary.sh
       - name: Run legacy installer removal test
@@ -57,3 +60,7 @@ jobs:
         run: bash tests/unit/test-self-update-boundary.sh
       - name: Run SDDM rollback invariant
         run: bash tests/unit/test-sddm-rollback.sh
+      - name: Run copy orchestration boundary test
+        run: bash tests/unit/test-copy-orchestration-boundary.sh
+      - name: Run copy phase1 atomicity invariant
+        run: bash tests/unit/test-copy-phase1-atomicity.sh
