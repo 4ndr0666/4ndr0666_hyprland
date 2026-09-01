@@ -190,6 +190,12 @@ hl.bind(mainMod .. " + ALT + down",  hl.dsp.window.swap({ direction = "d" }), { 
 -- GROUP
 hl.bind(mainMod .. " + G", function() hl.dispatch("togglegroup") end, { description = "toggle group" })
 
+-- MOVE FOCUS
+hl.bind(mainMod .. " + left", hl.dsp.focus({ direction = "l" }), { description = "focus left" })
+hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "r" }), { description = "focus right" })
+hl.bind(mainMod .. " + up", hl.dsp.focus({ direction = "u" }), { description = "focus up" })
+hl.bind(mainMod .. " + down", hl.dsp.focus({ direction = "d" }), { description = "focus down" })
+
 -- WORKSPACES
 hl.bind(mainMod .. " + Tab", hl.dsp.focus({ workspace = "m+1" }), { description = "next workspace" })
 hl.bind(mainMod .. " + SHIFT + Tab", hl.dsp.focus({ workspace = "m-1" }), { description = "previous workspace" })

@@ -118,9 +118,3 @@ hl.bind(mainMod .. " + M", function()
         hl.dispatch(hl.dsp.exec_cmd("hyprctl dispatch splitratio +0.3"))
     end
 end, { description = "adjust current layout ratio" })
-
--- MOVE WINDOWS
-hl.bind(mainMod .. " + left", hl.dsp.window.move({ direction = "l" }), { description = "move window left" })
-hl.bind(mainMod .. " + right", hl.dsp.window.move({ direction = "r" }), { description = "move window right" })
-hl.bind(mainMod .. " + up", hl.dsp.window.move({ direction = "u" }), { description = "move window up" })
-hl.bind(mainMod .. " + down", hl.dsp.window.move({ direction = "d" }), { description = "move window down" })
