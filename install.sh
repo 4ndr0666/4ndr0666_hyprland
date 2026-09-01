@@ -36,14 +36,6 @@ if ! command -v whiptail >/dev/null 2>&1; then
 fi
 package_install pciutils
 
-execute_script() {
-  local script="$1"
-  local path="$SCRIPT_DIR/$script"
-  [[ -f "$path" ]] || { printf '[ERROR] Missing installer module: %s\n' "$path" >&2; return 1; }
-  chmod +x -- "$path"
-  env "$path"
-}
-
 check_login_managers() {
   local -a active_services=()
   local svc
@@ -53,6 +45,14 @@ check_login_managers() {
     fi
   done
   ((${#active_services[@]} > 0))
+}
+
+run_module() {
+  local script="$1"
+  local path="$SCRIPT_DIR/$script"
+  [[ -f "$path" ]] || { printf '[ERROR] Missing installer module: %s\n' "$path" >&2; return 1; }
+  chmod +x -- "$path"
+  env "$path"
 }
 
 printf '\n4ndr0666 Arch Linux Installation\n\n' | tee -a "$LOG"
@@ -126,10 +126,6 @@ while true; do
   confirm_message+=$'\nProceed?'
   whiptail --title 'Confirm Choices' --yesno "$confirm_message" 25 80 && break
 done
-
-run_module() {
-  execute_script "$1"
-}
 
 # Canonical installation sequence. Any module failure terminates the installer.
 run_module 00-base.sh
