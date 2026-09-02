@@ -26,7 +26,7 @@ EOF
 cat > "$TMP_HOME/bin/jq" <<'EOF'
 #!/usr/bin/env bash
 input=$(cat)
-printf '%s' "$input" | sed 's/ /%20/g; s/$/%0A/'
+printf '%s' "$input" | sed 's/ /%20/g'
 EOF
 cat > "$TMP_HOME/bin/rofi" <<'EOF'
 #!/usr/bin/env bash
@@ -49,7 +49,7 @@ chmod +x "$TMP_HOME/bin/jq" "$TMP_HOME/bin/rofi" "$TMP_HOME/bin/xdg-open" "$TMP_
 OPEN_TARGET="$TMP_HOME/open-target"
 HOME="$TMP_HOME" PATH="$TMP_HOME/bin:$PATH" OPEN_TARGET="$OPEN_TARGET" "$TMP_HOME/rofi-search.sh"
 sleep 0.1
-grep -Fxq 'https://example.invalid/search?text={}gup%20test%20query%0A' "$OPEN_TARGET"
+grep -Fxq 'https://example.invalid/search?text={}gup%20test%20query' "$OPEN_TARGET"
 
 cat > "$TMP_HOME/.config/hypr/UserConfigs/01-UserDefaults.lua" <<'EOF'
 local term = "kitty"
