@@ -13,13 +13,11 @@ show_copy_menu() {
   local install_tag="Install"
   local upgrade_tag="Upgrade"
   local express_tag="Express"
-  local update_tag="Update"
   local quit_tag="Quit"
 
   local install_desc="Fresh copy"
   local upgrade_desc="Backups + prompts"
   local express_desc="Skips restores & wallpapers"
-  local update_desc="Stash + git pull"
   local quit_desc="Exit without changes"
 
   local choice=""
@@ -34,9 +32,8 @@ show_copy_menu() {
       else
         printf "  3) Express - %s (disabled)\n" "$express_desc"
       fi
-      printf "  4) Update  - %s\n" "$update_desc"
-      printf "  5) Quit    - %s\n" "$quit_desc"
-      printf "Enter choice [1-5]: "
+      printf "  4) Quit    - %s\n" "$quit_desc"
+      printf "Enter choice [1-4]: "
       read -r text_choice
       case "$text_choice" in
       1) choice="$install_tag"; break ;;
@@ -49,9 +46,8 @@ show_copy_menu() {
           echo "Express is disabled on this system."
         fi
         ;;
-      4) choice="$update_tag"; break ;;
-      5) choice="$quit_tag"; break ;;
-      *) echo "Invalid selection. Please choose 1-5." ;;
+      4) choice="$quit_tag"; break ;;
+      *) echo "Invalid selection. Please choose 1-4." ;;
       esac
     done
   }
@@ -64,11 +60,10 @@ show_copy_menu() {
 
   # Fallback to whiptail if present
   if command -v whiptail >/dev/null 2>&1; then
-    if ! choice=$(whiptail --title "$menu_title" --menu "$prompt" 17 60 8 \
+    if ! choice=$(whiptail --title "$menu_title" --menu "$prompt" 15 60 6 \
       "$install_tag" "$install_desc" \
       "$upgrade_tag" "$upgrade_desc" \
       "$express_tag" "$express_desc" \
-      "$update_tag" "$update_desc" \
       "$quit_tag" "$quit_desc" 3>&1 1>&2 2>&3); then
       COPY_MENU_CHOICE="quit"
       return 1
