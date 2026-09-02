@@ -22,6 +22,13 @@ enable_blueman() {
   fi
 }
 
+# Compatibility boundary for older copy.sh revisions. AGS is retired and is
+# never enabled; the function remains until the orchestrator removes its call.
+enable_ags() {
+  local log="$1"
+  printf '%s\n' '[INFO] AGS is retired; Quickshell is the supported desktop shell.' | tee -a "$log"
+}
+
 enable_quickshell() {
   local log="$1"
   if command -v qs >/dev/null 2>&1; then
