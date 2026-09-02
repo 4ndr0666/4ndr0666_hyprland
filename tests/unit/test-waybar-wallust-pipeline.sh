@@ -28,7 +28,9 @@ for style in "$WAYBAR_STYLE_DIR"/*.css "$WAYBAR_STYLE_DIR"/*/*.css; do
         ! grep -Fq '../../.config/waybar/wallust/colors-waybar.css' "$style"
         style_dir="$(dirname "$style")"
         relative_import="../wallust/colors-waybar.css"
-        [[ "$style_dir" != "$WAYBAR_STYLE_DIR" ]] && relative_import="../../wallust/colors-waybar.css"
+        if [[ "$style_dir" != "$WAYBAR_STYLE_DIR" ]]; then
+            relative_import="../../wallust/colors-waybar.css"
+        fi
         grep -Fq "$relative_import" "$style"
     fi
 done
