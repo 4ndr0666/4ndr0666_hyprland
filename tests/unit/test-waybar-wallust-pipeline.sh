@@ -3,10 +3,14 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WALLUST_SCRIPT="$ROOT/config/hypr/scripts/WallustAwww.sh"
-SIMPLE_STYLE="$ROOT/config/waybar/style/[Wallust] Simple.css"
+WAYBAR_STYLE_DIR="$ROOT/config/waybar/style"
+WLOGOUT_STYLE="$ROOT/config/wlogout/style.css"
+SWAYNC_STYLE="$ROOT/config/swaync/style.css"
 
 [[ -f "$WALLUST_SCRIPT" ]]
-[[ -f "$SIMPLE_STYLE" ]]
+[[ -d "$WAYBAR_STYLE_DIR" ]]
+[[ -f "$WLOGOUT_STYLE" ]]
+[[ -f "$SWAYNC_STYLE" ]]
 
 grep -Fq 'if ! wallust run -s "$wallpaper_path"; then' "$WALLUST_SCRIPT"
 grep -Fq '[ERROR] Wallust failed; consumers will not be reloaded.' "$WALLUST_SCRIPT"
@@ -16,7 +20,18 @@ grep -Fq 'Wallust Waybar palette failed structural validation.' "$WALLUST_SCRIPT
 ! grep -Fq 'wallust run -s "$wallpaper_path" || true' "$WALLUST_SCRIPT"
 ! grep -Fq 'wait_for_templates' "$WALLUST_SCRIPT"
 
-grep -Fq "@import '../wallust/colors-waybar.css';" "$SIMPLE_STYLE"
-! grep -Fq "@import '../../.config/waybar/wallust/colors-waybar.css';" "$SIMPLE_STYLE"
+wallust_style_count=0
+for style in "$WAYBAR_STYLE_DIR"/*.css; do
+    if grep -Fq 'colors-waybar.css' "$style"; then
+        ((wallust_style_count += 1))
+        grep -Fq "@import '../wallust/colors-waybar.css';" "$style"
+        ! grep -Fq '../../.config/waybar/wallust/colors-waybar.css' "$style"
+    fi
+done
 
-printf '%s\n' 'Waybar/Wallust palette pipeline boundary: PASS'
+((wallust_style_count > 0))
+
+grep -Fq "@import '../../.config/waybar/wallust/colors-waybar.css';" "$WLOGOUT_STYLE"
+grep -Fq "@import '../../.config/waybar/wallust/colors-waybar.css';" "$SWAYNC_STYLE"
+
+printf '%s\n' "Waybar/Wallust palette pipeline boundary: PASS ($wallust_style_count Waybar styles)"
