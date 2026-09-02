@@ -32,6 +32,7 @@ TESTS=(
   tests/unit/test-waybar-script-config-boundary.sh
   tests/unit/test-rofi-search-config-boundary.sh
   tests/unit/test-wallpaper-effect-config-boundary.sh
+  tests/unit/test-compositor-shell-installers.sh
 )
 
 failures=()

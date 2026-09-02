@@ -1,26 +1,33 @@
-#!/bin/bash
-# 💫 https://github.com/4ndr0666 💫 #
-# quickshell - for desktop overview replacing AGS
+#!/usr/bin/env bash
+# === 4ndr0666 === #
+# Quickshell installer for the desktop overview.
 
-
-if [[ ${USE_PRESET:-} = [Yy] ]]; then
-  source ./preset.sh
-fi
-
-quick=(
-  qt6-5compat
-  quickshell
-)
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PARENT_DIR="$SCRIPT_DIR/.."
-cd "$PARENT_DIR"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+LOG_DIR="$ROOT/Install-Logs"
+LOG="$LOG_DIR/install-$(date +%Y%m%d-%H%M%S)_quickshell.log"
 
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_quick.log"
-mkdir -p "$(dirname "$LOG")"
+mkdir -p -- "$LOG_DIR"
+
+# Quickshell is distributed by Arch; keep the installer deliberately thin.
+# The package core owns package transactions, logging, timeouts, and manifests.
+# Do not source presets or execute repository-controlled shell fragments here.
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/core/packages.sh"
 
-printf '[INFO] Installing Quick Shell for Desktop Overview...\n'
-package_install "${quick[@]}"
+printf '[INFO] Installing Quickshell desktop shell dependencies.\n' | tee -a "$LOG"
+package_install qt6-5compat quickshell
 
-printf '\n%.0s' {1..1}
+command -v qs >/dev/null 2>&1 || {
+  printf '[ERROR] Quickshell package transaction completed but qs is unavailable.\n' | tee -a "$LOG" >&2
+  exit 1
+}
+
+if ! package_is_installed quickshell; then
+  printf '[ERROR] Quickshell package is not installed after transaction.\n' | tee -a "$LOG" >&2
+  exit 1
+fi
+
+printf '[OK] Quickshell is installed and the qs launcher is available.\n' | tee -a "$LOG"
