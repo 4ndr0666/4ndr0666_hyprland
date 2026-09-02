@@ -79,17 +79,17 @@ copy_waybar() {
         done
         for file in "$DIRPATHw-backup-$BACKUP_DIR/configs"/*; do
           [ -e "$file" ] || continue
-          target_file="$DIRPATHw/configs/$(basename "$file")"
+          target_file="$HOME/.config/waybar/configs/$(basename "$file")"
           [ -e "$target_file" ] || cp "$file" "$HOME/.config/waybar/configs/"
         done || true
         for file in "$DIRPATHw-backup-$BACKUP_DIR/style"/*; do
           [ -e "$file" ] || continue
           if [ -d "$file" ]; then
-            target_dir="$DIRPATHw/style/$(basename "$file")"
-            [ -d "$target_dir" ] || cp -r "$file" "$DIRPATHw/style/"
+            target_dir="$HOME/.config/waybar/style/$(basename "$file")"
+            [ -d "$target_dir" ] || cp -r "$file" "$HOME/.config/waybar/style/"
           else
-            target_file="$DIRPATHw/style/$(basename "$file")"
-            [ -e "$target_file" ] || cp "$file" "$DIRPATHw/style/"
+            target_file="$HOME/.config/waybar/style/$(basename "$file")"
+            [ -e "$target_file" ] || cp "$file" "$HOME/.config/waybar/style/"
           fi
         done || true
         BACKUP_FILEw="$DIRPATHw-backup-$BACKUP_DIR/UserModules"
