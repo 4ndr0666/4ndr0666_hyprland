@@ -14,20 +14,20 @@ copy_phase1() {
         read DIR1_CHOICE
         case "$DIR1_CHOICE" in
         [Yy]*)
-          BACKUP_DIR=$(get_backup_dirname)
-          mv "$DIRPATH" "$DIRPATH-backup-$BACKUP_DIR" 2>&1 | tee -a "$log"
-          echo -e "${NOTE:-[NOTE]} - Backed up $DIR2 to $DIRPATH-backup-$BACKUP_DIR." 2>&1 | tee -a "$log"
-          cp -r "config/$DIR2" "$HOME/.config/$DIR2" 2>&1 | tee -a "$log"
+          BACKUP_DIR=$(replace_dir_transaction "config/$DIR2" "$DIRPATH" "$log")
+          if [ -n "$BACKUP_DIR" ]; then
+            echo -e "${NOTE:-[NOTE]} - Backed up $DIR2 to $BACKUP_DIR." 2>&1 | tee -a "$log"
+          fi
           echo -e "${OK:-[OK]} - Replaced $DIR2 with new configuration." 2>&1 | tee -a "$log"
-          if [ "$DIR2" = "rofi" ]; then
-            if [ -d "$DIRPATH-backup-$BACKUP_DIR/themes" ]; then
-              for file in "$DIRPATH-backup-$BACKUP_DIR/themes"/*; do
+          if [ "$DIR2" = "rofi" ] && [ -n "$BACKUP_DIR" ]; then
+            if [ -d "$BACKUP_DIR/themes" ]; then
+              for file in "$BACKUP_DIR/themes"/*; do
                 [ -e "$file" ] || continue
                 cp -n "$file" "$HOME/.config/rofi/themes/" >>"$log" 2>&1 || true
               done || true
             fi
-            if [ -f "$DIRPATH-backup-$BACKUP_DIR/0-shared-fonts.rasi" ]; then
-              cp "$DIRPATH-backup-$BACKUP_DIR/0-shared-fonts.rasi" "$HOME/.config/rofi/0-shared-fonts.rasi" >>"$log" 2>&1
+            if [ -f "$BACKUP_DIR/0-shared-fonts.rasi" ]; then
+              cp "$BACKUP_DIR/0-shared-fonts.rasi" "$HOME/.config/rofi/0-shared-fonts.rasi" >>"$log" 2>&1
             fi
           fi
           break
