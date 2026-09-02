@@ -7,14 +7,14 @@
 #
 # NOTE: this script uses bash (not POSIX shell) for the RANDOM variable
 
-wallust_refresh=$HOME/.config/hypr/scripts/RefreshNoWaybar.sh
+wallust_refresh="$HOME/.config/hypr/scripts/RefreshNoWaybar.sh"
+wallust_script="$HOME/.config/hypr/scripts/WallustAwww.sh"
 
 focused_monitor=$(hyprctl monitors | awk '/^Monitor/{name=$2} /focused: yes/{print name}')
 
-if [[ $# -lt 1 ]] || [[ ! -d $1   ]]; then
-	echo "Usage:
-	$0 <dir containing images>"
-	exit 1
+if [[ $# -lt 1 ]] || [[ ! -d "$1" ]]; then
+    printf '%s\n' "Usage: $0 <dir containing images>" >&2
+    exit 1
 fi
 
 # Edit below to control the images transition
@@ -25,18 +25,17 @@ export SWWW_TRANSITION_TYPE=simple
 INTERVAL=1800
 
 while true; do
-	find "$1" \
-		| while read -r img; do
-			echo "$((RANDOM % 1000)):$img"
-		done \
-		| sort -n | cut -d':' -f2- \
-		| while read -r img; do
-			awww img -o $focused_monitor "$img"
-			# Regenerate colors from the exact image path to avoid cache races
-			$HOME/.config/hypr/scripts/WallustAwww.sh "$img"
-			# Refresh UI components that depend on wallust output
-			$wallust_refresh
-			sleep $INTERVAL
-			
-		done
+    find "$1" -type f -print0 \
+        | while IFS= read -r -d '' img; do
+            printf '%s\0%s\0' "$((RANDOM % 1000))" "$img"
+        done \
+        | sort -z -n \
+        | while IFS= read -r -d '' _ && IFS= read -r -d '' img; do
+            awww img -o "$focused_monitor" "$img"
+            # Generate and validate Wallust outputs once, from the exact image path.
+            "$wallust_script" "$img"
+            # Refresh only consumers not reloaded by WallustAwww.sh.
+            "$wallust_refresh"
+            sleep "$INTERVAL"
+        done
 done
