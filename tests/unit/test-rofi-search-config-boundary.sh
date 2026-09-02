@@ -51,20 +51,21 @@ HOME="$TMP_HOME" PATH="$TMP_HOME/bin:$PATH" OPEN_TARGET="$OPEN_TARGET" "$TMP_HOM
 sleep 0.1
 grep -Fxq 'https://example.invalid/search?text={}gup%20test%20query' "$OPEN_TARGET"
 
-cat > "$TMP_HOME/.config/hypr/UserConfigs/01-UserDefaults.lua" <<'EOF'
-local term = "kitty"
-local files = "thunar"
-local search_engine = "https://example.invalid/search?text={}$(touch /tmp/gup-injected)"
-EOF
+INJECTED="$TMP_HOME/injected"
+printf '%s\n' \
+  'local term = "kitty"' \
+  'local files = "thunar"' \
+  "local search_engine = \"https://example.invalid/search?text={}\$(touch $INJECTED)\"" \
+  > "$TMP_HOME/.config/hypr/UserConfigs/01-UserDefaults.lua"
+
 if HOME="$TMP_HOME" PATH="$TMP_HOME/bin:$PATH" OPEN_TARGET="$OPEN_TARGET" "$TMP_HOME/rofi-search.sh"; then
   printf '%s\n' 'malicious search-engine value was accepted' >&2
   exit 1
 fi
 
-if [[ -e /tmp/gup-injected ]]; then
-  rm -f -- /tmp/gup-injected
+[[ ! -e "$INJECTED" ]] || {
   printf '%s\n' 'shell injection side effect occurred' >&2
   exit 1
-fi
+}
 
 printf '%s\n' 'Rofi search config execution boundary: PASS'
