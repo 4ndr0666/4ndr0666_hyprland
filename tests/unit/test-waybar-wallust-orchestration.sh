@@ -4,11 +4,12 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WALLUST_SCRIPT="$ROOT/config/hypr/scripts/WallustAwww.sh"
 INITIAL_BOOT="$ROOT/config/hypr/initial-boot.sh"
+RANDOM_WALLPAPER="$ROOT/config/hypr/UserScripts/WallpaperRandom.sh"
 AUTO_CHANGE="$ROOT/config/hypr/UserScripts/WallpaperAutoChange.sh"
 REFRESH_NO_WAYBAR="$ROOT/config/hypr/scripts/RefreshNoWaybar.sh"
 DARK_LIGHT="$ROOT/config/hypr/scripts/DarkLight.sh"
 
-for file in "$WALLUST_SCRIPT" "$INITIAL_BOOT" "$AUTO_CHANGE" "$REFRESH_NO_WAYBAR" "$DARK_LIGHT"; do
+for file in "$WALLUST_SCRIPT" "$INITIAL_BOOT" "$RANDOM_WALLPAPER" "$AUTO_CHANGE" "$REFRESH_NO_WAYBAR" "$DARK_LIGHT"; do
     [[ -f "$file" ]] || {
         printf '%s\n' "Missing Wallust orchestration file: $file" >&2
         exit 1
@@ -17,13 +18,19 @@ done
 
 # WallustAwww.sh is the sole palette-generation boundary.
 ! grep -Fq 'wallust run -s' "$INITIAL_BOOT"
+! grep -Fq 'wallust run -s' "$RANDOM_WALLPAPER"
 ! grep -Fq 'wallust run -s' "$AUTO_CHANGE"
 ! grep -Fq 'WallustSwww.sh' "$REFRESH_NO_WAYBAR"
 ! grep -Fq 'WallustSwww.sh' "$DARK_LIGHT"
 
 grep -Fq '"$scriptsDir/WallustAwww.sh" "$wallpaper"' "$INITIAL_BOOT"
+grep -Fq '"$SCRIPTSDIR/WallustAwww.sh" "$RANDOMPICS"' "$RANDOM_WALLPAPER"
 grep -Fq '"$wallust_script" "$img"' "$AUTO_CHANGE"
 grep -Fq '"${SCRIPTSDIR}/WallustAwww.sh" "${next_wallpaper}"' "$DARK_LIGHT"
+
+# Random wallpaper selection must preserve paths containing whitespace.
+grep -Fq 'mapfile -d '\'' '\''PICS' "$RANDOM_WALLPAPER"
+grep -Fq '"${AWWW_PARAMS[@]}"' "$RANDOM_WALLPAPER"
 
 # The non-Waybar refresh must not regenerate or reload the Wallust palette.
 ! grep -Fq 'WallustAwww.sh' "$REFRESH_NO_WAYBAR"
