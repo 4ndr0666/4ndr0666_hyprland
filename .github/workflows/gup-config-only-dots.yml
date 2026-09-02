@@ -1,0 +1,144 @@
+name: GUP Config-Only Dots Maintenance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: gup/config-only-dot-repository
+
+      - name: Remove external dot repository updater
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import tempfile
+
+          copy = Path("copy.sh")
+          text = copy.read_text(encoding="utf-8")
+          replacements = [
+              ("#   - New update helper (lib_update.sh) provides menu-driven repo update: verifies 4ndr0666_hyprland root, stashes changes, git pull, logs, summarizes, waits for keypress.\n", ""),
+              ('UPDATE_HELPER="$SCRIPT_DIR/scripts/lib_update.sh"\n', ""),
+              ('if [ -f "$UPDATE_HELPER" ]; then\n  # shellcheck source=./scripts/lib_update.sh\n  . "$UPDATE_HELPER"\nelse\n  echo "${ERROR} Update helper not found at $UPDATE_HELPER. Exiting."\n  exit 1\nfi\n\n', ""),
+              ('      update)\n        run_repo_update "$SCRIPT_DIR"\n        # After update, continue showing the menu without exiting\n        continue\n        ;;\n', ""),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f"required copy.sh block not found: {old[:60]!r}")
+              text = text.replace(old, new, 1)
+          fd, tmp = tempfile.mkstemp(prefix="copy.sh.", dir=str(copy.parent))
+          try:
+              with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                  handle.write(text)
+              os.replace(tmp, copy)
+          finally:
+              if os.path.exists(tmp):
+                  os.unlink(tmp)
+
+          menu = Path("scripts/copy_menu.sh")
+          text = menu.read_text(encoding="utf-8")
+          replacements = [
+              ('  local update_tag="Update"\n', ""),
+              ('  local update_desc="Stash + git pull"\n', ""),
+              ('      printf "  4) Update  - %s\\n" "$update_desc"\n', ""),
+              ('      printf "Enter choice [1-5]: "\n', '      printf "Enter choice [1-4]: "\n'),
+              ('      4) choice="$update_tag"; break ;;\n', ""),
+              ('      5) choice="$quit_tag"; break ;;\n', '      4) choice="$quit_tag"; break ;;\n'),
+              ('      *) echo "Invalid selection. Please choose 1-5." ;;\n', '      *) echo "Invalid selection. Please choose 1-4." ;;\n'),
+              ('      "$update_tag" "$update_desc" \\\n', ""),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f"required copy_menu.sh block not found: {old[:60]!r}")
+              text = text.replace(old, new, 1)
+          fd, tmp = tempfile.mkstemp(prefix="copy_menu.sh.", dir=str(menu.parent))
+          try:
+              with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                  handle.write(text)
+              os.replace(tmp, menu)
+          finally:
+              if os.path.exists(tmp):
+                  os.unlink(tmp)
+          PY
+
+          rm -f -- config/hypr/scripts/4ndr0666DotsUpdate.sh update-dots.sh
+
+          if [[ -e config/hypr/scripts/4ndr0666DotsUpdate.sh || -e update-dots.sh ]]; then
+            printf '%s\n' 'external dot repository updater removal failed' >&2
+            exit 1
+          fi
+
+      - name: Add boundary regression test
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cat > tests/unit/test-config-only-dot-repository.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+
+          ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+          cd "$ROOT"
+
+          [[ -f config/hypr/v2.3.20 ]] || { printf '%s\n' 'config dotfiles reference missing' >&2; exit 1; }
+          [[ ! -e config/hypr/scripts/4ndr0666DotsUpdate.sh ]] || { printf '%s\n' 'external dot updater remains' >&2; exit 1; }
+          [[ ! -e update-dots.sh ]] || { printf '%s\n' 'repository dot updater remains' >&2; exit 1; }
+          ! grep -RInE --exclude-dir=.git --exclude='test-config-only-dot-repository.sh' \
+            'JaKooLit/Hyprland-Dots|KooL_Dots_DIR|git (clone|pull|fetch|stash).*Hyprland-Dots' . \
+            >/dev/null
+          ! grep -Fq 'run_repo_update' copy.sh
+          ! grep -Fq 'Update' scripts/copy_menu.sh
+
+          printf '%s\n' 'config-only dot repository boundary: PASS'
+          EOF
+          chmod +x tests/unit/test-config-only-dot-repository.sh
+
+      - name: Register test in Golden Unit suite
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import tempfile
+
+          path = Path("tests/unit/run-golden-units.sh")
+          text = path.read_text(encoding="utf-8")
+          marker = 'run_test "copy phase1 atomicity invariant" "$ROOT/tests/unit/test-copy-phase1-atomicity.sh"\n'
+          addition = marker + 'run_test "config-only dot repository boundary" "$ROOT/tests/unit/test-config-only-dot-repository.sh"\n'
+          if marker not in text:
+              raise SystemExit("Golden Unit registration marker not found")
+          if 'test-config-only-dot-repository.sh' in text:
+              raise SystemExit("Golden Unit test already registered")
+          text = text.replace(marker, addition, 1)
+          fd, tmp = tempfile.mkstemp(prefix="run-golden-units.sh.", dir=str(path.parent))
+          try:
+              with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                  handle.write(text)
+              os.replace(tmp, path)
+          finally:
+              if os.path.exists(tmp):
+                  os.unlink(tmp)
+          PY
+
+      - name: Remove maintenance workflow and commit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f -- .github/workflows/gup-config-only-dots.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git diff --cached --quiet && { printf '%s\n' 'no changes to commit' >&2; exit 1; }
+          git commit -m "fix(gup): make config the sole dot repository"
+          git push origin HEAD:gup/config-only-dot-repository
