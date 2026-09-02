@@ -17,7 +17,7 @@ gtk_theme="Colorful-Dark"
 icon_theme="Colorful-Dark"
 cursor_theme="Bibata-Modern-Ice"
 
-awww="awww img"
+awww_cmd=(awww img)
 effect=(--transition-bezier .43,1.19,1,.4 --transition-fps 30 --transition-type grow --transition-pos 0.925,0.977 --transition-duration 2)
 
 # Check if a marker file exists.
@@ -29,8 +29,8 @@ if [[ ! -f "$HOME/.config/hypr/.initial_startup_done" ]]; then
         if ! awww query >/dev/null 2>&1; then
             awww-daemon --format xrgb
         fi
+        "${awww_cmd[@]}" "$wallpaper" "${effect[@]}"
         "$scriptsDir/WallustAwww.sh" "$wallpaper"
-        "$awww" "$wallpaper" "${effect[@]}"
     fi
 
     gsettings set org.gnome.desktop.interface color-scheme "$color_scheme" >/dev/null 2>&1 &
