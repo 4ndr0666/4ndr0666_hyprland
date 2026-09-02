@@ -132,6 +132,9 @@ fi
 # Update wallpaper using awww command
 $awww "${next_wallpaper}" $effect
 
+# Regenerate and validate all Wallust consumer palettes from the exact wallpaper.
+"${SCRIPTSDIR}/WallustAwww.sh" "${next_wallpaper}"
+
 
 # Set Kvantum Manager theme & QT5/QT6 settings
 if [ "$next_mode" = "Dark" ]; then
@@ -237,8 +240,6 @@ set_custom_gtk_theme "$next_mode"
 # Update theme mode for the next cycle
 update_theme_mode
 
-
-${SCRIPTSDIR}/WallustSwww.sh &&
 
 sleep 2
 # kill process
