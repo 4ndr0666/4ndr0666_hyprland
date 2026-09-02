@@ -1,35 +1,52 @@
 #!/usr/bin/env bash
 # /* ----  https://github.com/4ndr0666  ---- */  ##
 # For Searching via web browsers
+set -Eeuo pipefail
 
-# Define the path to the config file
-config_file=$HOME/.config/hypr/UserConfigs/01-UserDefaults.conf
+config_file="$HOME/.config/hypr/UserConfigs/01-UserDefaults.lua"
+
 if ! command -v jq >/dev/null 2>&1; then
     notify-send -u low "Rofi Search" "jq is required for URL encoding. Please install jq."
     exit 1
 fi
 
-# Check if the config file exists
 if [[ ! -f "$config_file" ]]; then
     echo "Error: Configuration file not found!"
     exit 1
 fi
 
-# Process the config file in memory, removing the $ and fixing spaces
-config_content=$(sed 's/\$//g' "$config_file" | sed 's/ = /=/')
+# Read only the literal local search_engine assignment from the Lua defaults file.
+# Never execute the Lua source as shell code.
+read_lua_search_engine() {
+    awk '
+        $0 ~ "^[[:space:]]*local[[:space:]]+search_engine[[:space:]]*=[[:space:]]*\"" {
+            line = $0
+            sub("^[[:space:]]*local[[:space:]]+search_engine[[:space:]]*=[[:space:]]*\"", "", line)
+            sub("\"[[:space:]]*(--.*)?$", "", line)
+            print line
+            exit
+        }
+    ' "$config_file"
+}
 
-# Source the modified content directly from the variable
-eval "$config_content"
-
-# Check if $term is set correctly
-if [[ -z "$Search_Engine" ]]; then
-    echo "Error: \$Search_Engine is not set in the configuration file!"
+Search_Engine="$(read_lua_search_engine)"
+[[ -n "$Search_Engine" && "$Search_Engine" =~ ^https?://[^[:space:]]+$ ]] || {
+    printf '%s\n' 'Error: $Search_Engine must be a non-empty HTTP(S) URL.' >&2
     exit 1
-fi
+}
+
+command -v rofi >/dev/null 2>&1 || {
+    printf '%s\n' 'Error: rofi executable not found.' >&2
+    exit 1
+}
+command -v xdg-open >/dev/null 2>&1 || {
+    printf '%s\n' 'Error: xdg-open executable not found.' >&2
+    exit 1
+}
 
 # Rofi theme and message
 rofi_theme="$HOME/.config/rofi/config-search.rasi"
-#msg='‼️ **note** ‼️ search via default web browser'
+msg='Search using the configured web browser'
 
 # Kill Rofi if already running before execution
 if pgrep -x "rofi" >/dev/null; then
