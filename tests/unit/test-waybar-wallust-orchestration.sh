@@ -29,7 +29,7 @@ grep -Fq '"$wallust_script" "$img"' "$AUTO_CHANGE"
 grep -Fq '"${SCRIPTSDIR}/WallustAwww.sh" "${next_wallpaper}"' "$DARK_LIGHT"
 
 # Random wallpaper selection must preserve paths containing whitespace.
-grep -Fq 'mapfile -d '\'' '\''PICS' "$RANDOM_WALLPAPER"
+grep -Fq 'mapfile -d' "$RANDOM_WALLPAPER"
 grep -Fq '"${AWWW_PARAMS[@]}"' "$RANDOM_WALLPAPER"
 
 # The non-Waybar refresh must not regenerate or reload the Wallust palette.
