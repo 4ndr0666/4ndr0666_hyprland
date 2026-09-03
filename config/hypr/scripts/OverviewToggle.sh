@@ -1,37 +1,20 @@
 #!/usr/bin/env bash
 # 4ndr0666
-set -e pipefail
+set -Eeuo pipefail
 
-# 1) Try Quickshell via IPC (works if QS is running and listening)
-if pgrep -x quickshell >/dev/null 2>&1; then
-  if qs ipc -c overview call overview toggle >/dev/null 2>&1; then
-    exit 0
-  fi
+# Quickshell is the sole overview provider.
+if qs ipc -c overview call overview toggle >/dev/null 2>&1; then
+  exit 0
 fi
 
-# If QS isn't running, but the CLI exists, try starting it and retry once
-if command -v qs >/dev/null 2>&1; then
-  qs -c /home/andro/.config/quickshell/overview >/dev/null 2>&1 &
-  sleep 0.6
-  if qs ipc -c /home/andro/.config/quickshell/overview call overview toggle >/dev/null 2>&1; then
-    exit 0
-  fi
+# Start the canonical overview shell when no IPC endpoint is available.
+qs -c overview >/dev/null 2>&1 &
+sleep 0.6
+
+if qs ipc -c overview call overview toggle >/dev/null 2>&1; then
+  exit 0
 fi
 
-# 2) Fall back to AGS template
-if command -v ags >/dev/null 2>&1; then
-  pkill rofi || true
-  if ags -t 'overview' >/dev/null 2>&1; then
-    exit 0
-  fi
-  # If it failed, try starting AGS daemon then call the template
-  ags >/dev/null 2>&1 &
-  sleep 0.6
-  if ags -t 'overview' >/dev/null 2>&1; then
-    exit 0
-  fi
-fi
-
-# If we get here, neither worked
-notify-send "Overview" "Neither Quickshell nor AGS is available" -u low 2>/dev/null || true
+printf '%s\n' '[ERROR] Quickshell overview is unavailable.' >&2
+notify-send 'Overview' 'Quickshell overview is unavailable' -u low 2>/dev/null || true
 exit 1
