@@ -13,5 +13,5 @@
 # configuration will be swapped out. Previous profiles will be backed up 
 # automatically as Previous_Profile.lua.
 
-# Profiles load automatically once chosen from the menu unless auto-reload is disabled[cite: 73, 74].
-# If changes do not reflect instantly, log out and log back in (especially in VMs)[cite: 74, 75].
+# Profiles load automatically once chosen from the menu unless auto-reload is disabled.
+# If changes do not reflect instantly, log out and log back in (especially in VMs).

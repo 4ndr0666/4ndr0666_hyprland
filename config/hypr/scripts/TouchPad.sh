@@ -52,4 +52,3 @@ if [[ "$current_state" == "true" ]]; then
 else
     enable_touchpad
 fi
-# Segment 4
