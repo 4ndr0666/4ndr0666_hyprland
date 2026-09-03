@@ -27,11 +27,11 @@ for style in "$WAYBAR_STYLE_DIR"/*.css "$WAYBAR_STYLE_DIR"/*/*.css; do
         wallust_style_count=$((wallust_style_count + 1))
         ! grep -Fq '../../.config/waybar/wallust/colors-waybar.css' "$style"
         style_dir="$(dirname "$style")"
-        relative_import="../wallust/colors-waybar.css"
-        if [[ "$style_dir" != "$WAYBAR_STYLE_DIR" ]]; then
-            relative_import="../../wallust/colors-waybar.css"
+        if [[ "$style_dir" == "$WAYBAR_STYLE_DIR" ]]; then
+            grep -Fq '../wallust/colors-waybar.css' "$style"
+        else
+            grep -Fq '../../wallust/colors-waybar.css' "$style"
         fi
-        grep -Fq "$relative_import" "$style"
     fi
 done
 
