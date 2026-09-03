@@ -2,7 +2,7 @@
 # /* ----  https://github.com/4ndr0666  ---- */  ##
 # Playerctl
 
-music_icon="$HOME/.config/mako/icons/music.png"
+music_icon="$HOME/.config/swaync/icons/music.png"
 
 # Play the next track
 play_next() {

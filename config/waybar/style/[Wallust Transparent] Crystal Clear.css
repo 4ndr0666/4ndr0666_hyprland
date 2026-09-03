@@ -1,8 +1,10 @@
-/* ----------- 💫 https://github.com/JaKooLit 💫 -------- */
+/* -----------  https://github.com/4ndr0666  -------- */
 /* ....Wallust Transparent - Crystal Clear........ */
 /* --- 👍 original designed by https://github.com/Krautt  👍 --- */
 
-@import '../wallust/colors-waybar.css';
+@import '../../.config/waybar/wallust/colors-waybar.css';
+/*@import '../wallust/templates/colors-waybar.css';*/
+@import '../../.config/waybar/wallust/colors-waybar.css';
 
 @define-color critical #ff0000; /* critical color */
 @define-color warning #f3f809;  /* warning color */

@@ -1,4 +1,4 @@
-/* ---- 💫 https://github.com/JaKooLit 💫 ---- */
+/* ----  https://github.com/4ndro666  ---- */
 /* Extra - Combined Modern - transparent */
 
 /* NOTE: This style is NOT vertical layout friendly! */
@@ -29,7 +29,8 @@
 @define-color textcolor3 #FFFFFF;
 @define-color iconcolor #FFFFFF;
 
-@import '../wallust/colors-waybar.css';
+@import '../../.config/waybar/wallust/colors-waybar.css';
+/*@import '../wallust/templates/colors-waybar.css';*/
 @import "../waybar/style/catppuccin-themes/latte.css";
 
 * {

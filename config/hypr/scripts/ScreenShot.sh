@@ -8,8 +8,8 @@ PICTURES_DIR="$HOME"
 dir="$PICTURES_DIR/Screenshots"
 file="Screenshot_${time}_${RANDOM}.png"
 
-iDIR="$HOME/.config/mako/icons"
-iDoR="$HOME/.config/mako/images"
+iDIR="$HOME/.config/swaync/icons"
+iDoR="$HOME/.config/swaync/images"
 sDIR="$HOME/.config/hypr/scripts"
 
 active_window_class=$(hyprctl -j activewindow | jq -r '(.class)')

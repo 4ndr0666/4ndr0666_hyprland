@@ -1,4 +1,4 @@
-/* ----------- 💫 https://github.com/JaKooLit 💫 -------- */
+/* -----------  https://github.com/4ndr0666  -------- */
 /* Wallust - Simple */
 
 *{
@@ -10,7 +10,8 @@ font-size: 97%;
 font-feature-settings: '\"zero\", \"ss01\", \"ss02\", \"ss03\", \"ss04\", \"ss05\", \"cv31\"';
 }
 
-@import '../wallust/colors-waybar.css';
+@import '../../.config/waybar/wallust/colors-waybar.css';
+/*@import '../wallust/templates/colors-waybar.css';*/
 
 #waybar.empty, #waybar.tiled, #waybar.floating {
 	background-color: transparent;

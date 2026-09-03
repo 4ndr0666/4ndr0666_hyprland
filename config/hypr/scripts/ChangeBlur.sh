@@ -2,7 +2,7 @@
 # /* ----  https://github.com/4ndr0666  ---- */  ##
 # Script for changing blurs on the fly
 
-notif="$HOME/.config/mako/images"
+notif="$HOME/.config/swaync/images"
 
 STATE=$(hyprctl -j getoption decoration:blur:passes | jq ".int")
 

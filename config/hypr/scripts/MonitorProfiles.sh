@@ -8,12 +8,12 @@ if pidof rofi > /dev/null; then
 fi
 
 # Variables
-iDIR="$HOME/.config/mako/images"
+iDIR="$HOME/.config/swaync/images"
 SCRIPTSDIR="$HOME/.config/hypr/scripts"
 monitor_dir="$HOME/.config/hypr/Monitor_Profiles"
 target="$HOME/.config/hypr/monitors.lua"
 rofi_theme="$HOME/.config/rofi/config-Monitors.rasi"
-msg='❗NOTE:❗ This will overwrite $HOME/.config/hypr/monitors.lua'
+msg='NOTE: This will overwrite $HOME/.config/hypr/monitors.lua'
 
 # Define the list of files to ignore
 ignore_files=(
@@ -40,4 +40,3 @@ fi
 
 sleep 1
 ${SCRIPTSDIR}/RefreshNoWaybar.sh &
-# Segment 3

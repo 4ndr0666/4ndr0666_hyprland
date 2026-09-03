@@ -16,4 +16,3 @@ hl.monitor({
     scale = 1.0,
     bitdepth = 10
 })
--- Segment 1
