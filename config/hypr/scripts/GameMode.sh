@@ -2,8 +2,11 @@
 # /* ----  https://github.com/4ndr0666  ---- */  ##
 # Game Mode. Turning off animations and visual effects.
 
+set -Eeuo pipefail
+
 notif="$HOME/.config/mako/images/ja.png"
 SCRIPTSDIR="$HOME/.config/hypr/scripts"
+current_wallpaper="$HOME/.config/rofi/.current_wallpaper"
 
 HYPRGAMEMODE=$(hyprctl getoption animations:enabled | awk 'NR==1{print $2}')
 
@@ -29,9 +32,15 @@ if [ "$HYPRGAMEMODE" = 1 ]; then
     sleep 0.1
     exit
 else
-    awww-daemon --format xrgb && awww img "$HOME/.config/rofi/.current_wallpaper" &
+    [[ -f "$current_wallpaper" ]] || {
+        printf '%s\n' '[ERROR] Current wallpaper is unavailable; cannot leave game mode cleanly.' >&2
+        exit 1
+    }
+
+    awww-daemon --format xrgb &
     sleep 0.1
-    "$SCRIPTSDIR/WallustSwww.sh"
+    awww img "$current_wallpaper"
+    "$SCRIPTSDIR/WallustAwww.sh" "$current_wallpaper"
     sleep 0.5
     hyprctl reload
     "$SCRIPTSDIR/Refresh.sh"
