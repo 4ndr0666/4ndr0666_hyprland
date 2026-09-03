@@ -36,6 +36,7 @@ TESTS=(
   tests/unit/test-waybar-wallust-pipeline.sh
   tests/unit/test-waybar-wallust-orchestration.sh
   tests/unit/test-gamemode-wallust-boundary.sh
+  tests/unit/test-quickshell-overview-boundary.sh
 )
 
 failures=()
