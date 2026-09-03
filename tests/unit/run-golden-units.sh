@@ -35,6 +35,7 @@ TESTS=(
   tests/unit/test-compositor-shell-installers.sh
   tests/unit/test-waybar-wallust-pipeline.sh
   tests/unit/test-waybar-wallust-orchestration.sh
+  tests/unit/test-gamemode-wallust-boundary.sh
 )
 
 failures=()
