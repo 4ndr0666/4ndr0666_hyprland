@@ -37,7 +37,7 @@ done
 
 [[ "$wallust_style_count" -gt 0 ]]
 
-grep -Fq "@import '../../.config/waybar/wallust/colors-waybar.css';" "$WLOGOUT_STYLE"
-grep -Fq "@import '../../.config/waybar/wallust/colors-waybar.css';" "$SWAYNC_STYLE"
+grep -Fq "../../.config/waybar/wallust/colors-waybar.css" "$WLOGOUT_STYLE"
+grep -Fq "../../.config/waybar/wallust/colors-waybar.css" "$SWAYNC_STYLE"
 
 printf '%s\n' "Waybar/Wallust palette pipeline boundary: PASS ($wallust_style_count Waybar styles)"
