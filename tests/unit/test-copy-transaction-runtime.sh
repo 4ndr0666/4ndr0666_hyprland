@@ -15,17 +15,16 @@ install_terminal_configs() { :; }
 version_gte() { [[ "$1" == "$2" ]]; }
 
 mkdir -p "$HOME/.config/hypr"
-printf '%s\n' 'sentinel-from-existing-installation' > "$HOME/.config/hypr/UserSettings.conf"
+printf '%s\n' 'sentinel-from-existing-installation' > "$HOME/.config/hypr/.gup-transaction-sentinel"
 printf '%s\n' '[test]' > "$TMP_HOME/copy.log"
 
 copy_phase2 "$TMP_HOME/copy.log"
 
 [[ -d "$HOME/.config/hypr" ]]
-[[ -f "$HOME/.config/hypr/UserSettings.conf" ]]
-[[ "$(cat "$HOME/.config/hypr/UserSettings.conf")" != 'sentinel-from-existing-installation' ]]
+[[ ! -e "$HOME/.config/hypr/.gup-transaction-sentinel" ]]
 [[ -n "$LAST_HYPR_BACKUP_PATH" ]]
 [[ -d "$LAST_HYPR_BACKUP_PATH" ]]
-[[ -f "$LAST_HYPR_BACKUP_PATH/UserSettings.conf" ]]
-[[ "$(cat "$LAST_HYPR_BACKUP_PATH/UserSettings.conf")" == 'sentinel-from-existing-installation' ]]
+[[ -f "$LAST_HYPR_BACKUP_PATH/.gup-transaction-sentinel" ]]
+[[ "$(cat "$LAST_HYPR_BACKUP_PATH/.gup-transaction-sentinel")" == 'sentinel-from-existing-installation' ]]
 
 printf '[PASS] copy_phase2 preserves the exact Hypr backup path for restore stages.\n'
