@@ -14,7 +14,7 @@ for file in "$ROOT/config/hypr/scripts/TouchPad.sh"; do
 done
 
 # Wallust Hyprland output is a configuration file, not a second language-specific duplicate.
-! grep -R -n --exclude-dir=.git --exclude-dir=archive 'wallust-hyprland\.lua' "$ROOT" >/dev/null 2>&1
+! grep -R -n --exclude-dir=.git --exclude-dir=archive --exclude='test-current-tree-integrity.sh' 'wallust-hyprland\.lua' "$ROOT" >/dev/null 2>&1
 
 # Preserve established Waybar consumer paths; reject only active obsolete template imports.
 if grep -R -n --include='*.css' --exclude-dir=.git --exclude-dir=archive -E '^[[:space:]]*@import[[:space:]]+["'"']?[^"'"']*wallust/templates/colors-waybar\.css' "$ROOT/config/waybar" >/dev/null 2>&1; then
