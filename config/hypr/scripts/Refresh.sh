@@ -1,58 +1,42 @@
 #!/usr/bin/env bash
-# /* ----  https://github.com/4ndr0666  ---- */  ##
-# Scripts for refreshing waybar, rofi, mako, wallust
+# === 4ndr0666 === #
+# Refresh Waybar, Rofi, SwayNC, and the supported Quickshell session.
+set -Eeuo pipefail
 
 SCRIPTSDIR="$HOME/.config/hypr/scripts"
-UserScripts="$HOME/.config/hypr/UserScripts"
+USER_SCRIPTS="$HOME/.config/hypr/UserScripts"
 
-# Define file_exists function
-file_exists() {
-  if [ -e "$1" ]; then
-    return 0 # File exists
-  else
-    return 1 # File does not exist
+kill_if_running() {
+  local process="$1"
+  if pidof "$process" >/dev/null 2>&1; then
+    pkill "$process"
   fi
 }
 
-# Kill already running processes
-_ps=(waybar rofi swaync ags)
-for _prs in "${_ps[@]}"; do
-  if pidof "${_prs}" >/dev/null; then
-    pkill "${_prs}"
-  fi
-done
+kill_if_running waybar
+kill_if_running rofi
+kill_if_running swaync
+kill_if_running swaybg
 
-# added since wallust sometimes not applying
-killall -SIGUSR2 waybar
-# Added sleep for GameMode causing multiple waybar
+# Give Waybar a chance to consume the signal before its clean restart.
+pkill -SIGUSR2 waybar 2>/dev/null || true
+
+# Quickshell owns the desktop shell lifecycle; restart it only when present.
+if command -v qs >/dev/null 2>&1; then
+  pkill qs 2>/dev/null || true
+  qs >/dev/null 2>&1 &
+fi
+
+# Restart Waybar and SwayNC after the shell has been refreshed.
 sleep 0.1
-
-# quit ags & relaunch ags
-#ags -q && ags &
-
-# quit quickshell & relaunch quickshell
-pkill qs && qs &
-
-# some process to kill
-for pid in $(pidof waybar rofi swaync ags swaybg); do
-  kill -SIGUSR1 "$pid"
-  sleep 0.1
-done
-
-#Restart waybar
-sleep 0.1
-waybar &
-
-# relaunch swaync
+waybar >/dev/null 2>&1 &
 sleep 0.3
 swaync >/dev/null 2>&1 &
-# reload swaync
 swaync-client --reload-config
 
-# Relaunching rainbow borders if the script exists
-sleep 1
-if file_exists "${UserScripts}/RainbowBorders.sh"; then
-  ${UserScripts}/RainbowBorders.sh &
+# Optional Rainbow Borders integration.
+if [[ -x "$USER_SCRIPTS/RainbowBorders.sh" ]]; then
+  "$USER_SCRIPTS/RainbowBorders.sh" &
 fi
 
 exit 0
