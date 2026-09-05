@@ -22,7 +22,8 @@ if grep -R -n --include='*.css' --exclude-dir=.git --exclude-dir=archive -E '^[[
   exit 1
 fi
 
-grep -q 'quickshell' "$ROOT/config/hypr/wallust/wallust-hyprland.conf"
-grep -q 'WallustAwww.sh' "$ROOT/config/hypr/initial-boot.sh"
+grep -Eq '^\$background[[:space:]]*=[[:space:]]*rgb\(' "$ROOT/config/hypr/wallust/wallust-hyprland.conf"
+grep -Eq '^\$color15[[:space:]]*=[[:space:]]*rgb\(' "$ROOT/config/hypr/wallust/wallust-hyprland.conf"
+grep -Fq 'WallustAwww.sh' "$ROOT/config/hypr/initial-boot.sh"
 
 printf '[PASS] current-tree integrity boundary: PASS\n'
