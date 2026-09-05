@@ -23,9 +23,9 @@ grep -Fq 'Wallust Waybar palette failed structural validation.' "$WALLUST_SCRIPT
 wallust_style_count=0
 for style in "$WAYBAR_STYLE_DIR"/*.css "$WAYBAR_STYLE_DIR"/*/*.css; do
   [[ -f "$style" ]] || continue
-  if grep -Eq '^[[:space:]]*@import[[:space:]]+["'"']?[^"'"']*colors-waybar\.css' "$style"; then
+  if grep -Eq '^[[:space:]]*@import.*colors-waybar\.css' "$style"; then
     wallust_style_count=$((wallust_style_count + 1))
-    if grep -Eq '^[[:space:]]*@import[[:space:]]+["'"']?[^"'"']*wallust/templates/colors-waybar\.css' "$style"; then
+    if grep -Eq '^[[:space:]]*@import.*wallust/templates/colors-waybar\.css' "$style"; then
       printf '[FAIL] obsolete active Wallust template import: %s\n' "$style" >&2
       exit 1
     fi
