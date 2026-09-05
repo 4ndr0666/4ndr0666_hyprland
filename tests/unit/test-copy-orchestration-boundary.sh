@@ -7,6 +7,7 @@ COPY="$ROOT/copy.sh"
 [[ -f "$COPY" ]] || { printf '[FAIL] Missing copy.sh\n' >&2; exit 1; }
 grep -Eq '^#!/usr/bin/env bash$' "$COPY"
 grep -q '^set -Eeuo pipefail$' "$COPY"
+bash -n "$COPY"
 
 for helper in \
   scripts/copy_menu.sh \
@@ -34,5 +35,13 @@ grep -q 'restore_user_configs' "$COPY"
 grep -q 'restore_user_scripts' "$COPY"
 grep -q 'restore_hypr_files' "$COPY"
 grep -q 'cleanup_backups' "$COPY"
+
+grep -q 'detect_nvidia_adjust' "$COPY"
+grep -q 'detect_vm_adjust' "$COPY"
+grep -q 'detect_nixos_adjust' "$COPY"
+grep -q 'prompt_resolution_choice' "$COPY"
+grep -q 'prompt_clock_12h' "$COPY"
+
+grep -q 'trap cleanup EXIT INT TERM HUP' "$COPY"
 
 printf '[PASS] copy.sh is a strict orchestration boundary with no AGS or self-update authority.\n'
