@@ -38,6 +38,7 @@ TESTS=(
   tests/unit/test-gamemode-wallust-boundary.sh
   tests/unit/test-quickshell-overview-boundary.sh
   tests/unit/test-ags-retirement-boundary.sh
+  tests/unit/test-runtime-orchestration-boundaries.sh
 )
 
 failures=()
