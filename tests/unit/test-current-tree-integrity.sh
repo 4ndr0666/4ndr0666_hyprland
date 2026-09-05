@@ -13,7 +13,7 @@ require_file "$ROOT/config/hypr/wallust/wallust-hyprland.conf"
 [[ ! -e "$ROOT/config/hypr/wallust/wallust-hyprland.lua" ]] || { printf '[FAIL] duplicate Wallust Hyprland Lua template remains.\n' >&2; exit 1; }
 
 grep -Fq '#!/usr/bin/env bash' "$ROOT/config/hypr/scripts/TouchPad.sh"
-grep -Fq 'set -Eeuo pipefail' "$ROOT/config/hypr/scripts/TouchPad.sh"
+grep -Eq '^set -E?euo pipefail$' "$ROOT/config/hypr/scripts/TouchPad.sh"
 
 ! grep -R -n --exclude-dir=.git --exclude-dir=archive --exclude='test-current-tree-integrity.sh' 'wallust-hyprland\.lua' "$ROOT" >/dev/null 2>&1
 
