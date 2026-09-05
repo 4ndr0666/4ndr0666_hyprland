@@ -1,257 +1,147 @@
 #!/usr/bin/env bash
-## /* ----  https://github.com/4ndr0666  ---- */  ##
-# For Dark and Light switching
-# Note: Scripts are looking for keywords Light or Dark except for wallpapers as the are in a separate directories
+# === 4ndr0666 === #
+# Toggle the desktop between the repository's Dark and Light profiles.
+set -Eeuo pipefail
 
-# Paths
-PICTURES_DIR="$HOME"
-wallpaper_base_path="$HOME/Wallpapers/Dynamic-Wallpapers"
-dark_wallpapers="$wallpaper_base_path/Dark"
-light_wallpapers="$wallpaper_base_path/Light"
-hypr_config_path="$HOME/.config/hypr"
+readonly HOME_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+readonly SCRIPTSDIR="$HOME_CONFIG/hypr/scripts"
+readonly WALLPAPER_ROOT="$HOME/Wallpapers/Dynamic-Wallpapers"
+readonly DARK_WALLPAPERS="$WALLPAPER_ROOT/Dark"
+readonly LIGHT_WALLPAPERS="$WALLPAPER_ROOT/Light"
+readonly THEME_MODE_FILE="$HOME/.cache/.theme_mode"
+readonly NOTIFICATION_ICON="$HOME_CONFIG/mako/images/bell.png"
+readonly WALLUST_CONFIG="$HOME_CONFIG/wallust/wallust.toml"
+readonly KITTY_CONFIG="$HOME_CONFIG/kitty/kitty.conf"
+readonly QT5_CONFIG="$HOME_CONFIG/qt5ct/qt5ct.conf"
+readonly QT6_CONFIG="$HOME_CONFIG/qt6ct/qt6ct.conf"
 
-ags_style="$HOME/.config/ags/user/style.css"
-SCRIPTSDIR="$HOME/.config/hypr/scripts"
-notif="$HOME/.config/mako/images/bell.png"
-wallust_rofi="$HOME/.config/wallust/templates/colors-rofi.rasi"
+readonly DARK_PALETTE="dark16"
+readonly LIGHT_PALETTE="light16"
+readonly DARK_QT5="$HOME_CONFIG/qt5ct/colors/Catppuccin-Mocha.conf"
+readonly LIGHT_QT5="$HOME_CONFIG/qt5ct/colors/Catppuccin-Latte.conf"
+readonly DARK_QT6="$HOME_CONFIG/qt6ct/colors/Catppuccin-Mocha.conf"
+readonly LIGHT_QT6="$HOME_CONFIG/qt6ct/colors/Catppuccin-Latte.conf"
 
-kitty_conf="$HOME/.config/kitty/kitty.conf"
+mkdir -p "$(dirname "$THEME_MODE_FILE")"
+current_mode="$(cat "$THEME_MODE_FILE" 2>/dev/null || printf '%s' Light)"
+case "$current_mode" in
+  Light) next_mode=Dark; wallpaper_root="$DARK_WALLPAPERS" ;;
+  Dark) next_mode=Light; wallpaper_root="$LIGHT_WALLPAPERS" ;;
+  *) printf '%s\n' '[ERROR] Invalid theme mode state.' >&2; exit 1 ;;
+esac
 
-wallust_config="$HOME/.config/wallust/wallust.toml"
-pallete_dark="dark16"
-pallete_light="light16"
-qt5ct_dark="$HOME/.config/qt5ct/colors/Catppuccin-Mocha.conf"
-qt5ct_light="$HOME/.config/qt5ct/colors/Catppuccin-Latte.conf"
-qt6ct_dark="$HOME/.config/qt6ct/colors/Catppuccin-Mocha.conf"
-qt6ct_light="$HOME/.config/qt6ct/colors/Catppuccin-Latte.conf"
-
-# intial kill process
-for pid in waybar rofi mako ags swaybg; do
-    killall -SIGUSR1 "$pid"
-done
-
-
-# Initialize awww if needed
-awww query || awww-daemon --format xrgb
-
-# Set awww options
-awww="awww img"
-effect="--transition-bezier .43,1.19,1,.4 --transition-fps 60 --transition-type grow --transition-pos 0.925,0.977 --transition-duration 2"
-
-# Determine current theme mode
-if [ "$(cat $HOME/.cache/.theme_mode)" = "Light" ]; then
-    next_mode="Dark"
-    # Logic for Dark mode
-    wallpaper_path="$dark_wallpapers"
+if [[ "$next_mode" == Dark ]]; then
+  palette="$DARK_PALETTE"
+  qt5_color="$DARK_QT5"
+  qt6_color="$DARK_QT6"
+  kvantum_theme='catppuccin-mocha-blue'
+  kitty_foreground='#dddddd'
+  kitty_background='#000000'
+  kitty_cursor='#dddddd'
 else
-    next_mode="Light"
-    # Logic for Light mode
-    wallpaper_path="$light_wallpapers"
-fi
-# Select Qt color scheme templates for the upcoming mode
-if [ "$next_mode" = "Dark" ]; then
-    qt5ct_color_scheme="$qt5ct_dark"
-    qt6ct_color_scheme="$qt6ct_dark"
-else
-    qt5ct_color_scheme="$qt5ct_light"
-    qt6ct_color_scheme="$qt6ct_light"
+  palette="$LIGHT_PALETTE"
+  qt5_color="$LIGHT_QT5"
+  qt6_color="$LIGHT_QT6"
+  kvantum_theme='catppuccin-latte-blue'
+  kitty_foreground='#000000'
+  kitty_background='#dddddd'
+  kitty_cursor='#000000'
 fi
 
-# Function to update theme mode for the next cycle
-update_theme_mode() {
-    echo "$next_mode" > "$HOME/.cache/.theme_mode"
-}
+[[ -f "$WALLUST_CONFIG" ]] || { printf '%s\n' "[ERROR] Missing Wallust configuration: $WALLUST_CONFIG" >&2; exit 1; }
+[[ -d "$wallpaper_root" ]] || { printf '%s\n' "[ERROR] Missing wallpaper directory: $wallpaper_root" >&2; exit 1; }
 
-# Function to notify user
-notify_user() {
-    notify-send -u low -i "$notif" " Switching to" " $1 mode"
-}
+sed -i -E "s|^palette[[:space:]]*=.*$|palette = \"$palette\"|" "$WALLUST_CONFIG"
 
-# Use sed to replace the palette setting in the wallust config file
-if [ "$next_mode" = "Dark" ]; then
-    sed -i 's/^palette = .*/palette = "'"$pallete_dark"'"/' "$wallust_config"
-else
-    sed -i 's/^palette = .*/palette = "'"$pallete_light"'"/' "$wallust_config"
-fi
-
-# Function to set Waybar style
 set_waybar_style() {
-    theme="$1"
-    waybar_styles="$HOME/.config/waybar/style"
-    waybar_style_link="$HOME/.config/waybar/style.css"
-    style_prefix="\\[${theme}\\].*\\.css$"
+  local theme="$1"
+  local styles="$HOME_CONFIG/waybar/style"
+  local link="$HOME_CONFIG/waybar/style.css"
+  local -a candidates=()
+  local style base
 
-    style_file=$(find -L "$waybar_styles" -maxdepth 1 -type f -regex ".*$style_prefix" | shuf -n 1)
+  while IFS= read -r -d '' style; do
+    base="$(basename "$style")"
+    case "$base" in
+      "[$theme]"*.css) candidates+=("$style") ;;
+    esac
+  done < <(find -L "$styles" -maxdepth 1 -type f -name '*.css' -print0)
 
-    if [ -n "$style_file" ]; then
-        ln -sf "$style_file" "$waybar_style_link"
-    else
-        echo "Style file not found for $theme theme."
-    fi
+  ((${#candidates[@]})) || { printf '%s\n' "[ERROR] No Waybar style exists for $theme mode." >&2; return 1; }
+  ln -sfn -- "${candidates[RANDOM % ${#candidates[@]}]}" "$link"
 }
 
-# Call the function after determining the mode
-set_waybar_style "$next_mode"
-notify_user "$next_mode"
+select_random_wallpaper() {
+  find -L "$1" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) -print0 \
+    | shuf -z -n 1 | tr -d '\0'
+}
 
-# ags color change
-if command -v ags >/dev/null 2>&1; then
-    if [ "$next_mode" = "Dark" ]; then
-        sed -i '/@define-color noti-bg/s/rgba([0-9]*,\s*[0-9]*,\s*[0-9]*,\s*[0-9.]*);/rgba(0, 0, 0, 0.4);/' "${ags_style}"
-	    sed -i '/@define-color text-color/s/rgba([0-9]*,\s*[0-9]*,\s*[0-9]*,\s*[0-9.]*);/rgba(255, 255, 255, 0.7);/' "${ags_style}"
-	    sed -i '/@define-color noti-bg-alt/s/#.*;/#111111;/' "${ags_style}"
-    else
-        sed -i '/@define-color noti-bg/s/rgba([0-9]*,\s*[0-9]*,\s*[0-9]*,\s*[0-9.]*);/rgba(255, 255, 255, 0.4);/' "${ags_style}"
-        sed -i '/@define-color text-color/s/rgba([0-9]*,\s*[0-9]*,\s*[0-9]*,\s*[0-9.]*);/rgba(0, 0, 0, 0.7);/' "${ags_style}"
-	    sed -i '/@define-color noti-bg-alt/s/#.*;/#F0F0F0;/' "${ags_style}"
-    fi
-fi
+notify_user() {
+  notify-send -u low -i "$NOTIFICATION_ICON" 'Switching to' "$next_mode mode"
+}
 
-# kitty background color change
-if [ "$next_mode" = "Dark" ]; then
-    sed -i '/^foreground /s/^foreground .*/foreground #dddddd/' "${kitty_conf}"
-	sed -i '/^background /s/^background .*/background #000000/' "${kitty_conf}"
-	sed -i '/^cursor /s/^cursor .*/cursor #dddddd/' "${kitty_conf}"
-else
-	sed -i '/^foreground /s/^foreground .*/foreground #000000/' "${kitty_conf}"
-	sed -i '/^background /s/^background .*/background #dddddd/' "${kitty_conf}"
-	sed -i '/^cursor /s/^cursor .*/cursor #000000/' "${kitty_conf}"
-fi
+set_kitty_colors() {
+  [[ -f "$KITTY_CONFIG" ]] || return 0
+  sed -i -E "s|^foreground[[:space:]].*$|foreground $kitty_foreground|" "$KITTY_CONFIG"
+  sed -i -E "s|^background[[:space:]].*$|background $kitty_background|" "$KITTY_CONFIG"
+  sed -i -E "s|^cursor[[:space:]].*$|cursor $kitty_cursor|" "$KITTY_CONFIG"
+  pkill -SIGUSR1 kitty 2>/dev/null || true
+}
 
-for pid_kitty in $(pidof kitty); do
-    kill -SIGUSR1 "$pid_kitty"
-done
+set_qt_colors() {
+  [[ -f "$QT5_CONFIG" ]] && sed -i -E "s|^color_scheme_path=.*$|color_scheme_path=$qt5_color|" "$QT5_CONFIG"
+  [[ -f "$QT6_CONFIG" ]] && sed -i -E "s|^color_scheme_path=.*$|color_scheme_path=$qt6_color|" "$QT6_CONFIG"
+  if command -v kvantummanager >/dev/null 2>&1; then
+    kvantummanager --set "$kvantum_theme"
+  fi
+}
 
-# Set Dynamic Wallpaper for Dark or Light Mode
-if [ "$next_mode" = "Dark" ]; then
-    next_wallpaper="$(find -L "${dark_wallpapers}" -type f \( -iname "*.jpg" -o -iname "*.png" \) -print0 | shuf -n1 -z | xargs -0)"
-else
-    next_wallpaper="$(find -L "${light_wallpapers}" -type f \( -iname "*.jpg" -o -iname "*.png" \) -print0 | shuf -n1 -z | xargs -0)"
-fi
-
-# Update wallpaper using awww command
-$awww "${next_wallpaper}" $effect
-
-# Regenerate and validate all Wallust consumer palettes from the exact wallpaper.
-"${SCRIPTSDIR}/WallustAwww.sh" "${next_wallpaper}"
-
-
-# Set Kvantum Manager theme & QT5/QT6 settings
-if [ "$next_mode" = "Dark" ]; then
-    kvantum_theme="catppuccin-mocha-blue"
-    #qt5ct_color_scheme="$HOME/.config/qt5ct/colors/Catppuccin-Mocha.conf"
-    #qt6ct_color_scheme="$HOME/.config/qt6ct/colors/Catppuccin-Mocha.conf"
-else
-    kvantum_theme="catppuccin-latte-blue"
-    #qt5ct_color_scheme="$HOME/.config/qt5ct/colors/Catppuccin-Latte.conf"
-    #qt6ct_color_scheme="$HOME/.config/qt6ct/colors/Catppuccin-Latte.conf"
-fi
-
-sed -i "s|^color_scheme_path=.*$|color_scheme_path=$qt5ct_color_scheme|" "$HOME/.config/qt5ct/qt5ct.conf"
-sed -i "s|^color_scheme_path=.*$|color_scheme_path=$qt6ct_color_scheme|" "$HOME/.config/qt6ct/qt6ct.conf"
-kvantummanager --set "$kvantum_theme"
-
-
-# set the rofi color for background
-if [ "$next_mode" = "Dark" ]; then
-    sed -i '/^background:/s/.*/background: rgba(0,0,0,0.7);/' $wallust_rofi
-else
-    sed -i '/^background:/s/.*/background: rgba(255,255,255,0.9);/' $wallust_rofi
-fi
-
-
-# GTK themes and icons switching
 set_custom_gtk_theme() {
-    mode=$1
-    gtk_themes_directory="$HOME/.themes"
-    icon_directory="$HOME/.icons"
-    color_setting="org.gnome.desktop.interface color-scheme"
-    theme_setting="org.gnome.desktop.interface gtk-theme"
-    icon_setting="org.gnome.desktop.interface icon-theme"
+  local mode="$1"
+  local theme_dir="$HOME/.themes"
+  local icon_dir="$HOME/.icons"
+  local theme_setting='org.gnome.desktop.interface gtk-theme'
+  local icon_setting='org.gnome.desktop.interface icon-theme'
+  local color_setting='org.gnome.desktop.interface color-scheme'
+  local keyword='*Light*'
+  [[ "$mode" == Dark ]] && keyword='*Dark*'
 
-    if [ "$mode" == "Light" ]; then
-        search_keywords="*Light*"
-        gsettings set $color_setting 'prefer-light'
-    elif [ "$mode" == "Dark" ]; then
-        search_keywords="*Dark*"
-        gsettings set $color_setting 'prefer-dark'
-    else
-        echo "Invalid mode provided."
-        return 1
-    fi
+  command -v gsettings >/dev/null 2>&1 || return 0
+  if [[ "$mode" == Dark ]]; then
+    gsettings set "$color_setting" prefer-dark
+  else
+    gsettings set "$color_setting" prefer-light
+  fi
 
-    themes=()
-    icons=()
+  local -a themes=() icons=()
+  local item
+  while IFS= read -r -d '' item; do themes+=("$(basename "$item")"); done < <(find "$theme_dir" -maxdepth 1 -type d -iname "$keyword" -print0 2>/dev/null)
+  while IFS= read -r -d '' item; do icons+=("$(basename "$item")"); done < <(find "$icon_dir" -maxdepth 1 -type d -iname "$keyword" -print0 2>/dev/null)
 
-    while IFS= read -r -d '' theme_search; do
-        themes+=("$(basename "$theme_search")")
-    done < <(find "$gtk_themes_directory" -maxdepth 1 -type d -iname "$search_keywords" -print0)
-
-    while IFS= read -r -d '' icon_search; do
-        icons+=("$(basename "$icon_search")")
-    done < <(find "$icon_directory" -maxdepth 1 -type d -iname "$search_keywords" -print0)
-
-    if [ ${#themes[@]} -gt 0 ]; then
-        if [ "$mode" == "Dark" ]; then
-            selected_theme=${themes[RANDOM % ${#themes[@]}]}
-        else
-            selected_theme=${themes[$RANDOM % ${#themes[@]}]}
-        fi
-        echo "Selected GTK theme for $mode mode: $selected_theme"
-        gsettings set $theme_setting "$selected_theme"
-
-        # Flatpak GTK apps (themes)
-        if command -v flatpak &> /dev/null; then
-            flatpak --user override --filesystem=$HOME/.themes
-            sleep 0.5
-            flatpak --user override --env=GTK_THEME="$selected_theme"
-        fi
-    else
-        echo "No $mode GTK theme found"
-    fi
-
-    if [ ${#icons[@]} -gt 0 ]; then
-        if [ "$mode" == "Dark" ]; then
-            selected_icon=${icons[RANDOM % ${#icons[@]}]}
-        else
-            selected_icon=${icons[$RANDOM % ${#icons[@]}]}
-        fi
-        echo "Selected icon theme for $mode mode: $selected_icon"
-        gsettings set $icon_setting "$selected_icon"
-
-        ## QT5ct icon_theme
-        sed -i "s|^icon_theme=.*$|icon_theme=$selected_icon|" "$HOME/.config/qt5ct/qt5ct.conf"
-        sed -i "s|^icon_theme=.*$|icon_theme=$selected_icon|" "$HOME/.config/qt6ct/qt6ct.conf"
-
-        # Flatpak GTK apps (icons)
-        if command -v flatpak &> /dev/null; then
-            flatpak --user override --filesystem=$HOME/.icons
-            sleep 0.5
-            flatpak --user override --env=ICON_THEME="$selected_icon"
-        fi
-    else
-        echo "No $mode icon theme found"
-    fi
+  if ((${#themes[@]})); then
+    gsettings set "$theme_setting" "${themes[RANDOM % ${#themes[@]}]}"
+  fi
+  if ((${#icons[@]})); then
+    local selected_icon="${icons[RANDOM % ${#icons[@]}]}"
+    gsettings set "$icon_setting" "$selected_icon"
+    [[ -f "$QT5_CONFIG" ]] && sed -i -E "s|^icon_theme=.*$|icon_theme=$selected_icon|" "$QT5_CONFIG"
+    [[ -f "$QT6_CONFIG" ]] && sed -i -E "s|^icon_theme=.*$|icon_theme=$selected_icon|" "$QT6_CONFIG"
+  fi
 }
 
-# Call the function to set GTK theme and icon theme based on mode
+awww query >/dev/null 2>&1 || awww-daemon --format xrgb
+wallpaper="$(select_random_wallpaper "$wallpaper_root")"
+[[ -n "$wallpaper" ]] || { printf '%s\n' '[ERROR] No suitable wallpaper found.' >&2; exit 1; }
+
+awww img --transition-bezier .43,1.19,1,.4 --transition-fps 60 --transition-type grow \
+  --transition-pos 0.925,0.977 --transition-duration 2 -- "$wallpaper"
+"$SCRIPTSDIR/WallustAwww.sh" "$wallpaper"
+set_waybar_style "$next_mode"
+set_kitty_colors
+set_qt_colors
 set_custom_gtk_theme "$next_mode"
+printf '%s\n' "$next_mode" >"$THEME_MODE_FILE"
+notify_user
 
-# Update theme mode for the next cycle
-update_theme_mode
-
-
-sleep 2
-# kill process
-for pid1 in waybar rofi mako ags swaybg; do
-    killall "$pid1"
-done
-
-sleep 1
-${SCRIPTSDIR}/Refresh.sh
-
-sleep 0.5
-# Display notifications for theme and icon changes
-notify-send -u low -i "$notif" " Themes switched to:" " $next_mode Mode"
-
-exit 0
+"$SCRIPTSDIR/Refresh.sh"
+notify-send -u low -i "$NOTIFICATION_ICON" 'Themes switched to:' "$next_mode Mode"
