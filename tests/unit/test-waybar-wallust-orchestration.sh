@@ -20,11 +20,13 @@ done
 ! grep -Fq 'WallustSwww.sh' "$REFRESH_NO_WAYBAR"
 ! grep -Fq 'WallustSwww.sh' "$DARK_LIGHT"
 
-# Callers must invoke the canonical generator exactly through an executable path.
-grep -Eq '^[[:space:]]*"\$[^"[:space:]]+/WallustAwww\.sh"[[:space:]]+' "$INITIAL_BOOT"
-grep -Eq '^[[:space:]]*"\$[^"[:space:]]+/WallustAwww\.sh"[[:space:]]+' "$RANDOM_WALLPAPER"
-grep -Eq '^[[:space:]]*"\$[^"[:space:]]+/WallustAwww\.sh"[[:space:]]+' "$AUTO_CHANGE"
-grep -Eq '^[[:space:]]*"\$[^"[:space:]]+/WallustAwww\.sh"[[:space:]]+' "$DARK_LIGHT"
+# Each wallpaper-changing caller invokes the canonical generator once.
+for caller in "$INITIAL_BOOT" "$RANDOM_WALLPAPER" "$AUTO_CHANGE" "$DARK_LIGHT"; do
+  [[ "$(grep -Fc 'WallustAwww.sh' "$caller")" -eq 1 ]] || {
+    printf '[FAIL] canonical Wallust generator must be referenced exactly once: %s\n' "$caller" >&2
+    exit 1
+  }
+done
 
 # Random wallpaper selection must preserve paths containing whitespace.
 grep -Fq 'mapfile -d' "$RANDOM_WALLPAPER"
