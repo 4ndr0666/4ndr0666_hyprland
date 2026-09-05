@@ -86,7 +86,6 @@ The configuration footprint features an advanced, refactored design driven entir
 ├── archive/                                     # System upgrade and tracking manifests
 ├── assets/                                      # Monorepo artwork assets
 ├── config/
-│   ├── ags/                                     # Desktop widget profiles
 │   ├── btop/                                    # System resource metrics
 │   ├── cava/                                    # Audio visualization profiles
 │   ├── fastfetch/                               # Environment statistics layout
