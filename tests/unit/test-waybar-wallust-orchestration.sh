@@ -10,10 +10,7 @@ REFRESH_NO_WAYBAR="$ROOT/config/hypr/scripts/RefreshNoWaybar.sh"
 DARK_LIGHT="$ROOT/config/hypr/scripts/DarkLight.sh"
 
 for file in "$WALLUST_SCRIPT" "$INITIAL_BOOT" "$RANDOM_WALLPAPER" "$AUTO_CHANGE" "$REFRESH_NO_WAYBAR" "$DARK_LIGHT"; do
-    [[ -f "$file" ]] || {
-        printf '%s\n' "Missing Wallust orchestration file: $file" >&2
-        exit 1
-    }
+  [[ -f "$file" ]] || { printf '%s\n' "Missing Wallust orchestration file: $file" >&2; exit 1; }
 done
 
 # WallustAwww.sh is the sole palette-generation boundary.
@@ -23,10 +20,11 @@ done
 ! grep -Fq 'WallustSwww.sh' "$REFRESH_NO_WAYBAR"
 ! grep -Fq 'WallustSwww.sh' "$DARK_LIGHT"
 
-grep -Fq '"$scriptsDir/WallustAwww.sh" "$wallpaper"' "$INITIAL_BOOT"
-grep -Fq '"$SCRIPTSDIR/WallustAwww.sh" "$RANDOMPICS"' "$RANDOM_WALLPAPER"
-grep -Fq '"$wallust_script" "$img"' "$AUTO_CHANGE"
-grep -Fq '"${SCRIPTSDIR}/WallustAwww.sh" "${next_wallpaper}"' "$DARK_LIGHT"
+# Callers must invoke the canonical generator exactly through an executable path.
+grep -Eq '^[[:space:]]*"\$[^"[:space:]]+/WallustAwww\.sh"[[:space:]]+' "$INITIAL_BOOT"
+grep -Eq '^[[:space:]]*"\$[^"[:space:]]+/WallustAwww\.sh"[[:space:]]+' "$RANDOM_WALLPAPER"
+grep -Eq '^[[:space:]]*"\$[^"[:space:]]+/WallustAwww\.sh"[[:space:]]+' "$AUTO_CHANGE"
+grep -Eq '^[[:space:]]*"\$[^"[:space:]]+/WallustAwww\.sh"[[:space:]]+' "$DARK_LIGHT"
 
 # Random wallpaper selection must preserve paths containing whitespace.
 grep -Fq 'mapfile -d' "$RANDOM_WALLPAPER"
