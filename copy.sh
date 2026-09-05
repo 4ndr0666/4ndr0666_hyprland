@@ -79,12 +79,8 @@ install_quickshell_config() {
     printf '%s' '[ACTION] Overwrite existing Quickshell configuration? [y/N] ' >/dev/tty
     read -r answer </dev/tty
     case "$answer" in
-      y|Y|yes|YES)
-        replace_dir_transaction "$source" "$destination" "$LOG"
-        ;;
-      *)
-        printf '%s\n' '[INFO] Existing Quickshell configuration retained.' | tee -a "$LOG"
-        ;;
+      y|Y|yes|YES) replace_dir_transaction "$source" "$destination" "$LOG" ;;
+      *) printf '%s\n' '[INFO] Existing Quickshell configuration retained.' | tee -a "$LOG" ;;
     esac
   fi
 
@@ -109,7 +105,7 @@ configure_waybar_links() {
     ln -sfn -- "$config_file" "$WAYBAR_CONFIG"
   fi
 
-  rm -rf --
+  rm -rf -- \
     "$HOME/.config/waybar/configs/[TOP] Default$config_remove" \
     "$HOME/.config/waybar/configs/[BOT] Default$config_remove" \
     "$HOME/.config/waybar/configs/[TOP] Default$config_remove (old v1)" \
@@ -202,7 +198,6 @@ enable_blueman "$LOG"
 enable_quickshell "$LOG"
 ensure_keybinds_init "$LOG"
 choose_default_editor "$LOG"
-
 prompt_clock_12h "$LOG"
 prompt_express_upgrade "$EXPRESS_SUPPORTED" "$LOG"
 
@@ -221,7 +216,13 @@ PICTURES_DIR="$(xdg-user-dir PICTURES 2>/dev/null || printf '%s' "$HOME/Pictures
 mkdir -p "$PICTURES_DIR/wallpapers"
 cp -a -- "$SCRIPT_DIR/wallpapers/." "$PICTURES_DIR/wallpapers/"
 
-chmod +x -- "$HOME/.config/hypr/scripts/"* "$HOME/.config/hypr/UserScripts/"* "$HOME/.config/hypr/initial-boot.sh"
+for executable_dir in "$HOME/.config/hypr/scripts" "$HOME/.config/hypr/UserScripts"; do
+  if [[ -d "$executable_dir" ]]; then
+    find "$executable_dir" -maxdepth 1 -type f -exec chmod +x -- {} +
+  fi
+done
+chmod +x -- "$HOME/.config/hypr/initial-boot.sh"
+
 configure_waybar_links
 apply_sddm_wallpaper
 offer_additional_wallpapers
