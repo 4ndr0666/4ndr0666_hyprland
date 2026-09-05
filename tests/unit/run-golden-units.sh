@@ -39,6 +39,7 @@ TESTS=(
   tests/unit/test-quickshell-overview-boundary.sh
   tests/unit/test-ags-retirement-boundary.sh
   tests/unit/test-runtime-orchestration-boundaries.sh
+  tests/unit/test-current-tree-integrity.sh
 )
 
 failures=()
