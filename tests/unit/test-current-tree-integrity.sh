@@ -16,10 +16,13 @@ done
 # Wallust Hyprland output is a configuration file, not a second language-specific duplicate.
 ! grep -R -n --exclude-dir=.git --exclude-dir=archive 'wallust-hyprland\.lua' "$ROOT" >/dev/null 2>&1
 
-# Preserve established Waybar consumer paths; reject only the obsolete generated-template bypass.
-! grep -R -n --exclude-dir=.git --exclude-dir=archive 'wallust/templates/colors-waybar.css' "$ROOT/config/waybar" >/dev/null 2>&1
+# Preserve established Waybar consumer paths; reject only active obsolete template imports.
+if grep -R -n --include='*.css' --exclude-dir=.git --exclude-dir=archive -E '^[[:space:]]*@import[[:space:]]+["'"']?[^"'"']*wallust/templates/colors-waybar\.css' "$ROOT/config/waybar" >/dev/null 2>&1; then
+  printf '[FAIL] active Waybar import bypasses canonical Wallust consumer.\n' >&2
+  exit 1
+fi
 
 grep -q 'quickshell' "$ROOT/config/hypr/wallust/wallust-hyprland.conf"
-grep -q 'WallustAwww.sh' "$ROOT/config/hypr/scripts/initial-boot.sh" 2>/dev/null || grep -q 'WallustAwww.sh' "$ROOT/config/hypr/initial-boot.sh"
+grep -q 'WallustAwww.sh' "$ROOT/config/hypr/initial-boot.sh"
 
 printf '[PASS] current-tree integrity boundary: PASS\n'
