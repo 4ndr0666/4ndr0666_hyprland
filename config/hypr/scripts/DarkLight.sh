@@ -34,7 +34,7 @@ if [[ "$next_mode" == Dark ]]; then
   palette="$DARK_PALETTE"
   qt5_color="$DARK_QT5"
   qt6_color="$DARK_QT6"
-  kvantum_theme="catppuccin-mocha-blue"
+  kvantum_theme='catppuccin-mocha-blue'
   kitty_foreground='#dddddd'
   kitty_background='#000000'
   kitty_cursor='#dddddd'
@@ -42,7 +42,7 @@ else
   palette="$LIGHT_PALETTE"
   qt5_color="$LIGHT_QT5"
   qt6_color="$LIGHT_QT6"
-  kvantum_theme="catppuccin-latte-blue"
+  kvantum_theme='catppuccin-latte-blue'
   kitty_foreground='#000000'
   kitty_background='#dddddd'
   kitty_cursor='#000000'
@@ -57,10 +57,18 @@ set_waybar_style() {
   local theme="$1"
   local styles="$HOME_CONFIG/waybar/style"
   local link="$HOME_CONFIG/waybar/style.css"
-  local style_file
-  style_file="$(find -L "$styles" -maxdepth 1 -type f -name "[$theme]*.css" -print0 | shuf -z -n 1 | tr -d '\0')"
-  [[ -n "$style_file" ]] || { printf '%s\n' "[ERROR] No Waybar style exists for $theme mode." >&2; return 1; }
-  ln -sfn -- "$style_file" "$link"
+  local -a candidates=()
+  local style base
+
+  while IFS= read -r -d '' style; do
+    base="$(basename "$style")"
+    case "$base" in
+      "[$theme]"*.css) candidates+=("$style") ;;
+    esac
+  done < <(find -L "$styles" -maxdepth 1 -type f -name '*.css' -print0)
+
+  ((${#candidates[@]})) || { printf '%s\n' "[ERROR] No Waybar style exists for $theme mode." >&2; return 1; }
+  ln -sfn -- "${candidates[RANDOM % ${#candidates[@]}]}" "$link"
 }
 
 select_random_wallpaper() {
@@ -106,14 +114,13 @@ set_custom_gtk_theme() {
   fi
 
   local -a themes=() icons=()
+  local item
   while IFS= read -r -d '' item; do themes+=("$(basename "$item")"); done < <(find "$theme_dir" -maxdepth 1 -type d -iname "$keyword" -print0 2>/dev/null)
   while IFS= read -r -d '' item; do icons+=("$(basename "$item")"); done < <(find "$icon_dir" -maxdepth 1 -type d -iname "$keyword" -print0 2>/dev/null)
 
   if ((${#themes[@]})); then
-    local selected_theme="${themes[RANDOM % ${#themes[@]}]}"
-    gsettings set "$theme_setting" "$selected_theme"
+    gsettings set "$theme_setting" "${themes[RANDOM % ${#themes[@]}]}"
   fi
-
   if ((${#icons[@]})); then
     local selected_icon="${icons[RANDOM % ${#icons[@]}]}"
     gsettings set "$icon_setting" "$selected_icon"
