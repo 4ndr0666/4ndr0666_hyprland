@@ -22,22 +22,18 @@ grep -Fq 'Wallust Waybar palette failed structural validation.' "$WALLUST_SCRIPT
 
 wallust_style_count=0
 for style in "$WAYBAR_STYLE_DIR"/*.css "$WAYBAR_STYLE_DIR"/*/*.css; do
-    [[ -f "$style" ]] || continue
-    if grep -Fq 'colors-waybar.css' "$style"; then
-        wallust_style_count=$((wallust_style_count + 1))
-        ! grep -Fq '../../.config/waybar/wallust/colors-waybar.css' "$style"
-        style_dir="$(dirname "$style")"
-        if [[ "$style_dir" == "$WAYBAR_STYLE_DIR" ]]; then
-            grep -Fq '../wallust/colors-waybar.css' "$style"
-        else
-            grep -Fq '../../wallust/colors-waybar.css' "$style"
-        fi
+  [[ -f "$style" ]] || continue
+  if grep -Eq '^[[:space:]]*@import[[:space:]]+["'"']?[^"'"']*colors-waybar\.css' "$style"; then
+    wallust_style_count=$((wallust_style_count + 1))
+    if grep -Eq '^[[:space:]]*@import[[:space:]]+["'"']?[^"'"']*wallust/templates/colors-waybar\.css' "$style"; then
+      printf '[FAIL] obsolete active Wallust template import: %s\n' "$style" >&2
+      exit 1
     fi
+  fi
 done
 
-[[ "$wallust_style_count" -gt 0 ]]
-
-grep -Fq "../../.config/waybar/wallust/colors-waybar.css" "$WLOGOUT_STYLE"
-grep -Fq "../../.config/waybar/wallust/colors-waybar.css" "$SWAYNC_STYLE"
+((wallust_style_count > 0))
+grep -Fq '../../.config/waybar/wallust/colors-waybar.css' "$WLOGOUT_STYLE"
+grep -Fq '../../.config/waybar/wallust/colors-waybar.css' "$SWAYNC_STYLE"
 
 printf '%s\n' "Waybar/Wallust palette pipeline boundary: PASS ($wallust_style_count Waybar styles)"
