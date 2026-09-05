@@ -64,6 +64,26 @@ prepare_log() {
   : >"$LOG"
 }
 
+apply_resolution_profile() {
+  local resolution="$1"
+  [[ "$resolution" == '< 1440p' ]] || return 0
+
+  local kitty="$SCRIPT_DIR/config/kitty/kitty.conf"
+  local lock="$SCRIPT_DIR/config/hypr/hyprlock.conf"
+  local lock1080="$SCRIPT_DIR/config/hypr/hyprlock-1080p.conf"
+  local rofi="$SCRIPT_DIR/config/rofi/0-shared-fonts.rasi"
+
+  [[ -f "$kitty" ]] && sed -i 's/font_size 16.0/font_size 14.0/' "$kitty"
+  if [[ -f "$lock" && -f "$lock1080" ]]; then
+    mv -- "$lock" "$SCRIPT_DIR/config/hypr/hyprlock-2k.conf"
+    mv -- "$lock1080" "$lock"
+  fi
+  if [[ -f "$rofi" ]]; then
+    sed -i '/element-text {/,/}/s/[[:space:]]*font: "JetBrainsMono Nerd Font SemiBold 13"/font: "JetBrainsMono Nerd Font SemiBold 11"/' "$rofi"
+    sed -i '/configuration {/,/}/s/[[:space:]]*font: "JetBrainsMono Nerd Font SemiBold 15"/font: "JetBrainsMono Nerd Font SemiBold 13"/' "$rofi"
+  fi
+}
+
 install_quickshell_config() {
   local destination="$HOME/.config/quickshell"
   local source="$SCRIPT_DIR/config/quickshell"
@@ -189,7 +209,12 @@ if [[ "$EUID" -eq 0 ]]; then
 fi
 
 prepare_log
+xdg-user-dirs-update 2>&1 | tee -a "$LOG"
 printf '%s\n' "[INFO] Selected workflow: $RUN_MODE" | tee -a "$LOG"
+
+detect_nvidia_adjust "$LOG"
+detect_vm_adjust "$LOG"
+detect_nixos_adjust "$LOG"
 
 layout="$(prompt_detect_layout)"
 prompt_keyboard_layout "$layout" "$LOG"
@@ -198,6 +223,8 @@ enable_blueman "$LOG"
 enable_quickshell "$LOG"
 ensure_keybinds_init "$LOG"
 choose_default_editor "$LOG"
+resolution="$(prompt_resolution_choice)"
+apply_resolution_profile "$resolution"
 prompt_clock_12h "$LOG"
 prompt_express_upgrade "$EXPRESS_SUPPORTED" "$LOG"
 
