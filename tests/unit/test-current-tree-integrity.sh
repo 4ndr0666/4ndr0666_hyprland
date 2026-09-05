@@ -17,7 +17,7 @@ done
 ! grep -R -n --exclude-dir=.git --exclude-dir=archive --exclude='test-current-tree-integrity.sh' 'wallust-hyprland\.lua' "$ROOT" >/dev/null 2>&1
 
 # Preserve established Waybar consumer paths; reject only active obsolete template imports.
-if grep -R -n --include='*.css' --exclude-dir=.git --exclude-dir=archive -E '^[[:space:]]*@import[[:space:]]+["'"']?[^"'"']*wallust/templates/colors-waybar\.css' "$ROOT/config/waybar" >/dev/null 2>&1; then
+if grep -R -n --include='*.css' --exclude-dir=.git --exclude-dir=archive -E '^[[:space:]]*@import.*wallust/templates/colors-waybar\.css' "$ROOT/config/waybar" >/dev/null 2>&1; then
   printf '[FAIL] active Waybar import bypasses canonical Wallust consumer.\n' >&2
   exit 1
 fi
