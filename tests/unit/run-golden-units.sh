@@ -27,6 +27,7 @@ TESTS=(
   tests/unit/test-sddm-rollback.sh
   tests/unit/test-copy-orchestration-boundary.sh
   tests/unit/test-copy-phase1-atomicity.sh
+  tests/unit/test-copy-transaction-runtime.sh
   tests/unit/test-config-only-dot-repository.sh
   tests/unit/test-github-actions-pinned.sh
   tests/unit/test-waybar-script-config-boundary.sh
