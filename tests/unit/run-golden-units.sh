@@ -30,6 +30,7 @@ TESTS=(
   tests/unit/test-copy-transaction-runtime.sh
   tests/unit/test-copy-source-immutability.sh
   tests/unit/test-copy-cwd-portability.sh
+  tests/unit/test-waybar-symlink-restoration.sh
   tests/unit/test-config-only-dot-repository.sh
   tests/unit/test-github-actions-pinned.sh
   tests/unit/test-waybar-script-config-boundary.sh
