@@ -47,6 +47,14 @@ TESTS=(
   tests/unit/test-quickshell-overview-single-source.sh
   tests/unit/test-runtime-path-integrity.sh
   tests/unit/test-weather-fallback-boundary.sh
+  tests/unit/test-gup-capability-contract-matrix.sh
+  tests/unit/test-keybind-reachability.sh
+  tests/unit/test-keybind-parser-lua-authority.sh
+  tests/unit/test-cava-lifecycle.sh
+  tests/unit/test-portal-lifecycle.sh
+  tests/unit/test-documentation-current-authority.sh
+  tests/unit/test-uninstall-symmetry-contract.sh
+  tests/unit/test-capability-superset-contract.sh
 )
 
 failures=()

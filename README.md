@@ -63,8 +63,7 @@ chmod +x copy.sh
 #### Available Deployment Targets
 
 * **Fresh Copy / Upgrade Sync (`./copy.sh`):** Iterates through active data components, provisions baseline definitions, and establishes persistent overlays. Old configurations are moved gracefully to timestamped backups under `~/.config/`.
-* **Stable Releases (`./release.sh`):** Downloads and processes explicitly tagged source distributions straight from targeted releases.
-* **Semi-Manual Sync (`./upgrade.sh`):** Leverages internal file checking pipelines and custom exclusion models to synchronize configuration components across active running instances.
+* **Installer-Owned Package Removal (`./uninstall.sh`):** Removes packages recorded in the installer-owned package manifest and retains that manifest when removal fails so the operation can be retried safely.
 
 ---
 
