@@ -55,6 +55,11 @@ TESTS=(
   tests/unit/test-documentation-current-authority.sh
   tests/unit/test-uninstall-symmetry-contract.sh
   tests/unit/test-capability-superset-contract.sh
+  tests/unit/test-rofi-runtime-connectivity.sh
+  tests/unit/test-swaync-runtime-connectivity.sh
+  tests/unit/test-terminal-config-connectivity.sh
+  tests/unit/test-monitor-user-config-connectivity.sh
+  tests/unit/test-asset-deployment-connectivity.sh
 )
 
 failures=()
