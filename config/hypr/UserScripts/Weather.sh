@@ -11,7 +11,7 @@ get_current_city() {
     # First try: ipinfo.io
     local location_data=$(curl -fsS "https://ipinfo.io/json" 2>/dev/null)
     if [ $? -eq 0 ] && [ -n "$location_data" ]; then
-        city=$(echo "$location_data" | grep -o '"city"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+        city=$(echo "$location_data" | grep -o '\"city\"[[:space:]]*:[[:space:]]*\"[^\"]*\"' | cut -d'\"' -f4)
         if [ -n "$city" ]; then
             echo "$city"
             return 0
@@ -19,31 +19,35 @@ get_current_city() {
     fi
     
     # Fallback: ipapi.co
-    city=$(curl -fsS "https://ipapi.co/json" 2>/dev/null | grep -o '"city"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+    city=$(curl -fsS "https://ipapi.co/json" 2>/dev/null | grep -o '\"city\"[[:space:]]*:[[:space:]]*\"[^\"]*\"' | cut -d'\"' -f4)
     if [ -n "$city" ]; then
         echo "$city"
         return 0
     fi
     
     # Last resort: ipwho.is
-    city=$(curl -fsS "https://ipwho.is/" 2>/dev/null | grep -o '"city"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+    city=$(curl -fsS "https://ipwho.is/" 2>/dev/null | grep -o '\"city\"[[:space:]]*:[[:space:]]*\"[^\"]*\"' | cut -d'\"' -f4)
     if [ -n "$city" ]; then
         echo "$city"
         return 0
     fi
     
     # If all fail
-    echo "Unknown" >&2
     return 1
 }
 
 city=$(get_current_city)
 
-# If city is empty, that means the IP check failed, which means, we should use manual setting 
-if [ -z "$city" ] || [ "$city" = "Unknown" ]; then
-    # SET YOUR MANUAL CITY HERE
-    city=" "  # ← Change this to your preferred city
-    echo "Using manual city: $city" >&2
+# If IP lookup fails, require an explicit city rather than silently using an invalid placeholder.
+if [ -z "$city" ]; then
+    if [[ -n "${WEATHER_CITY//[[:space:]]/}" ]]; then
+        city="$WEATHER_CITY"
+        echo "Using configured weather city: $city" >&2
+    else
+        echo "Unable to determine weather city; set WEATHER_CITY to a valid city." >&2
+        printf '{"text":"\\uf06a", "alt":"", "tooltip":"Weather location unavailable"}\n'
+        exit 1
+    fi
 fi
 
 # URL-encode city for safe use in URLs
@@ -81,7 +85,7 @@ IFS=$'\n'
 file="$cachedir/$cachefile"
 # Portable file mtime retrieval (GNU/BSD):
 # - GNU: stat -c %Y <file>
-# - BSD/macOS: stat -f %m <file>
+# - BSD: stat -f %m <file>
 mtime=$(stat -c %Y "$file" 2>/dev/null || stat -f %m "$file" 2>/dev/null || echo 0)
 now=$(date +%s)
 cacheage=$(( now - mtime ))

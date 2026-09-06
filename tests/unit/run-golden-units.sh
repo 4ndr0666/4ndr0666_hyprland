@@ -46,6 +46,7 @@ TESTS=(
   tests/unit/test-current-tree-integrity.sh
   tests/unit/test-quickshell-overview-single-source.sh
   tests/unit/test-runtime-path-integrity.sh
+  tests/unit/test-weather-fallback-boundary.sh
 )
 
 failures=()
