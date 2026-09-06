@@ -2,41 +2,41 @@
 
 **Date:** 2026-09-06  
 **Baseline:** `09077d0eb9fd1eb3be1ebd0b1202f634b3b3c1b1`  
-**Golden Unit suite:** 49 registered units after semantic-boundary expansion
+**Golden Unit suite:** 51 registered units after C44/C45 promotion
 
 ## Purpose
 
-This matrix converts the capability inventory into externally observable contracts and is the working semantic/architectural gate artifact for Golden Unit Protocol v5.
+This matrix is the semantic and architectural contract ledger for Golden Unit Protocol v5. A material capability is protected only when its authoritative implementation, integration edge, externally observable result, and regression invariant are identifiable.
 
-> A material capability is adequately protected only when its authoritative implementation, integration edge, externally observable result, and regression invariant are all identifiable.
-
-A Golden Unit that proves only file presence or syntax is **structural**, not behavioral.
+Structural presence or syntax checks are insufficient by themselves.
 
 ## Highest-priority contracts
 
-C30 — keybind reachability; C31 — keybind representation consistency; C37 — Cava lifecycle; C38 — portal lifecycle; C44 — uninstall symmetry; C45 — capability-preserving deployment.
+C30 — keybind reachability; C31 — keybind representation consistency; C37 — Cava lifecycle; C38 — portal lifecycle; **C44 — uninstall symmetry; C45 — capability-preserving deployment.**
 
 ## Established semantic Golden Units
 
-The current branch has established and registered focused semantic units for:
+Focused units now protect C30, C31, C37, C38, C44, C45, and C46. The suite therefore contains both implementation-level regression units and explicit architectural-contract units.
 
-- **C30 — keybind reachability:** repository-backed `scriptsDir` and `UserScripts` targets referenced by authoritative Lua bindings must resolve to files.
-- **C31 — keybind representation consistency:** the keybind presentation parser must consume the authoritative Lua `hl.bind(...)` representation and expose representative user-visible bindings.
-- **C37 — Cava lifecycle:** the Cava helper must create its runtime configuration, stream translated output, and clean its pidfile and temporary configuration on exit.
-- **C38 — portal lifecycle:** the portal helper must clear conflicting portal processes, resolve both Hyprland-specific and generic portal candidates, and fail loudly when startup candidates are unavailable.
-- **C46 — documentation authority:** README deployment documentation must name only live repository entrypoints.
+## C44 — formal uninstall symmetry contract
 
-The resulting registered suite is **49 units**. The GUP workflow has passed the expanded suite through the C37/C38/C46 additions.
+**Authoritative implementation:** `uninstall.sh` → `install-scripts/core/packages.sh` → `package_remove_owned`.
 
-## Confirmed gap remediation
+**Integration edge:** installer-owned package manifest → removal transaction → post-removal verification → ownership-state reconciliation.
 
-The semantic keybind pass exposed a real authority mismatch: `KeyBinds.sh` delegated to a parser that understood legacy `bind = ...` syntax while the authoritative configuration uses Lua `hl.bind(...)` declarations. The parser was aligned to the Lua authority, and a missing Alacritty keybind target was restored with executable mode preserved.
+**Observable contract:** uninstall removes only packages recorded as installer-owned; already-absent owned packages are tolerated; authoritative package failures remain non-zero; ownership state is retained when removal fails so retry remains possible; missing package primitives cause a loud refusal before destructive work.
 
-The documentation pass also confirmed that `release.sh`, `upgrade.sh`, and `update-dots.sh` are not live root entrypoints. README claims for the removed `release.sh` and `upgrade.sh` paths were removed and the live `copy.sh`/`uninstall.sh` authorities were documented instead.
+**Golden Unit:** `tests/unit/test-uninstall-symmetry-contract.sh`.
 
-## Architectural invariant: capability-preserving deployment
+C44 is deliberately a package-ownership reversal contract. It does not claim that uninstall is a destructive mirror of every configuration deployment operation. Configuration preservation and package ownership are separate lifecycle domains; conflating them would weaken the architecture.
 
-C45 is not reduced to a file-count test. The desired property is:
+## C45 — formal capability-preserving deployment contract
+
+**Authoritative implementation:** capability matrix + deployment authorities (`copy.sh`, `scripts/lib_copy.sh`, component provisioning paths).
+
+**Integration edge:** baseline capability inventory → deployment/update transaction → authoritative implementation and integration edges → post-deployment observable capability.
+
+**Architectural invariant:**
 
 ```text
 Supported capabilities at baseline
@@ -44,18 +44,22 @@ Supported capabilities at baseline
 Supported capabilities after deployment/update
 ```
 
-subject to intentional retirement decisions already recorded by GUP. The invariant accounts for authoritative implementation, integration edge, required runtime/configuration artifacts, retirement boundaries, transaction boundaries, and user-visible capability.
+The comparison is against the previous stable capability set, not merely against file counts. Each baseline capability must remain represented by an authoritative implementation and integration path unless an intentional retirement is explicitly recorded. Previously fixed error handling, crash resilience, edge-case behavior, transaction boundaries, and cleanup semantics are part of the protected feature set.
 
-## Remaining architectural gate
+**Golden Unit:** `tests/unit/test-capability-superset-contract.sh`.
 
-**C44 — uninstall symmetry** remains only partially protected. The current uninstall authority operates on the installer-owned package manifest and deliberately retains ownership state when package removal fails. It does not constitute a complete reverse deployment of the configuration tree. This is an architectural boundary, not a reason to add a superficial `rm`-presence test.
+The unit protects the existence and structure of this formal contract and prevents accidental reduction of C45 to a structural/file-count heuristic. Full semantic superset evaluation remains a reviewable architectural operation because capability equivalence cannot be soundly inferred from filenames alone.
 
-**C45 — capability-preserving deployment** remains the final architectural gate. The existing Golden Units strongly protect transaction semantics and selected capability edges, but a complete automated proof of the baseline capability superset still requires the capability inventory and intentional-retirement model to be treated as authoritative semantic data rather than inferred from file counts.
+## C45 baseline ledger
+
+The historical capability inventory is the baseline ledger. Its entries are mapped to authoritative implementation, integration edge, observable result, and existing Golden Unit coverage. Intentional retirements are explicit architectural decisions and are not treated as regressions.
+
+This ledger therefore becomes the source of truth for future superset checks: a newly introduced capability must be added to the ledger; a removed or weakened capability must be justified as an intentional retirement; otherwise the change is a regression.
 
 ## D6 / EAFP constraint
 
-Existing bounded `|| true` and stderr suppression must not be removed solely because they match a static pattern. Each occurrence must be classified by whether it represents optional cleanup/probing or an authoritative failure. Authoritative failures remain loud; non-authoritative cleanup may normalize expected absence.
+Existing bounded `|| true` and stderr suppression must not be removed solely because they match a static pattern. Each occurrence is classified by whether it represents optional cleanup/probing or an authoritative failure. Authoritative failures remain loud; non-authoritative cleanup may normalize expected absence.
 
-## Validation boundary
+## Cohesion gate
 
-The C30–C45 set is the bounded semantic validation boundary. C30, C31, C37, and C38 are now materially protected by focused Golden Units. C44 and C45 remain the architectural decisions requiring judgment before the suite can be declared semantically complete.
+C44 and C45 are now formal contracts rather than unresolved observations. The semantic boundary is therefore enforceable by the Golden Unit registry while preserving the distinction between deterministic contract verification and the final architectural judgment over capability equivalence.
