@@ -50,6 +50,8 @@ TESTS=(
   tests/unit/test-gup-capability-contract-matrix.sh
   tests/unit/test-keybind-reachability.sh
   tests/unit/test-keybind-parser-lua-authority.sh
+  tests/unit/test-cava-lifecycle.sh
+  tests/unit/test-portal-lifecycle.sh
 )
 
 failures=()
