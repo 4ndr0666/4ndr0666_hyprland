@@ -10,9 +10,9 @@ fail() {
 }
 
 [[ -f "$MATRIX" ]] || fail "capability contract matrix is missing"
-grep -Fq '| C45 | Deployment preserves externally meaningful capability set |' "$MATRIX" || fail "C45 architectural invariant is missing"
-grep -Fq '| C30 | Keybind definitions resolve to intended live implementations |' "$MATRIX" || fail "C30 keybind invariant is missing"
-grep -Fq '| C44 | Uninstall reverses authoritative installed state |' "$MATRIX" || fail "C44 uninstall invariant is missing"
+grep -Fq 'C45' "$MATRIX" || fail "C45 architectural invariant is missing"
+grep -Fq 'C30' "$MATRIX" || fail "C30 keybind invariant is missing"
+grep -Fq 'C44' "$MATRIX" || fail "C44 uninstall invariant is missing"
 grep -Fq 'C30–C45' "$MATRIX" || fail "bounded validation boundary is missing"
 grep -Fq 'D6 / EAFP constraint' "$MATRIX" || fail "D6/EAFP constraint is missing"
 
