@@ -70,15 +70,21 @@ copy_waybar() {
           printf '%s\n' "${NOTE:-[NOTE]} - Backed up waybar to ${backup_dir:-none}." | tee -a "$log"
 
           if [[ -n "$backup_dir" ]]; then
-            local file symlink symlink_target target_file
+            local file symlink symlink_target symlink_dir target_file
             for file in config style.css; do
               symlink="$backup_dir/$file"
               target_file="$dir_path/$file"
               if [[ -L "$symlink" ]]; then
                 symlink_target="$(readlink -- "$symlink")"
-                [[ -f "$symlink_target" ]] || continue
-                rm -f -- "$target_file"
-                cp -f -- "$symlink_target" "$target_file"
+                symlink_dir="$(dirname -- "$symlink")"
+                if [[ "$symlink_target" == /* ]]; then
+                  target_file="$symlink_target"
+                else
+                  target_file="$symlink_dir/$symlink_target"
+                fi
+                [[ -f "$target_file" ]] || continue
+                rm -f -- "$dir_path/$file"
+                cp -f -- "$target_file" "$dir_path/$file"
               fi
             done
 
