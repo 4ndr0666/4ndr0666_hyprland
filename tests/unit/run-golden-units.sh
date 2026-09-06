@@ -52,6 +52,7 @@ TESTS=(
   tests/unit/test-keybind-parser-lua-authority.sh
   tests/unit/test-cava-lifecycle.sh
   tests/unit/test-portal-lifecycle.sh
+  tests/unit/test-documentation-current-authority.sh
 )
 
 failures=()
