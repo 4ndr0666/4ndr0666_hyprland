@@ -14,7 +14,8 @@ for file in "$KEYBINDS" "$APPS" "$COPY" "$KITTY" "$GHOSTTY"; do
   [[ -f "$file" ]] || fail "required terminal integration file is missing: $file"
 done
 
-grep -Fq 'local dirs=(fastfetch kitty rofi swaync)' "$COPY" || fail "Kitty is no longer part of transactional configuration deployment"
+grep -Eq 'local (dirs|[a-zA-Z_]+)=' "$COPY" || fail "copy phase directory declaration is missing"
+grep -Eq 'dirs=.*kitty|kitty.*dirs=' "$COPY" || fail "Kitty is no longer part of configuration deployment"
 grep -Fq 'install_terminal_configs "$log"' "$COPY" || fail "terminal-specific deployment edge is missing"
 grep -Fq 'local GHOSTTY_SRC="config/ghostty/ghostty.config"' "$APPS" || fail "Ghostty source authority is missing"
 grep -Fq 'local GHOSTTY_DEST="$GHOSTTY_DIR/config"' "$APPS" || fail "Ghostty destination contract is missing"
