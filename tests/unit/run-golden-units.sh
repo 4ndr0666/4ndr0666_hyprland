@@ -53,6 +53,8 @@ TESTS=(
   tests/unit/test-cava-lifecycle.sh
   tests/unit/test-portal-lifecycle.sh
   tests/unit/test-documentation-current-authority.sh
+  tests/unit/test-uninstall-symmetry-contract.sh
+  tests/unit/test-capability-superset-contract.sh
 )
 
 failures=()
