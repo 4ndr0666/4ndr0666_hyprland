@@ -7,7 +7,6 @@ TESTS=(
   tests/unit/test-packages.sh
   tests/unit/test-package-manifest-atomicity.sh
   tests/unit/test-pacman-sync-invariant.sh
-  tests/unit/test-pacman-sync-invariant.sh
   tests/unit/test-systemd.sh
   tests/unit/test-files.sh
   tests/unit/test-dotfiles.sh
