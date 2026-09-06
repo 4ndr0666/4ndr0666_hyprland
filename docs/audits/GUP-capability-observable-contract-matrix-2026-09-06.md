@@ -60,6 +60,6 @@ This ledger therefore becomes the source of truth for future superset checks: a 
 
 Existing bounded `|| true` and stderr suppression must not be removed solely because they match a static pattern. Each occurrence is classified by whether it represents optional cleanup/probing or an authoritative failure. Authoritative failures remain loud; non-authoritative cleanup may normalize expected absence.
 
-## Cohesion gate
+## Validation boundary
 
-C44 and C45 are now formal contracts rather than unresolved observations. The semantic boundary is therefore enforceable by the Golden Unit registry while preserving the distinction between deterministic contract verification and the final architectural judgment over capability equivalence.
+**C30–C45** is the bounded semantic validation boundary. C44 and C45 are now formal contracts rather than unresolved observations. The boundary is enforceable by the Golden Unit registry while preserving the distinction between deterministic contract verification and the final architectural judgment over capability equivalence.
