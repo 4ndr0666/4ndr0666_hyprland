@@ -11,19 +11,17 @@ fail() {
 
 [[ -f "$KEYBINDS" ]] || fail "authoritative Lua keybind source is missing"
 
-while IFS= read -r ref; do
-    case "$ref" in
-        scriptsDir/*)
-            target="$ROOT_DIR/config/hypr/scripts/${ref#scriptsDir/}"
-            ;;
-        UserScripts/*)
-            target="$ROOT_DIR/config/hypr/UserScripts/${ref#UserScripts/}"
-            ;;
-        *)
-            continue
-            ;;
+found=0
+while IFS='|' read -r owner relative; do
+    [[ -n "$owner" && -n "$relative" ]] || continue
+    found=1
+    case "$owner" in
+        scriptsDir) target="$ROOT_DIR/config/hypr/scripts/$relative" ;;
+        UserScripts) target="$ROOT_DIR/config/hypr/UserScripts/$relative" ;;
+        *) fail "unknown keybind path authority: $owner" ;;
     esac
-    [[ -f "$target" ]] || fail "keybind target is missing: $ref"
-done < <(sed -nE 's/.*(scriptsDir|UserScripts) \.\. "\/([^"]+)".*/\1\/\2/p' "$KEYBINDS")
+    [[ -f "$target" ]] || fail "keybind target is missing: $owner/$relative"
+done < <(sed -nE 's/.*(scriptsDir|UserScripts)[[:space:]]+\.\.[[:space:]]+"\/([^"]+)".*/\1|\2/p' "$KEYBINDS")
 
+((found == 1)) || fail "no repository-backed keybind targets were discovered"
 printf 'PASS: all repository-backed Lua keybind targets resolve to files\n'
