@@ -2,334 +2,309 @@
 # === 4ndr0666 === #
 # Copy helpers split into phases to keep copy.sh lean.
 
+set -Eeuo pipefail
+
+LAST_HYPR_BACKUP_PATH=""
+
 copy_phase1() {
   local log="$1"
-  local dirs="fastfetch kitty rofi swaync"
-  for DIR2 in $dirs; do
-    local DIRPATH="$HOME/.config/$DIR2"
-    if [ -d "$DIRPATH" ]; then
+  local -a dirs=(fastfetch kitty rofi swaync)
+
+  for dir_name in "${dirs[@]}"; do
+    local dir_path="$HOME/.config/$dir_name"
+    if [[ -d "$dir_path" ]]; then
       while true; do
-        printf "\n${INFO:-[INFO]} Found ${YELLOW:-}$DIR2${RESET:-} config found in ~/.config/\n"
-        echo -n "${CAT:-[ACTION]} Do you want to replace ${YELLOW:-}$DIR2${RESET:-} config? (y/n): "
-        read DIR1_CHOICE
-        case "$DIR1_CHOICE" in
-        [Yy]*)
-          BACKUP_DIR=$(replace_dir_transaction "config/$DIR2" "$DIRPATH" "$log")
-          if [ -n "$BACKUP_DIR" ]; then
-            echo -e "${NOTE:-[NOTE]} - Backed up $DIR2 to $BACKUP_DIR." 2>&1 | tee -a "$log"
-          fi
-          echo -e "${OK:-[OK]} - Replaced $DIR2 with new configuration." 2>&1 | tee -a "$log"
-          if [ "$DIR2" = "rofi" ] && [ -n "$BACKUP_DIR" ]; then
-            if [ -d "$BACKUP_DIR/themes" ]; then
-              for file in "$BACKUP_DIR/themes"/*; do
-                [ -e "$file" ] || continue
-                cp -n "$file" "$HOME/.config/rofi/themes/" >>"$log" 2>&1 || true
-              done || true
+        printf '\n%s Found %s config in ~/.config/\n' "${INFO:-[INFO]}" "$dir_name"
+        printf '%s' "${CAT:-[ACTION]} Do you want to replace ${YELLOW:-}$dir_name${RESET:-} config? (y/n): "
+        read -r choice
+        case "$choice" in
+          [Yy]*)
+            local backup_dir
+            backup_dir="$(replace_dir_transaction "config/$dir_name" "$dir_path" "$log")"
+            if [[ -n "$backup_dir" ]]; then
+              printf '%s\n' "${NOTE:-[NOTE]} - Backed up $dir_name to $backup_dir." | tee -a "$log"
             fi
-            if [ -f "$BACKUP_DIR/0-shared-fonts.rasi" ]; then
-              cp "$BACKUP_DIR/0-shared-fonts.rasi" "$HOME/.config/rofi/0-shared-fonts.rasi" >>"$log" 2>&1
+            printf '%s\n' "${OK:-[OK]} - Replaced $dir_name with new configuration." | tee -a "$log"
+            if [[ "$dir_name" == rofi && -n "$backup_dir" ]]; then
+              if [[ -d "$backup_dir/themes" ]]; then
+                mkdir -p "$HOME/.config/rofi/themes"
+                for file in "$backup_dir/themes"/*; do
+                  [[ -e "$file" ]] || continue
+                  cp -n -- "$file" "$HOME/.config/rofi/themes/" >>"$log" 2>&1
+                done
+              fi
+              if [[ -f "$backup_dir/0-shared-fonts.rasi" ]]; then
+                cp -- "$backup_dir/0-shared-fonts.rasi" "$HOME/.config/rofi/0-shared-fonts.rasi" >>"$log" 2>&1
+              fi
             fi
-          fi
-          break
-          ;;
-        [Nn]*)
-          echo -e "${NOTE:-[NOTE]} - Skipping ${YELLOW:-}$DIR2${RESET:-}" 2>&1 | tee -a "$log"
-          break
-          ;;
-        *) echo -e "${WARN:-[WARN]} - Invalid choice. Please enter Y or N." ;;
+            break
+            ;;
+          [Nn]*)
+            printf '%s\n' "${NOTE:-[NOTE]} - Skipping $dir_name" | tee -a "$log"
+            break
+            ;;
+          *)
+            printf '%s\n' "${WARN:-[WARN]} - Invalid choice. Please enter Y or N."
+            ;;
         esac
       done
     else
-      cp -r "config/$DIR2" "$HOME/.config/$DIR2" 2>&1 | tee -a "$log"
-      echo -e "${OK:-[OK]} - Copy completed for ${YELLOW:-}$DIR2${RESET:-}" 2>&1 | tee -a "$log"
+      cp -a -- "config/$dir_name" "$dir_path" 2>&1 | tee -a "$log"
+      printf '%s\n' "${OK:-[OK]} - Copy completed for $dir_name" | tee -a "$log"
     fi
   done
 }
 
 copy_waybar() {
   local log="$1"
-  local DIRW="waybar"
-  local DIRPATHw="$HOME/.config/$DIRW"
-  if [ -d "$DIRPATHw" ]; then
+  local dir_path="$HOME/.config/waybar"
+
+  if [[ -d "$dir_path" ]]; then
     while true; do
-      echo -n "${CAT:-[ACTION]} Do you want to replace ${YELLOW:-}$DIRW${RESET:-} config? (y/n): "
-      read DIR1_CHOICE
-      case "$DIR1_CHOICE" in
-      [Yy]*)
-        BACKUP_DIR=$(get_backup_dirname)
-        cp -r "$DIRPATHw" "$DIRPATHw-backup-$BACKUP_DIR" 2>&1 | tee -a "$log"
-        echo -e "${NOTE:-[NOTE]} - Backed up $DIRW to $DIRPATHw-backup-$BACKUP_DIR." 2>&1 | tee -a "$log"
-        rm -rf "$DIRPATHw" && cp -r "config/$DIRW" "$DIRPATHw" 2>&1 | tee -a "$log"
-        for file in "config" "style.css"; do
-          symlink="$DIRPATHw-backup-$BACKUP_DIR/$file"
-          target_file="$DIRPATHw/$file"
-          if [ -L "$symlink" ]; then
-            symlink_target=$(readlink "$symlink")
-            if [ -f "$symlink_target" ]; then
-              rm -f "$target_file" && cp -f "$symlink_target" "$target_file"
+      printf '%s' "${CAT:-[ACTION]} Do you want to replace ${YELLOW:-}waybar${RESET:-} config? (y/n): "
+      read -r choice
+      case "$choice" in
+        [Yy]*)
+          local backup_dir
+          backup_dir="$(replace_dir_transaction "config/waybar" "$dir_path" "$log")"
+          printf '%s\n' "${NOTE:-[NOTE]} - Backed up waybar to ${backup_dir:-none}." | tee -a "$log"
+
+          if [[ -n "$backup_dir" ]]; then
+            local file symlink symlink_target target_file
+            for file in config style.css; do
+              symlink="$backup_dir/$file"
+              target_file="$dir_path/$file"
+              if [[ -L "$symlink" ]]; then
+                symlink_target="$(readlink -- "$symlink")"
+                [[ -f "$symlink_target" ]] || continue
+                rm -f -- "$target_file"
+                cp -f -- "$symlink_target" "$target_file"
+              fi
+            done
+
+            if [[ -d "$backup_dir/configs" ]]; then
+              for entry in "$backup_dir/configs"/*; do
+                [[ -e "$entry" ]] || continue
+                local target="$dir_path/configs/$(basename -- "$entry")"
+                [[ -e "$target" ]] && continue
+                cp -a -- "$entry" "$dir_path/configs/"
+              done
+            fi
+
+            if [[ -d "$backup_dir/style" ]]; then
+              for entry in "$backup_dir/style"/*; do
+                [[ -e "$entry" ]] || continue
+                local target="$dir_path/style/$(basename -- "$entry")"
+                [[ -e "$target" ]] && continue
+                cp -a -- "$entry" "$dir_path/style/"
+              done
+            fi
+
+            if [[ -f "$backup_dir/UserModules" ]]; then
+              cp -f -- "$backup_dir/UserModules" "$dir_path/UserModules"
             fi
           fi
-        done
-        for dir in "$DIRPATHw-backup-$BACKUP_DIR/configs"/*; do
-          [ -e "$dir" ] || continue
-          if [ -d "$dir" ]; then
-            target_dir="$HOME/.config/waybar/configs/$(basename "$dir")"
-            [ -d "$target_dir" ] || cp -r "$dir" "$HOME/.config/waybar/configs/"
-          fi
-        done
-        for file in "$DIRPATHw-backup-$BACKUP_DIR/configs"/*; do
-          [ -e "$file" ] || continue
-          target_file="$HOME/.config/waybar/configs/$(basename "$file")"
-          [ -e "$target_file" ] || cp "$file" "$HOME/.config/waybar/configs/"
-        done || true
-        for file in "$DIRPATHw-backup-$BACKUP_DIR/style"/*; do
-          [ -e "$file" ] || continue
-          if [ -d "$file" ]; then
-            target_dir="$HOME/.config/waybar/style/$(basename "$file")"
-            [ -d "$target_dir" ] || cp -r "$file" "$HOME/.config/waybar/style/"
-          else
-            target_file="$HOME/.config/waybar/style/$(basename "$file")"
-            [ -e "$target_file" ] || cp "$file" "$HOME/.config/waybar/style/"
-          fi
-        done || true
-        BACKUP_FILEw="$DIRPATHw-backup-$BACKUP_DIR/UserModules"
-        [ -f "$BACKUP_FILEw" ] && cp -f "$BACKUP_FILEw" "$DIRPATHw/UserModules"
-        break
-        ;;
-      [Nn]*)
-        echo -e "${NOTE:-[NOTE]} - Skipping ${YELLOW:-}$DIRW${RESET:-} config replacement." 2>&1 | tee -a "$log"
-        break
-        ;;
-      *) echo -e "${WARN:-[WARN]} - Invalid choice. Please enter Y or N." ;;
+          printf '%s\n' "${OK:-[OK]} - Replaced waybar with new configuration." | tee -a "$log"
+          break
+          ;;
+        [Nn]*)
+          printf '%s\n' "${NOTE:-[NOTE]} - Skipping waybar config replacement." | tee -a "$log"
+          break
+          ;;
+        *)
+          printf '%s\n' "${WARN:-[WARN]} - Invalid choice. Please enter Y or N."
+          ;;
       esac
     done
   else
-    cp -r "config/$DIRW" "$DIRPATHw" 2>&1 | tee -a "$log"
-    echo -e "${OK:-[OK]} - Copy completed for ${YELLOW:-}$DIRW${RESET:-}" 2>&1 | tee -a "$log"
+    cp -a -- "config/waybar" "$dir_path" 2>&1 | tee -a "$log"
+    printf '%s\n' "${OK:-[OK]} - Copy completed for waybar" | tee -a "$log"
   fi
 }
 
 copy_phase2() {
   local log="$1"
-  local DIR="btop cava hypr Kvantum qt5ct qt6ct swappy wallust wlogout"
-  for DIR_NAME in $DIR; do
-    local DIRPATH="$HOME/.config/$DIR_NAME"
-    if [ -d "$DIRPATH" ]; then
-      echo -e "\n${NOTE:-[NOTE]} - Config for ${YELLOW:-}$DIR_NAME${RESET:-} found, attempting to back up."
-      BACKUP_DIR=$(get_backup_dirname)
-      mv "$DIRPATH" "$DIRPATH-backup-$BACKUP_DIR" 2>&1 | tee -a "$log"
-    fi
-    if [ -d "config/$DIR_NAME" ]; then
-      cp -r "config/$DIR_NAME/" "$HOME/.config/$DIR_NAME" 2>&1 | tee -a "$log"
-      echo "${OK:-[OK]} - Copy of config for ${YELLOW:-}$DIR_NAME${RESET:-} completed!" 2>&1 | tee -a "$log"
+  local -a dirs=(btop cava hypr Kvantum qt5ct qt6ct swappy wallust wlogout)
+
+  for dir_name in "${dirs[@]}"; do
+    local dir_path="$HOME/.config/$dir_name"
+    local source="config/$dir_name"
+    local backup_dir=""
+
+    if [[ -d "$source" ]]; then
+      if [[ -e "$dir_path" || -L "$dir_path" ]]; then
+        backup_dir="$(replace_dir_transaction "$source" "$dir_path" "$log")"
+      else
+        mkdir -p -- "$(dirname -- "$dir_path")"
+        cp -a -- "$source" "$dir_path" 2>&1 | tee -a "$log"
+      fi
+      printf '%s\n' "${OK:-[OK]} - Copy of config for $dir_name completed." | tee -a "$log"
     else
-      echo "${ERROR:-[ERROR]} - Directory config/$DIR_NAME does not exist to copy." 2>&1 | tee -a "$log"
+      printf '%s\n' "${ERROR:-[ERROR]} - Directory $source does not exist to copy." | tee -a "$log"
+      return 1
+    fi
+
+    if [[ "$dir_name" == hypr && -n "$backup_dir" ]]; then
+      LAST_HYPR_BACKUP_PATH="$backup_dir"
     fi
   done
+
   install_terminal_configs "$log"
 }
 
-# Restore user-owned Lua animation and monitor profiles without reintroducing
-# historical .conf payloads from pre-Lua backups.
 restore_hypr_assets() {
   local log="$1"
   local express_mode="$2"
+  local hypr_dir="$HOME/.config/hypr"
+  local backup_hypr_path="$LAST_HYPR_BACKUP_PATH"
 
-  local HYPR_DIR="$HOME/.config/hypr"
-  local BACKUP_DIR
-  BACKUP_DIR=$(get_backup_dirname)
-  local BACKUP_HYPR_PATH="$HYPR_DIR-backup-$BACKUP_DIR"
-
-  if [ -d "$BACKUP_HYPR_PATH" ]; then
-    if [ "$express_mode" -eq 1 ]; then
-      echo "${NOTE:-[NOTE]} Express mode: skipping automatic restoration of animations and monitor profiles." 2>&1 | tee -a "$log"
-      return
-    fi
-
-    echo -e "\n${NOTE:-[NOTE]} Restoring user Lua animations and monitor profiles into ${YELLOW:-}$HYPR_DIR${RESET:-}..."
-
-    local LUA_DIR
-    for LUA_DIR in "Monitor_Profiles" "animations"; do
-      local BACKUP_SUBDIR="$BACKUP_HYPR_PATH/$LUA_DIR"
-      if [ -d "$BACKUP_SUBDIR" ]; then
-        find "$BACKUP_SUBDIR" -maxdepth 1 -type f -name '*.lua' -exec cp -f {} "$HYPR_DIR/$LUA_DIR/" \; 2>&1 | tee -a "$log"
-        echo "${OK:-[OK]} - Restored Lua profiles: ${MAGENTA:-}$LUA_DIR${RESET:-}" 2>&1 | tee -a "$log"
-      fi
-    done
-
-    # Wallpaper effects are not Hyprland configuration syntax and retain their
-    # full backup/restore behavior.
-    local WALLPAPER_BACKUP="$BACKUP_HYPR_PATH/wallpaper_effects"
-    if [ -d "$WALLPAPER_BACKUP" ]; then
-      cp -r "$WALLPAPER_BACKUP" "$HYPR_DIR/" 2>&1 | tee -a "$log"
-      echo "${OK:-[OK]} - Restored directory: ${MAGENTA:-}wallpaper_effects${RESET:-}" 2>&1 | tee -a "$log"
-    fi
-
-    # Current generated machine state is Lua. Never restore pre-Lua .conf files.
-    local FILE_B=("monitors.lua" "workspaces.lua")
-    for FILE_RESTORE in "${FILE_B[@]}"; do
-      local BACKUP_FILE="$BACKUP_HYPR_PATH/$FILE_RESTORE"
-      if [ -f "$BACKUP_FILE" ]; then
-        cp "$BACKUP_FILE" "$HYPR_DIR/$FILE_RESTORE" 2>&1 | tee -a "$log"
-        echo "${OK:-[OK]} - Restored file: ${MAGENTA:-}$FILE_RESTORE${RESET:-}" 2>&1 | tee -a "$log"
-      fi
-    done
+  [[ -n "$backup_hypr_path" && -d "$backup_hypr_path" ]] || return 0
+  if [[ "$express_mode" -eq 1 ]]; then
+    printf '%s\n' "${NOTE:-[NOTE]} Express mode: skipping automatic restoration of animations and monitor profiles." | tee -a "$log"
+    return 0
   fi
+
+  printf '\n%s\n' "${NOTE:-[NOTE]} Restoring user Lua animations and monitor profiles into $hypr_dir..."
+
+  local lua_dir backup_subdir
+  for lua_dir in Monitor_Profiles animations; do
+    backup_subdir="$backup_hypr_path/$lua_dir"
+    if [[ -d "$backup_subdir" && -d "$hypr_dir/$lua_dir" ]]; then
+      find "$backup_subdir" -maxdepth 1 -type f -name '*.lua' -exec cp -f -- {} "$hypr_dir/$lua_dir/" \; 2>&1 | tee -a "$log"
+      printf '%s\n' "${OK:-[OK]} - Restored Lua profiles: $lua_dir" | tee -a "$log"
+    fi
+  done
+
+  local wallpaper_backup="$backup_hypr_path/wallpaper_effects"
+  if [[ -d "$wallpaper_backup" ]]; then
+    rm -rf -- "$hypr_dir/wallpaper_effects"
+    cp -a -- "$wallpaper_backup" "$hypr_dir/" 2>&1 | tee -a "$log"
+    printf '%s\n' "${OK:-[OK]} - Restored directory: wallpaper_effects" | tee -a "$log"
+  fi
+
+  local file_restore backup_file
+  for file_restore in monitors.lua workspaces.lua; do
+    backup_file="$backup_hypr_path/$file_restore"
+    if [[ -f "$backup_file" ]]; then
+      cp -f -- "$backup_file" "$hypr_dir/$file_restore" 2>&1 | tee -a "$log"
+      printf '%s\n' "${OK:-[OK]} - Restored file: $file_restore" | tee -a "$log"
+    fi
+  done
 }
 
-# Helper to extract overlay additions/disables from previous user file vs base
 compose_overlay_from_backup() {
   local type="$1"
   local base_file="$2"
   local old_user_file="$3"
   local new_user_file="$4"
   local disable_file="$5"
+  local old_tmp base_tmp
 
-  mkdir -p "$(dirname "$new_user_file")"
+  mkdir -p -- "$(dirname -- "$new_user_file")"
+  old_tmp="$(mktemp)"
+  base_tmp="$(mktemp)"
+  trap 'rm -f -- "$old_tmp" "$base_tmp"' RETURN
   : >"$new_user_file"
   : >"$disable_file"
 
-  if [ "$type" = "startup" ]; then
-    grep -E '^\s*exec-once\s*=' "$old_user_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$old_user_file.tmp.exec"
-    grep -E '^\s*exec-once\s*=' "$base_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$base_file.tmp.exec"
-    comm -23 "$old_user_file.tmp.exec" "$base_file.tmp.exec" >"$new_user_file"
-    grep -E '^\s*#\s*exec-once\s*=' "$old_user_file" |
-      sed -E 's/^\s*#\s*exec-once\s*=\s*//' |
-      sed -E 's/^\s+//;s/\s+$//' |
-      grep -Ev '^\$scriptsDir/KeybindsLayoutInit\.sh$' |
-      sort -u >"$disable_file"
-    rm -f "$old_user_file.tmp.exec" "$base_file.tmp.exec"
-  elif [ "$type" = "windowrules" ]; then
-    grep -E '^(windowrule|layerrule)\s*=' "$old_user_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$old_user_file.tmp.rules"
-    grep -E '^(windowrule|layerrule)\s*=' "$base_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$base_file.tmp.rules"
-    comm -23 "$old_user_file.tmp.rules" "$base_file.tmp.rules" >"$new_user_file"
-    grep -E '^\s*#\s*(windowrule|layerrule)\s*=' "$old_user_file" | sed -E 's/^\s*#\s*//' | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$disable_file"
-    rm -f "$old_user_file.tmp.rules" "$base_file.tmp.rules"
-  fi
+  case "$type" in
+    startup)
+      grep -E '^\s*exec-once\s*=' "$old_user_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$old_tmp" || true
+      grep -E '^\s*exec-once\s*=' "$base_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$base_tmp" || true
+      comm -23 "$old_tmp" "$base_tmp" >"$new_user_file"
+      grep -E '^\s*#\s*exec-once\s*=' "$old_user_file" |
+        sed -E 's/^\s*#\s*exec-once\s*=\s*//' |
+        sed -E 's/^\s+//;s/\s+$//' |
+        grep -Ev '^\$scriptsDir/KeybindsLayoutInit\.sh$' |
+        sort -u >"$disable_file" || true
+      ;;
+    windowrules)
+      grep -E '^(windowrule|layerrule)\s*=' "$old_user_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$old_tmp" || true
+      grep -E '^(windowrule|layerrule)\s*=' "$base_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$base_tmp" || true
+      comm -23 "$old_tmp" "$base_tmp" >"$new_user_file"
+      grep -E '^\s*#\s*(windowrule|layerrule)\s*=' "$old_user_file" |
+        sed -E 's/^\s*#\s*//' |
+        sed -E 's/^\s+//;s/\s+$//' |
+        sort -u >"$disable_file" || true
+      ;;
+    *)
+      printf '%s\n' "unsupported overlay type: $type" >&2
+      return 2
+      ;;
+  esac
 }
 
 cleanup_duplicate_userconfigs() {
   local current_version="$1"
   local log="$2"
 
-  if [ -z "$current_version" ]; then
-    return
-  fi
-
+  [[ -n "$current_version" ]] || return 0
   if version_gte "$current_version" "2.3.20"; then
-    echo "${INFO:-[INFO]} Skipping UserConfigs duplicate cleanup for detected version v$current_version (>= 2.3.20)." 2>&1 | tee -a "$log"
-    return
+    printf '%s\n' "${INFO:-[INFO]} Skipping UserConfigs duplicate cleanup for detected version v$current_version (>= 2.3.20)." | tee -a "$log"
+    return 0
   fi
 
-  echo "${INFO:-[INFO]} Running UserConfigs duplicate cleanup for detected version v$current_version (<= 2.3.19)." 2>&1 | tee -a "$log"
+  printf '%s\n' "${INFO:-[INFO]} Running UserConfigs duplicate cleanup for detected version v$current_version (<= 2.3.19)." | tee -a "$log"
 
-  local HYPR_DIR="$HOME/.config/hypr"
-  local BASE_DIR="$HYPR_DIR/configs"
-  local USER_DIR="$HYPR_DIR/UserConfigs"
+  local hypr_dir="$HOME/.config/hypr"
+  local base_dir="$hypr_dir/configs"
+  local user_dir="$hypr_dir/UserConfigs"
+  local start_base="$base_dir/Startup_Apps.conf"
+  local start_user="$user_dir/Startup_Apps.conf"
+  local window_base="$base_dir/WindowRules.conf"
+  local window_user="$user_dir/WindowRules.conf"
+  local keybind_base="$base_dir/Keybinds.conf"
+  local keybind_user="$user_dir/UserKeybinds.conf"
+  local tmp backup
 
-  local STARTUP_BASE="$BASE_DIR/Startup_Apps.conf"
-  local STARTUP_USER="$USER_DIR/Startup_Apps.conf"
-  local WINDOW_BASE="$BASE_DIR/WindowRules.conf"
-  local WINDOW_USER="$USER_DIR/WindowRules.conf"
-  local KEYBINDS_BASE="$BASE_DIR/Keybinds.conf"
-  local KEYBINDS_USER="$USER_DIR/UserKeybinds.conf"
-
-  # Startup_Apps: strip exec-once lines from UserConfigs that are exact
-  # duplicates of the base Startup_Apps.conf.
-  if [ -f "$STARTUP_BASE" ] && [ -f "$STARTUP_USER" ]; then
-    local tmp_startup
-    local backup_startup
-    backup_startup="$STARTUP_USER.backup-dupfix-$(date +%Y%m%d-%H%M%S)"
-    tmp_startup=$(mktemp)
+  if [[ -f "$start_base" && -f "$start_user" ]]; then
+    tmp="$(mktemp)"
+    backup="$start_user.backup-dupfix-$(date +%Y%m%d-%H%M%S)"
     awk '
       function trim(s){ gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
-      FNR==NR {
-        if ($0 ~ /^[ \t]*exec-once[ \t]*=/) {
-          line=trim($0)
-          base[line]=1
-        }
-        next
-      }
-      {
-        if ($0 ~ /^[ \t]*exec-once[ \t]*=/) {
-          line=trim($0)
-          if (line in base) next
-        }
-        print
-      }
-    ' "$STARTUP_BASE" "$STARTUP_USER" >"$tmp_startup"
-    if ! cmp -s "$STARTUP_USER" "$tmp_startup"; then
-      cp "$STARTUP_USER" "$backup_startup"
-      mv "$tmp_startup" "$STARTUP_USER"
-      echo "${NOTE:-[NOTE]} - Removed duplicate Startup_Apps entries matching base config." 2>&1 | tee -a "$log"
+      FNR==NR { if ($0 ~ /^[ \t]*exec-once[ \t]*=/) base[trim($0)]=1; next }
+      { if ($0 ~ /^[ \t]*exec-once[ \t]*=/ && trim($0) in base) next; print }
+    ' "$start_base" "$start_user" >"$tmp"
+    if ! cmp -s "$start_user" "$tmp"; then
+      cp -f -- "$start_user" "$backup"
+      mv -- "$tmp" "$start_user"
+      printf '%s\n' "${NOTE:-[NOTE]} - Removed duplicate Startup_Apps entries matching base config." | tee -a "$log"
     else
-      rm -f "$tmp_startup"
+      rm -f -- "$tmp"
     fi
   fi
 
-  # WindowRules: strip windowrule/layerrule lines from UserConfigs that
-  # are exact duplicates of the base WindowRules.conf.
-  if [ -f "$WINDOW_BASE" ] && [ -f "$WINDOW_USER" ]; then
-    local tmp_window
-    local backup_window
-    backup_window="$WINDOW_USER.backup-dupfix-$(date +%Y%m%d-%H%M%S)"
-    tmp_window=$(mktemp)
+  if [[ -f "$window_base" && -f "$window_user" ]]; then
+    tmp="$(mktemp)"
+    backup="$window_user.backup-dupfix-$(date +%Y%m%d-%H%M%S)"
     awk '
       function trim(s){ gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
-      FNR==NR {
-        if ($0 ~ /^[ \t]*(windowrule|layerrule)[ \t]*=/) {
-          line=trim($0)
-          base[line]=1
-        }
-        next
-      }
-      {
-        if ($0 ~ /^[ \t]*(windowrule|layerrule)[ \t]*=/) {
-          line=trim($0)
-          if (line in base) next
-        }
-        print
-      }
-    ' "$WINDOW_BASE" "$WINDOW_USER" >"$tmp_window"
-    if ! cmp -s "$WINDOW_USER" "$tmp_window"; then
-      cp "$WINDOW_USER" "$backup_window"
-      mv "$tmp_window" "$WINDOW_USER"
-      echo "${NOTE:-[NOTE]} - Removed duplicate WindowRules entries matching base config." 2>&1 | tee -a "$log"
+      FNR==NR { if ($0 ~ /^[ \t]*(windowrule|layerrule)[ \t]*=/) base[trim($0)]=1; next }
+      { if ($0 ~ /^[ \t]*(windowrule|layerrule)[ \t]*=/ && trim($0) in base) next; print }
+    ' "$window_base" "$window_user" >"$tmp"
+    if ! cmp -s "$window_user" "$tmp"; then
+      cp -f -- "$window_user" "$backup"
+      mv -- "$tmp" "$window_user"
+      printf '%s\n' "${NOTE:-[NOTE]} - Removed duplicate WindowRules entries matching base config." | tee -a "$log"
     else
-      rm -f "$tmp_window"
+      rm -f -- "$tmp"
     fi
   fi
 
-  # Keybinds: strip bind* lines from UserKeybinds.conf that are exact
-  # duplicates of the base Keybinds.conf. Comments and unbinds are kept.
-  if [ -f "$KEYBINDS_BASE" ] && [ -f "$KEYBINDS_USER" ]; then
-    local tmp_keybinds
-    local backup_keybinds
-    backup_keybinds="$KEYBINDS_USER.backup-dupfix-$(date +%Y%m%d-%H%M%S)"
-    tmp_keybinds=$(mktemp)
+  if [[ -f "$keybind_base" && -f "$keybind_user" ]]; then
+    tmp="$(mktemp)"
+    backup="$keybind_user.backup-dupfix-$(date +%Y%m%d-%H%M%S)"
     awk '
       function trim(s){ gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
-      FNR==NR {
-        if ($0 ~ /^[ \t]*bind[a-z]*[ \t]*=/) {
-          line=trim($0)
-          base[line]=1
-        }
-        next
-      }
-      {
-        if ($0 ~ /^[ \t]*bind[a-z]*[ \t]*=/) {
-          line=trim($0)
-          if (line in base) next
-        }
-        print
-      }
-    ' "$KEYBINDS_BASE" "$KEYBINDS_USER" >"$tmp_keybinds"
-    if ! cmp -s "$KEYBINDS_USER" "$tmp_keybinds"; then
-      cp "$KEYBINDS_USER" "$backup_keybinds"
-      mv "$tmp_keybinds" "$KEYBINDS_USER"
-      echo "${NOTE:-[NOTE]} - Removed duplicate UserKeybinds entries matching base Keybinds.conf." 2>&1 | tee -a "$log"
+      FNR==NR { if ($0 ~ /^[ \t]*bind[a-z]*[ \t]*=/) base[trim($0)]=1; next }
+      { if ($0 ~ /^[ \t]*bind[a-z]*[ \t]*=/ && trim($0) in base) next; print }
+    ' "$keybind_base" "$keybind_user" >"$tmp"
+    if ! cmp -s "$keybind_user" "$tmp"; then
+      cp -f -- "$keybind_user" "$backup"
+      mv -- "$tmp" "$keybind_user"
+      printf '%s\n' "${NOTE:-[NOTE]} - Removed duplicate UserKeybinds entries matching base Keybinds.conf." | tee -a "$log"
     else
-      rm -f "$tmp_keybinds"
+      rm -f -- "$tmp"
     fi
   fi
 }
@@ -338,174 +313,101 @@ restore_user_configs() {
   local log="$1"
   local express_mode="$2"
   local old_version="$3"
+  local dirpath="$HOME/.config/hypr"
+  local backup_dir_path="$LAST_HYPR_BACKUP_PATH/UserConfigs"
 
-  local DIRPATH="$HOME/.config/hypr"
-  local BACKUP_DIR
-  BACKUP_DIR=$(get_backup_dirname)
-  local BACKUP_DIR_PATH="$DIRPATH-backup-$BACKUP_DIR/UserConfigs"
+  [[ -n "$LAST_HYPR_BACKUP_PATH" && -d "$backup_dir_path" ]] || return 0
+  if [[ "$express_mode" -eq 1 ]]; then
+    printf '%s\n' "${NOTE:-[NOTE]} Express mode: skipping UserConfigs restoration prompts." | tee -a "$log"
+  else
+    local current_version="${old_version:-999.9.9}"
+    local target_version="2.3.19"
+    printf '%s\n' "${NOTE:-[NOTE]} Restoring previous User-Configs..." | tee -a "$log"
 
-  if [ -z "$BACKUP_DIR" ]; then
-    echo "${ERROR:-[ERROR]} - Backup directory name is empty. Exiting." 2>&1 | tee -a "$log"
-    exit 1
-  fi
-
-  local SKIP_RESTORE_PROMPTS=0
-  if [ -d "$BACKUP_DIR_PATH" ] && [ "$express_mode" -eq 1 ]; then
-    echo "${NOTE:-[NOTE]} Express mode: skipping UserConfigs restoration prompts." 2>&1 | tee -a "$log"
-    SKIP_RESTORE_PROMPTS=1
-  fi
-
-  if [ -d "$BACKUP_DIR_PATH" ] && [ "$SKIP_RESTORE_PROMPTS" -eq 0 ]; then
-    local VERSION_FILE
-    VERSION_FILE=$(find "$DIRPATH" -maxdepth 1 -name "v*.*.*" | head -n 1)
-    local CURRENT_VERSION="999.9.9"
-    if [ -n "$old_version" ]; then
-      CURRENT_VERSION="$old_version"
-    fi
-
-    local TARGET_VERSION="2.3.19"
-
-    echo -e "${NOTE:-[NOTE]} Restoring previous ${MAGENTA:-}User-Configs${RESET:-}... " 2>&1 | tee -a "$log"
-
-    if version_gte "$CURRENT_VERSION" "$TARGET_VERSION"; then
-      read -r -p "${CAT:-[ACTION]} Do you want to restore your previous UserConfigs directory? (Y/n): " restore_userconfigs_dir
-      if [[ "$restore_userconfigs_dir" != [Nn]* ]]; then
-        echo "${NOTE:-[NOTE]} Restoring UserConfigs directory..." 2>&1 | tee -a "$log"
-        rsync -a "$BACKUP_DIR_PATH/" "$DIRPATH/UserConfigs/" 2>&1 | tee -a "$log"
-        echo "${OK:-[OK]} - UserConfigs directory restored." 2>&1 | tee -a "$log"
+    if version_gte "$current_version" "$target_version"; then
+      read -r -p "${CAT:-[ACTION]} Do you want to restore your previous UserConfigs directory? (Y/n): " restore_dir
+      if [[ "$restore_dir" != [Nn]* ]]; then
+        mkdir -p -- "$dirpath/UserConfigs"
+        rsync -a -- "$backup_dir_path/" "$dirpath/UserConfigs/" 2>&1 | tee -a "$log"
+        printf '%s\n' "${OK:-[OK]} - UserConfigs directory restored." | tee -a "$log"
       else
-        echo "${NOTE:-[NOTE]} - Skipped restoring UserConfigs." 2>&1 | tee -a "$log"
+        printf '%s\n' "${NOTE:-[NOTE]} - Skipped restoring UserConfigs." | tee -a "$log"
       fi
     else
-      echo -e "${NOTE:-[NOTE]} Detected version ${YELLOW:-}v$CURRENT_VERSION${RESET:-} (older than v$TARGET_VERSION). Using legacy restoration mode." 2>&1 | tee -a "$log"
-
-      local FILES_TO_RESTORE=(
-        "01-UserDefaults.conf"
-        "ENVariables.conf"
-        "LaptopDisplay.conf"
-        "Laptops.conf"
-        "Startup_Apps.conf"
-        "UserDecorations.conf"
-        "UserAnimations.conf"
-        "UserKeybinds.conf"
-        "UserSettings.conf"
-        "WindowRules.conf"
-      )
-
-      for FILE_NAME in "${FILES_TO_RESTORE[@]}"; do
-        local BACKUP_FILE="$BACKUP_DIR_PATH/$FILE_NAME"
-        if [ -f "$BACKUP_FILE" ]; then
-          if [ "$FILE_NAME" = "Startup_Apps.conf" ]; then
-            compose_overlay_from_backup "startup" "$DIRPATH/configs/Startup_Apps.conf" "$BACKUP_FILE" "$DIRPATH/UserConfigs/Startup_Apps.conf" "$DIRPATH/UserConfigs/Startup_Apps.disable"
-            echo "${OK:-[OK]} - Migrated overlay for ${YELLOW:-}$FILE_NAME${RESET:-}" 2>&1 | tee -a "$log"
-            continue
-          fi
-          if [ "$FILE_NAME" = "WindowRules.conf" ]; then
-            compose_overlay_from_backup "windowrules" "$DIRPATH/configs/WindowRules.conf" "$BACKUP_FILE" "$DIRPATH/UserConfigs/WindowRules.conf" "$DIRPATH/UserConfigs/WindowRules.disable"
-            echo "${OK:-[OK]} - Migrated overlay for ${YELLOW:-}$FILE_NAME${RESET:-}" 2>&1 | tee -a "$log"
-            continue
-          fi
-
-          printf "\n${INFO:-[INFO]} Found ${YELLOW:-}$FILE_NAME${RESET:-} in hypr backup...\n"
-          read -r -p "${CAT:-[ACTION]} Do you want to restore ${YELLOW:-}$FILE_NAME${RESET:-} from backup? (Y/n): " file_restore
-
-          if [[ "$file_restore" != [Nn]* ]]; then
-            if cp "$BACKUP_FILE" "$DIRPATH/UserConfigs/$FILE_NAME"; then
-              echo "${OK:-[OK]} - $FILE_NAME restored!" 2>&1 | tee -a "$log"
-            else
-              echo "${ERROR:-[ERROR]} - Failed to restore $FILE_NAME!" 2>&1 | tee -a "$log"
-            fi
-          else
-            echo "${NOTE:-[NOTE]} - Skipped restoring $FILE_NAME." 2>&1 | tee -a "$log"
-          fi
+      printf '%s\n' "${NOTE:-[NOTE]} Detected version v$current_version (older than v$target_version). Using legacy restoration mode." | tee -a "$log"
+      local -a files=(01-UserDefaults.conf ENVariables.conf LaptopDisplay.conf Laptops.conf Startup_Apps.conf UserDecorations.conf UserAnimations.conf UserKeybinds.conf UserSettings.conf WindowRules.conf)
+      local file_name backup_file
+      mkdir -p -- "$dirpath/UserConfigs"
+      for file_name in "${files[@]}"; do
+        backup_file="$backup_dir_path/$file_name"
+        [[ -f "$backup_file" ]] || continue
+        printf '\n%s Found %s in hypr backup...\n' "${INFO:-[INFO]}" "$file_name"
+        read -r -p "${CAT:-[ACTION]} Do you want to restore $file_name from backup? (Y/n): " restore_file
+        if [[ "$restore_file" != [Nn]* ]]; then
+          cp -f -- "$backup_file" "$dirpath/UserConfigs/$file_name"
+          printf '%s\n' "${OK:-[OK]} - $file_name restored!" | tee -a "$log"
+        else
+          printf '%s\n' "${NOTE:-[NOTE]} - Skipped restoring $file_name." | tee -a "$log"
         fi
       done
     fi
   fi
 
-  local detected_version="$old_version"
-  if [ -z "$detected_version" ]; then
-    detected_version=$(get_installed_dotfiles_version)
+  local detected_version="${old_version:-}"
+  if [[ -z "$detected_version" ]]; then
+    detected_version="$(get_installed_dotfiles_version)"
   fi
-  if [ -n "$detected_version" ]; then
-    cleanup_duplicate_userconfigs "$detected_version" "$log"
-  fi
+  [[ -n "$detected_version" ]] && cleanup_duplicate_userconfigs "$detected_version" "$log"
 }
 
 restore_user_scripts() {
   local log="$1"
   local express_mode="$2"
+  local dirpath="$HOME/.config/hypr"
+  local backup_dir_path="$LAST_HYPR_BACKUP_PATH/UserScripts"
+  local -a scripts_to_restore=(RofiBeats.sh Weather.py Weather.sh)
 
-  local DIRSHPATH="$HOME/.config/hypr"
-  local BACKUP_DIR
-  BACKUP_DIR=$(get_backup_dirname)
-  local BACKUP_DIR_PATH_S="$DIRSHPATH-backup-$BACKUP_DIR/UserScripts"
-  local SCRIPTS_TO_RESTORE=("RofiBeats.sh" "Weather.py" "Weather.sh")
+  [[ -n "$LAST_HYPR_BACKUP_PATH" && -d "$backup_dir_path" ]] || return 0
+  [[ "$express_mode" -eq 1 ]] && { printf '%s\n' "${NOTE:-[NOTE]} Express mode: skipping UserScripts restoration prompts." | tee -a "$log"; return 0; }
 
-  if [ -d "$BACKUP_DIR_PATH_S" ] && [ "$express_mode" -eq 1 ]; then
-    echo "${NOTE:-[NOTE]} Express mode: skipping UserScripts restoration prompts." 2>&1 | tee -a "$log"
-    return
-  fi
-
-  if [ -d "$BACKUP_DIR_PATH_S" ] && [ "$express_mode" -eq 0 ]; then
-    echo -e "${NOTE:-[NOTE]} Restoring previous ${MAGENTA:-}User-Scripts${RESET:-}..." 2>&1 | tee -a "$log"
-
-    for SCRIPT_NAME in "${SCRIPTS_TO_RESTORE[@]}"; do
-      local BACKUP_SCRIPT="$BACKUP_DIR_PATH_S/$SCRIPT_NAME"
-      if [ -f "$BACKUP_SCRIPT" ]; then
-        printf "\n${INFO:-[INFO]} Found ${YELLOW:-}$SCRIPT_NAME${RESET:-} in hypr backup...\n"
-        read -r -p "${CAT:-[ACTION]} Do you want to restore ${YELLOW:-}$SCRIPT_NAME${RESET:-} from backup? (y/N): " script_restore
-
-        if [[ "$script_restore" == [Yy]* ]]; then
-          if cp "$BACKUP_SCRIPT" "$DIRSHPATH/UserScripts/$SCRIPT_NAME"; then
-            echo "${OK:-[OK]} - $SCRIPT_NAME restored!" 2>&1 | tee -a "$log"
-          else
-            echo "${ERROR:-[ERROR]} - Failed to restore $SCRIPT_NAME!" 2>&1 | tee -a "$log"
-          fi
-        else
-          echo "${NOTE:-[NOTE]} - Skipped restoring $SCRIPT_NAME." 2>&1 | tee -a "$log"
-        fi
-      fi
-    done
-  fi
+  printf '%s\n' "${NOTE:-[NOTE]} Restoring previous User-Scripts..." | tee -a "$log"
+  local script_name backup_script
+  for script_name in "${scripts_to_restore[@]}"; do
+    backup_script="$backup_dir_path/$script_name"
+    [[ -f "$backup_script" ]] || continue
+    printf '\n%s Found %s in hypr backup...\n' "${INFO:-[INFO]}" "$script_name"
+    read -r -p "${CAT:-[ACTION]} Do you want to restore $script_name from backup? (y/N): " restore_script
+    if [[ "$restore_script" == [Yy]* ]]; then
+      cp -f -- "$backup_script" "$dirpath/UserScripts/$script_name"
+      printf '%s\n' "${OK:-[OK]} - $script_name restored!" | tee -a "$log"
+    else
+      printf '%s\n' "${NOTE:-[NOTE]} - Skipped restoring $script_name." | tee -a "$log"
+    fi
+  done
 }
 
 restore_hypr_files() {
   local log="$1"
   local express_mode="$2"
+  local dirpath="$HOME/.config/hypr"
+  local backup_dir_path="$LAST_HYPR_BACKUP_PATH"
+  local -a files=(hyprlock.conf hypridle.conf)
 
-  local DIRPATH="$HOME/.config/hypr"
-  local BACKUP_DIR
-  BACKUP_DIR=$(get_backup_dirname)
-  local BACKUP_DIR_PATH_F="$DIRPATH-backup-$BACKUP_DIR"
-  local FILES_2_RESTORE=("hyprlock.conf" "hypridle.conf")
+  [[ -n "$backup_dir_path" && -d "$backup_dir_path" ]] || return 0
+  [[ "$express_mode" -eq 1 ]] && { printf '%s\n' "${NOTE:-[NOTE]} Express mode: skipping individual hypr file restoration prompts." | tee -a "$log"; return 0; }
 
-  if [ -d "$BACKUP_DIR_PATH_F" ] && [ "$express_mode" -eq 1 ]; then
-    echo "${NOTE:-[NOTE]} Express mode: skipping individual hypr file restoration prompts." 2>&1 | tee -a "$log"
-    return
-  fi
-
-  if [ -d "$BACKUP_DIR_PATH_F" ] && [ "$express_mode" -eq 0 ]; then
-    echo -e "${NOTE:-[NOTE]} Restoring some files in ${MAGENTA:-}$HOME/.config/hypr directory${RESET:-}..." 2>&1 | tee -a "$log"
-
-    for FILE_RESTORE in "${FILES_2_RESTORE[@]}"; do
-      local BACKUP_FILE="$BACKUP_DIR_PATH_F/$FILE_RESTORE"
-      if [ -f "$BACKUP_FILE" ]; then
-        echo -e "\n${INFO:-[INFO]} Found ${YELLOW:-}$FILE_RESTORE${RESET:-} in hypr backup..."
-        read -r -p "${CAT:-[ACTION]} Do you want to restore ${YELLOW:-}$FILE_RESTORE${RESET:-} from backup? (y/N): " file2restore
-
-        if [[ "$file2restore" == [Yy]* ]]; then
-          if cp "$BACKUP_FILE" "$DIRPATH/$FILE_RESTORE"; then
-            echo "${OK:-[OK]} - $FILE_RESTORE restored!" 2>&1 | tee -a "$log"
-          else
-            echo "${ERROR:-[ERROR]} - Failed to restore $FILE_RESTORE!" 2>&1 | tee -a "$log"
-          fi
-        else
-          echo "${NOTE:-[NOTE]} - Skipped restoring $FILE_RESTORE." 2>&1 | tee -a "$log"
-        fi
-      else
-        echo "${ERROR:-[ERROR]} - Backup file $BACKUP_FILE does not exist." 2>&1 | tee -a "$log"
-      fi
-    done
-  fi
+  printf '%s\n' "${NOTE:-[NOTE]} Restoring selected files in $dirpath..." | tee -a "$log"
+  local file_restore backup_file
+  for file_restore in "${files[@]}"; do
+    backup_file="$backup_dir_path/$file_restore"
+    [[ -f "$backup_file" ]] || continue
+    printf '\n%s Found %s in hypr backup...\n' "${INFO:-[INFO]}" "$file_restore"
+    read -r -p "${CAT:-[ACTION]} Do you want to restore $file_restore from backup? (y/N): " restore_file
+    if [[ "$restore_file" == [Yy]* ]]; then
+      cp -f -- "$backup_file" "$dirpath/$file_restore"
+      printf '%s\n' "${OK:-[OK]} - $file_restore restored!" | tee -a "$log"
+    else
+      printf '%s\n' "${NOTE:-[NOTE]} - Skipped restoring $file_restore." | tee -a "$log"
+    fi
+  done
 }

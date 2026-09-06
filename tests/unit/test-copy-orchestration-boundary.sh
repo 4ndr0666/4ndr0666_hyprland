@@ -3,11 +3,18 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COPY="$ROOT/copy.sh"
+LIB_COPY="$ROOT/scripts/lib_copy.sh"
+LIB_BACKUP="$ROOT/scripts/lib_backup.sh"
 
 [[ -f "$COPY" ]] || { printf '[FAIL] Missing copy.sh\n' >&2; exit 1; }
+[[ -f "$LIB_COPY" ]] || { printf '[FAIL] Missing lib_copy.sh\n' >&2; exit 1; }
+[[ -f "$LIB_BACKUP" ]] || { printf '[FAIL] Missing lib_backup.sh\n' >&2; exit 1; }
 grep -Eq '^#!/usr/bin/env bash$' "$COPY"
 grep -q '^set -Eeuo pipefail$' "$COPY"
+grep -q '^set -Eeuo pipefail$' "$LIB_COPY"
 bash -n "$COPY"
+bash -n "$LIB_COPY"
+bash -n "$LIB_BACKUP"
 
 for helper in \
   scripts/copy_menu.sh \
@@ -44,4 +51,11 @@ grep -q 'prompt_clock_12h' "$COPY"
 
 grep -q 'trap cleanup EXIT INT TERM HUP' "$COPY"
 
-printf '[PASS] copy.sh is a strict orchestration boundary with no AGS or self-update authority.\n'
+grep -Fq 'replace_dir_transaction "config/waybar" "$dir_path" "$log"' "$LIB_COPY"
+grep -Fq 'replace_dir_transaction "$source" "$dir_path" "$log"' "$LIB_COPY"
+grep -Fq 'LAST_HYPR_BACKUP_PATH="$backup_dir"' "$LIB_COPY"
+! grep -Fq 'rm -rf "$DIRPATHw"' "$LIB_COPY"
+! grep -Fq 'cp -r "$DIRPATHw" "$DIRPATHw-backup-' "$LIB_COPY"
+! grep -Fq 'mv "$DIRPATH" "$DIRPATH-backup-' "$LIB_COPY"
+
+printf '[PASS] copy and restore orchestration is strict and transaction-bounded.\n'
