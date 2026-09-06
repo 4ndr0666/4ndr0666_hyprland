@@ -10,6 +10,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 grep -q -- '--upgrade' "$ROOT/copy.sh"
 grep -q -- '--express-upgrade' "$ROOT/copy.sh"
 
-grep -q 'immutable bootstrap' "$ROOT/auto-install.sh" || grep -q 'release revision' "$ROOT/Distro-Hyprland.sh"
+grep -q 'release revision' "$ROOT/Distro-Hyprland.sh"
+! grep -R -n --exclude-dir=.git --exclude-dir=archive --exclude='test-self-update-boundary.sh' 'auto-install\.sh\|Arch-Hyprland\.git' "$ROOT" >/dev/null 2>&1
 
 printf '%s\n' 'self-update boundary: PASS'
