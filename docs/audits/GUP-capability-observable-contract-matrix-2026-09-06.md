@@ -8,8 +8,6 @@
 
 This matrix converts the capability inventory into externally observable contracts. It is the working semantic/architectural gate artifact for Golden Unit Protocol v5.
 
-The governing rule is:
-
 > A material capability is adequately protected only when its authoritative implementation, integration edge, externally observable result, and regression invariant are all identifiable.
 
 A Golden Unit that proves only file presence or syntax is **structural**, not behavioral.
