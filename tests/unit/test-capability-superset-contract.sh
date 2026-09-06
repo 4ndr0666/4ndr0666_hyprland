@@ -17,13 +17,11 @@ grep -Fq 'intentional retirement decisions' "$MATRIX"
 grep -Fq 'authoritative implementation' "$MATRIX"
 grep -Fq 'integration edge' "$MATRIX"
 grep -Fq 'transaction boundaries' "$MATRIX"
-grep -Fq 'user-visible capability' "$MATRIX"
+grep -Fq 'externally observable result' "$MATRIX"
 
 grep -Fq 'tests/unit/test-capability-superset-contract.sh' "$RUNNER"
 grep -Fq 'tests/unit/test-uninstall-symmetry-contract.sh' "$RUNNER"
-
 grep -Fq 'C44' "$MATRIX"
-
 grep -Fq 'C45' "$MATRIX"
 
 if grep -Eq 'C45[^\n]*(file count|find .*wc|wc -l)' "$MATRIX"; then
