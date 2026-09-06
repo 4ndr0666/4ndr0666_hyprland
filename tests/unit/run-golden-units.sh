@@ -48,6 +48,8 @@ TESTS=(
   tests/unit/test-runtime-path-integrity.sh
   tests/unit/test-weather-fallback-boundary.sh
   tests/unit/test-gup-capability-contract-matrix.sh
+  tests/unit/test-keybind-reachability.sh
+  tests/unit/test-keybind-parser-lua-authority.sh
 )
 
 failures=()
