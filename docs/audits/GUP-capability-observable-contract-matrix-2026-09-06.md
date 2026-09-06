@@ -44,7 +44,7 @@ Supported capabilities at baseline
 Supported capabilities after deployment/update
 ```
 
-The comparison is against the previous stable capability set, not merely against file counts. Each baseline capability must remain represented by an authoritative implementation and integration path unless an intentional retirement is explicitly recorded. Previously fixed error handling, crash resilience, edge-case behavior, transaction boundaries, and cleanup semantics are part of the protected feature set.
+The comparison is against the previous stable capability set, not merely against file counts. Each baseline capability must remain represented by an authoritative implementation and integration path unless an intentional retirement is explicitly recorded. Intentional retirement decisions are architectural state, not silent regressions. Previously fixed error handling, crash resilience, edge-case behavior, transaction boundaries, and cleanup semantics are part of the protected feature set.
 
 **Golden Unit:** `tests/unit/test-capability-superset-contract.sh`.
 
