@@ -5,7 +5,11 @@ import sys
 
 
 def normalize_combo(combo):
-    return combo.replace(" ", "").replace("\t", "")
+    combo = combo.replace(" ", "").replace("\t", "")
+    combo = combo.replace("mainMod", "SUPER")
+    combo = combo.replace('"', "").replace("'", "")
+    combo = combo.replace("..", "")
+    return combo
 
 
 def extract_conf_combo(line):
@@ -17,13 +21,10 @@ def extract_conf_combo(line):
 
 
 def extract_lua_bind(line):
-    match = re.match(r'^\s*hl\.bind\(\s*(["\'])(.*?)\1\s*,', line)
+    match = re.match(r'^\s*hl\.bind\(\s*(.*?)\s*,', line)
     if not match:
         return None
-    combo = match.group(2).replace("..", "")
-    combo = combo.replace('" + "', "+").replace("' + '", "+")
-    combo = combo.replace("mainMod", "SUPER")
-    return combo
+    return normalize_combo(match.group(1))
 
 
 def parse_file(path):
@@ -39,7 +40,7 @@ def parse_file(path):
                 continue
             combo = extract_lua_bind(line)
             if combo:
-                yield normalize_combo(combo), line
+                yield combo, line
 
 
 def parse_files(files):
@@ -50,11 +51,8 @@ def parse_files(files):
     for file_path in files:
         try:
             entries = list(parse_file(file_path))
-        except OSError as exc:
+        except (OSError, UnicodeError) as exc:
             print(f"Error reading {file_path}: {exc}", file=sys.stderr)
-            continue
-        except UnicodeError as exc:
-            print(f"Error decoding {file_path}: {exc}", file=sys.stderr)
             continue
 
         for combo, line in entries:
@@ -69,10 +67,14 @@ def parse_files(files):
 def format_for_rofi(raw_binds):
     formatted_lines = []
     for line in raw_binds:
-        lua_match = re.match(r'^\s*hl\.bind\(\s*(["\'])(.*?)\1\s*,\s*.*?,\s*\{\s*description\s*=\s*(["\'])(.*?)\3', line)
+        lua_match = re.match(
+            r'^\s*hl\.bind\(\s*(.*?)\s*,\s*.*?,\s*\{\s*.*?description\s*=\s*(["\'])(.*?)\2',
+            line,
+        )
         if lua_match:
-            combo = lua_match.group(2).replace("mainMod", "SUPER")
-            formatted_lines.append(f"{normalize_combo(combo)} — {lua_match.group(4)}")
+            formatted_lines.append(
+                f"{normalize_combo(lua_match.group(1))} — {lua_match.group(3)}"
+            )
             continue
 
         match = re.match(r'^\s*(bind[a-z]*)\s*=(.*)', line)
