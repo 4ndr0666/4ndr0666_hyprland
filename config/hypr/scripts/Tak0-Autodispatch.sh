@@ -3,168 +3,106 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Tak0-Autodispatch.sh
 # ─────────────────────────────────────────────────────────────────────────────
-# This script is an "authoritative spawn dispatcher" for Hyprland.
-#
-# Its purpose is to FORCE all windows belonging to a single application launch
-# (main window + helpers + Electron / Steam child processes)
-# onto a specific workspace.
-#
-# It explicitly ignores:
-#   • spawn race conditions
-#   • delayed window creation
-#   • detached helper processes
-#   • Electron / Chromium / Steam madness
-#
-# Typical use cases:
-#   • Launch Steam / Discord / browsers without window leakage
-#   • Prevent apps from spawning on the currently focused workspace
-#   • Control applications that completely ignore static windowrules
-#
-# Invocation:
-#   ./Tak0-Autodispatch.sh <workspace> [rule ...] -- <command>
-#
-# Important notes:
-#   • All window rules are TEMPORARY
-#   • No permanent pollution of Hyprland configuration
+# Authoritative spawn dispatcher for Hyprland. Temporary capture rules are
+# installed before launch, process lineage is supervised, and cleanup removes
+# all temporary rules on every exit path.
 # ─────────────────────────────────────────────────────────────────────────────
-# REQUIREMENTS:
-#   - hyprctl   → runtime control of Hyprland
-#   - jq        → JSON client parsing
-#   - pgrep/ps  → process tree inspection
 
-set -u
+set -Eeuo pipefail
 
-LOGFILE="$(dirname "$0")/dispatch.log"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+LOGFILE="$SCRIPT_DIR/dispatch.log"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 0️⃣ ARGUMENT PARSING
-# ─────────────────────────────────────────────────────────────────────────────
-#   $1            → target workspace
-#   Next args     → optional capture rules (windowrulev2 syntax)
-#   "--"          → argument separator
-#   After "--"    → command to execute (verbatim)
+fail() {
+  printf '[ERROR] %s\n' "$*" >&2
+  exit 1
+}
 
-TARGET_WS="$1"
-shift || true
+cleanup() {
+  local status=$?
+  trap - EXIT INT TERM
+
+  printf 'Cleanup: removing temporary capture rules and initialWorkspace at %s\n' "$(date)" >>"$LOGFILE"
+  if ! hyprctl keyword windowrulev2 "unset, initialClass:.*" >>"$LOGFILE" 2>&1; then
+    printf '[ERROR] failed to remove global temporary capture rule\n' >&2
+    ((status == 0)) && status=1
+  fi
+  for RULE in "${CAPTURE_RULES[@]}"; do
+    printf 'Cleanup: removing temporary capture rule: %s\n' "$RULE" >>"$LOGFILE"
+    if ! hyprctl keyword windowrulev2 "unset, $RULE" >>"$LOGFILE" 2>&1; then
+      printf '[ERROR] failed to remove temporary capture rule: %s\n' "$RULE" >&2
+      ((status == 0)) && status=1
+    fi
+  done
+  exit "$status"
+}
+
+TARGET_WS="${1-}"
+[[ -n "$TARGET_WS" ]] || fail "missing target workspace"
+shift
 
 CAPTURE_RULES=()
 while [[ "${1-}" != "--" && -n "${1-}" ]]; do
   CAPTURE_RULES+=("$1")
-  shift || break
+  shift
 done
 
-if [[ "${1-}" == "--" ]]; then
-  shift
-fi
+[[ "${1-}" == "--" ]] || fail "missing -- command separator"
+shift
+(($#)) || fail "missing command after --"
 
-CMD="$*"
+CMD=("$@")
+printf "=== Deploy '%q' → WS %s @ %s ===\n" "${CMD[*]}" "$TARGET_WS" "$(date)" >>"$LOGFILE"
 
-if [[ -z "$TARGET_WS" || -z "$CMD" ]]; then
-  echo "Usage: $0 <workspace> [rule rule ...] -- <command>" >>"$LOGFILE"
-  exit 1
-fi
-
-echo "=== Deploy '$CMD' → WS $TARGET_WS @ $(date) ===" >>"$LOGFILE"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 1️⃣ HYPRLAND READINESS GATE
-# ─────────────────────────────────────────────────────────────────────────────
-#   Hyprland may not be fully initialized during early autostart.
-#   hyprctl silently fails if called too early.
-
+# Hyprland may not be ready during early autostart. Fail loudly if it never
+# becomes queryable rather than launching with an ineffective capture rule.
+ready=0
 for _ in {1..50}; do
-  hyprctl -j monitors >/dev/null 2>&1 && break
+  if hyprctl -j monitors >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
   sleep 0.1
 done
+((ready)) || fail "Hyprland did not become ready within 5 seconds"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 2️⃣ CLEANUP GUARANTEE
-# ─────────────────────────────────────────────────────────────────────────────
-#   Ensures that ALL temporary rules are removed
-#   even on crash, SIGTERM, or user interruption.
+trap cleanup EXIT INT TERM
 
-cleanup() {
-  echo "Cleanup: removing temporary capture rules and initialWorkspace at $(date)" >>"$LOGFILE"
-
-  hyprctl keyword windowrulev2 "unset, initialClass:.*" >>"$LOGFILE" 2>&1 || true
-  for RULE in "${CAPTURE_RULES[@]}"; do
-    echo "Cleanup: removing temporary capture rule: $RULE" >>"$LOGFILE"
-    hyprctl keyword windowrulev2 "unset, $RULE" >>"$LOGFILE" 2>&1 || true
-  done
-}
-
-trap cleanup EXIT INT TERM ERR
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 3️⃣ ULTRA-EARLY GLOBAL CAPTURE (NUCLEAR OPTION)
-# ─────────────────────────────────────────────────────────────────────────────
-#   Temporarily forces ALL windows (initialClass:.*)
-#   onto the target workspace.
-#
-#   Protects against ultra-fast helpers:
-#     • gpu-process
-#     • renderer
-#     • steamwebhelper
-
-echo "Applying temporary initialWorkspace capture (initialClass:.*)" >>"$LOGFILE"
+printf 'Applying temporary initialWorkspace capture (initialClass:.*)\n' >>"$LOGFILE"
 hyprctl keyword windowrulev2 \
   "initialWorkspace $TARGET_WS silent, initialClass:.*" \
-  >>"$LOGFILE" 2>&1 || true
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 3️⃣.1 OPTIONAL CLASS-BASED PRE-CAPTURE
-# ─────────────────────────────────────────────────────────────────────────────
-#   Additional precision rules.
-#   Useful for Electron / Steam multi-process hell.
+  >>"$LOGFILE" 2>&1
 
 for RULE in "${CAPTURE_RULES[@]}"; do
-  echo "Applying temporary capture rule: $RULE" >>"$LOGFILE"
+  printf 'Applying temporary capture rule: %s\n' "$RULE" >>"$LOGFILE"
   hyprctl keyword windowrulev2 \
     "initialWorkspace $TARGET_WS silent, $RULE" \
-    >>"$LOGFILE" 2>&1 || true
+    >>"$LOGFILE" 2>&1
 done
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 4️⃣ APPLICATION LAUNCH
-# ─────────────────────────────────────────────────────────────────────────────
-#   bash -c allows aliases, env vars, wrappers.
-#   ROOT_PID is the root of process lineage.
-
-bash -c "$CMD" &
+# Launch verbatim without an extra shell parsing pass.
+"${CMD[@]}" &
 ROOT_PID=$!
-echo "Root PID: $ROOT_PID" >>"$LOGFILE"
+printf 'Root PID: %s\n' "$ROOT_PID" >>"$LOGFILE"
 
-# Resolve canonical process name
 APP_NAME=""
 for _ in {1..20}; do
   if [[ -r "/proc/$ROOT_PID/comm" ]]; then
-    APP_NAME="$(tr -d '\0' </proc/$ROOT_PID/comm 2>/dev/null || true)"
+    APP_NAME="$(tr -d '\0' </proc/$ROOT_PID/comm)"
     break
   fi
   sleep 0.05
 done
 
 if [[ -z "$APP_NAME" ]]; then
-  read -r -a __toks <<<"$CMD"
-  APP_NAME="$(basename "${__toks[0]}")"
+  APP_NAME="$(basename -- "${CMD[0]}")"
 fi
-
-echo "App gate name: $APP_NAME" >>"$LOGFILE"
+printf 'App gate name: %s\n' "$APP_NAME" >>"$LOGFILE"
 
 sleep 1.5
 
-#!TO-DO: Release the nuclear option ASAP
-echo "Releasing ultra-early wide capture" >>"$LOGFILE"
-hyprctl keyword windowrulev2 "unset, initialClass:.*" >>"$LOGFILE" 2>&1 || true
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 5️⃣ SUPERVISION LOOP (AUTHORITATIVE PHASE)
-# ─────────────────────────────────────────────────────────────────────────────
-#   This loop:
-#     • scans ALL Hyprland clients
-#     • matches PID lineage
-#     • matches detached helpers
-#     • matches class rules
+printf 'Releasing ultra-early wide capture\n' >>"$LOGFILE"
+hyprctl keyword windowrulev2 "unset, initialClass:.*" >>"$LOGFILE" 2>&1
 
 get_descendants() {
   local root="$1"
@@ -174,16 +112,17 @@ get_descendants() {
   while ((changed)); do
     changed=0
     for p in "${all[@]}"; do
-      for c in $(pgrep -P "$p" 2>/dev/null || true); do
+      while read -r c; do
+        [[ -n "$c" ]] || continue
         if [[ ! " ${all[*]} " =~ " $c " ]]; then
           all+=("$c")
           changed=1
         fi
-      done
+      done < <(pgrep -P "$p" 2>/dev/null || true)
     done
   done
 
-  echo "${all[@]}"
+  printf '%s\n' "${all[*]}"
 }
 
 pid_matches_app() {
@@ -194,12 +133,13 @@ pid_matches_app() {
 }
 
 END_TIME=$((SECONDS + 20))
-declare -A SEEN
+declare -A SEEN=()
 
 while ((SECONDS < END_TIME)); do
   PIDS="$(get_descendants "$ROOT_PID")"
 
   while IFS=$'\t' read -r PID ADDR CLASS; do
+    [[ -n "$PID" && -n "$ADDR" ]] || continue
     MATCH=0
 
     for TPID in $PIDS; do
@@ -215,9 +155,9 @@ while ((SECONDS < END_TIME)); do
     done
 
     if ((MATCH)) && [[ -z "${SEEN[$ADDR]-}" ]]; then
-      echo "Placing window $ADDR (pid $PID, class $CLASS) → WS $TARGET_WS" >>"$LOGFILE"
+      printf 'Placing window %s (pid %s, class %s) → WS %s\n' "$ADDR" "$PID" "$CLASS" "$TARGET_WS" >>"$LOGFILE"
       hyprctl dispatch movetoworkspacesilent \
-        "$TARGET_WS,address:$ADDR" >>"$LOGFILE" 2>&1 || true
+        "$TARGET_WS,address:$ADDR" >>"$LOGFILE" 2>&1
       SEEN[$ADDR]=1
     fi
   done < <(hyprctl clients -j | jq -r '.[] | [.pid, .address, .class] | @tsv')
@@ -225,5 +165,5 @@ while ((SECONDS < END_TIME)); do
   sleep 0.01
 done
 
-echo "=== Deploy finished: '$CMD' ===" >>"$LOGFILE"
+printf "=== Deploy finished: '%q' ===\n" "${CMD[*]}" >>"$LOGFILE"
 exit 0
