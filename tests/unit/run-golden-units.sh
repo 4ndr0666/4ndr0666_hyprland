@@ -47,6 +47,7 @@ TESTS=(
   tests/unit/test-quickshell-overview-single-source.sh
   tests/unit/test-runtime-path-integrity.sh
   tests/unit/test-weather-fallback-boundary.sh
+  tests/unit/test-gup-capability-contract-matrix.sh
 )
 
 failures=()
