@@ -43,6 +43,7 @@ TESTS=(
   tests/unit/test-runtime-orchestration-boundaries.sh
   tests/unit/test-current-tree-integrity.sh
   tests/unit/test-quickshell-overview-single-source.sh
+  tests/unit/test-runtime-path-integrity.sh
 )
 
 failures=()

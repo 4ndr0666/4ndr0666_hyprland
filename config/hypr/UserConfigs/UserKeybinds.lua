@@ -36,7 +36,6 @@ hl.bind(mainMod .. " + SHIFT + F8", hl.dsp.exec_cmd("bash /usr/local/bin/trigger
 
 -- F9
 hl.bind(mainMod .. " + F9", hl.dsp.exec_cmd(term .. " -e " .. os.getenv("HOME") .. "/.local/bin/torwrap /dev/null 2>&1"), { description = "Torwrap" })
-hl.bind(mainMod .. " + SHIFT + F9", hl.dsp.exec_cmd("st -e python3 /home/git/clone/4ndr0666/scr/media/dorkmaster/dorkmaster.py"), { description = "Dorkmaster" })
 
 -- F10
 hl.bind(mainMod .. " + F10", hl.dsp.exec_cmd("mpv"), { description = "MPV" })
