@@ -68,14 +68,16 @@ apply_resolution_profile() {
   local resolution="$1"
   [[ "$resolution" == '< 1440p' ]] || return 0
 
-  local kitty="$SCRIPT_DIR/config/kitty/kitty.conf"
-  local lock="$SCRIPT_DIR/config/hypr/hyprlock.conf"
-  local lock1080="$SCRIPT_DIR/config/hypr/hyprlock-1080p.conf"
-  local rofi="$SCRIPT_DIR/config/rofi/0-shared-fonts.rasi"
+  local kitty="$HOME/.config/kitty/kitty.conf"
+  local lock="$HOME/.config/hypr/hyprlock.conf"
+  local lock1080="$HOME/.config/hypr/hyprlock-1080p.conf"
+  local rofi="$HOME/.config/rofi/0-shared-fonts.rasi"
 
-  [[ -f "$kitty" ]] && sed -i 's/font_size 16.0/font_size 14.0/' "$kitty"
+  if [[ -f "$kitty" ]]; then
+    sed -i 's/font_size 16.0/font_size 14.0/' "$kitty"
+  fi
   if [[ -f "$lock" && -f "$lock1080" ]]; then
-    mv -- "$lock" "$SCRIPT_DIR/config/hypr/hyprlock-2k.conf"
+    mv -- "$lock" "$HOME/.config/hypr/hyprlock-2k.conf"
     mv -- "$lock1080" "$lock"
   fi
   if [[ -f "$rofi" ]]; then
@@ -224,7 +226,6 @@ enable_quickshell "$LOG"
 ensure_keybinds_init "$LOG"
 choose_default_editor "$LOG"
 resolution="$(prompt_resolution_choice)"
-apply_resolution_profile "$resolution"
 prompt_clock_12h "$LOG"
 prompt_express_upgrade "$EXPRESS_SUPPORTED" "$LOG"
 
@@ -234,6 +235,7 @@ copy_phase1 "$LOG"
 copy_waybar "$LOG"
 copy_phase2 "$LOG"
 install_quickshell_config
+apply_resolution_profile "$resolution"
 restore_hypr_assets "$LOG" "$EXPRESS_MODE"
 restore_user_configs "$LOG" "$EXPRESS_MODE" "$INSTALLED_VERSION_AT_START"
 restore_user_scripts "$LOG" "$EXPRESS_MODE"
