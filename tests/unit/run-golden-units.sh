@@ -14,7 +14,7 @@ TESTS=(
   tests/unit/test-dotfile-destructive-patterns.sh
   tests/unit/test-bootstrap.sh
   tests/unit/test-bootstrap-docs.sh
-  tests/unit/test-auto-install-immutability.sh
+  tests/unit/test-bootstrap-authority.sh
   tests/unit/test-release-ref-consistency.sh
   tests/unit/test-aur-bootstrap.sh
   tests/unit/test-installer-entrypoint.sh
