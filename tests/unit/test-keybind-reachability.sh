@@ -21,7 +21,7 @@ while IFS='|' read -r owner relative; do
         *) fail "unknown keybind path authority: $owner" ;;
     esac
     [[ -f "$target" ]] || fail "keybind target is missing: $owner/$relative"
-done < <(sed -nE 's/.*(scriptsDir|UserScripts)[[:space:]]+\.\.[[:space:]]+"\/([^"]+)".*/\1|\2/p' "$KEYBINDS")
+done < <(sed -nE 's/.*(scriptsDir|UserScripts)[[:space:]]+\.\.[[:space:]]+"\/([^"[:space:]]+).*/\1|\2/p' "$KEYBINDS")
 
 ((found == 1)) || fail "no repository-backed keybind targets were discovered"
 printf 'PASS: all repository-backed Lua keybind targets resolve to files\n'
