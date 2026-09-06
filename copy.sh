@@ -231,6 +231,7 @@ prompt_express_upgrade "$EXPRESS_SUPPORTED" "$LOG"
 
 INSTALLED_VERSION_AT_START="$(get_installed_dotfiles_version || true)"
 
+cd -- "$SCRIPT_DIR"
 copy_phase1 "$LOG"
 copy_waybar "$LOG"
 copy_phase2 "$LOG"
