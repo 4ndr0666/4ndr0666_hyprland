@@ -10,9 +10,10 @@ fail() {
     exit 1
 }
 
-[[ -x "$PARSER" ]] || fail "keybind parser is missing or not executable"
+[[ -f "$PARSER" ]] || fail "keybind parser is missing"
 [[ -f "$KEYBINDS" ]] || fail "authoritative Lua keybind source is missing"
 
+python3 -m py_compile "$PARSER" || fail "keybind parser has invalid Python syntax"
 output="$(python3 "$PARSER" "$KEYBINDS")" || fail "Lua keybind parser rejected authoritative source"
 [[ -n "$output" ]] || fail "Lua keybind parser produced no output"
 grep -Fq 'SUPER+D — app launcher' <<<"$output" || fail "Lua keybind app launcher was not represented"
