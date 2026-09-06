@@ -25,6 +25,7 @@ replace_dir_transaction() {
   local log="$3"
   : "$source" "$log"
   rm -rf -- "$target"
+  mkdir -p -- "$target"
   printf '%s\n' "$TEST_BACKUP"
 }
 
