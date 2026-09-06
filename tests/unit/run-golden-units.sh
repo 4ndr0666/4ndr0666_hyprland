@@ -60,6 +60,7 @@ TESTS=(
   tests/unit/test-terminal-config-connectivity.sh
   tests/unit/test-monitor-user-config-connectivity.sh
   tests/unit/test-asset-deployment-connectivity.sh
+  tests/unit/test-autodispatch-lifecycle.sh
 )
 
 failures=()
