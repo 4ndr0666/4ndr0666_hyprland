@@ -158,8 +158,6 @@ IFS=$SAVEIFS
 
 temperature=$(echo "${weather[2]}" | sed -E 's/([[:digit:]]+)\.\./\1 to /g')
 
-#echo ${weather[1]##*,}
-
 # https://fontawesome.com/icons?s=solid&c=weather
 # Normalize condition string for matching
 cond_key=$(echo "${weather[1]##*,}" | tr '[:upper:]' '[:lower:]' | sed -E 's/^\s+//; s/\s+$//')
@@ -222,8 +220,6 @@ if [ "$condition" = "" ]; then
         condition=""
     fi
 fi
-
-#echo $temp $condition
 
 # Ensure temperature has a value; if empty, keep whatever is in weather[2] or N/A
 if [ -z "$temperature" ]; then

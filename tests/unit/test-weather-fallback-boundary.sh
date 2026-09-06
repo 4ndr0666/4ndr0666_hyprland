@@ -11,4 +11,9 @@ grep -Fq 'WEATHER_CITY' "$FILE"
 grep -Fq 'Unable to determine weather city' "$FILE"
 grep -Fq 'Using configured weather city' "$FILE"
 
-printf '[PASS] weather fallback requires an explicit WEATHER_CITY configuration.\n'
+# The production script must not retain commented-out executable debug paths.
+! grep -Eq '^[[:space:]]*#[[:space:]]*(echo|printf|exec|curl|wget|rm|cp|mv|kill|pkill|systemctl)[[:space:]]' "$FILE"
+
+bash -n "$FILE"
+
+printf '[PASS] weather fallback and dead-code boundaries are intact.\n'
