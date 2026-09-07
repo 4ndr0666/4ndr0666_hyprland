@@ -6,8 +6,8 @@ WORKFLOW="$ROOT/.github/workflows/golden-units.yml"
 
 [[ -f "$WORKFLOW" ]] || { printf '%s\n' 'missing Golden Unit workflow' >&2; exit 1; }
 
-grep -Eq 'uses:[[:space:]]*actions/checkout@[0-9a-f]{40}[[:space:]]+# v4\.2\.2$' "$WORKFLOW" || {
-  printf '%s\n' 'Golden Unit checkout action is not pinned to an immutable commit' >&2
+grep -Eq 'uses:[[:space:]]*actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09[[:space:]]+# v5\.1\.0$' "$WORKFLOW" || {
+  printf '%s\n' 'Golden Unit checkout action is not pinned to the Node24-compatible immutable commit' >&2
   exit 1
 }
 
@@ -16,4 +16,4 @@ if grep -Eq 'uses:[[:space:]]*actions/checkout@v' "$WORKFLOW"; then
   exit 1
 fi
 
-printf '%s\n' 'GitHub Actions pinning boundary: PASS'
+printf '%s\n' 'GitHub Actions Node24 pinning boundary: PASS'
