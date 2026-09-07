@@ -61,6 +61,7 @@ TESTS=(
   tests/unit/test-monitor-user-config-connectivity.sh
   tests/unit/test-asset-deployment-connectivity.sh
   tests/unit/test-autodispatch-lifecycle.sh
+  tests/unit/test-4ndr0init-lifecycle.sh
 )
 
 failures=()
