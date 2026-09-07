@@ -13,7 +13,7 @@ grep -Fq 'Theme selection failed with status' "$SCRIPT" || { printf '%s\n' 'unex
 grep -Fq 'Theme transaction incomplete' "$SCRIPT" || { printf '%s\n' 'generated theme targets are not fail-closed' >&2; exit 1; }
 grep -Eq 'rofi_tmp=.*mktemp' "$SCRIPT" || { printf '%s\n' 'Rofi palette normalization is not staged atomically' >&2; exit 1; }
 grep -Fq 'mv -f -- "$rofi_tmp" "$rofi_colors"' "$SCRIPT" || { printf '%s\n' 'Rofi palette normalization is not atomically committed' >&2; exit 1; }
-if grep -Eq '|| true' "$SCRIPT"; then
+if grep -Fq '|| true' "$SCRIPT"; then
   printf '%s\n' 'ThemeChanger contains generic failure swallowing' >&2
   exit 1
 fi
