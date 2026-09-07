@@ -7,6 +7,14 @@ set -Eeuo pipefail
 
 # Repository url : https://github.com/TheAhumMaitra/cautious-waddle
 
+rofi_tmp=''
+cleanup() {
+  if [[ -n "$rofi_tmp" ]]; then
+    rm -f -- "$rofi_tmp"
+  fi
+}
+trap cleanup EXIT
+
 have_notify() {
   command -v notify-send >/dev/null 2>&1
 }
@@ -70,10 +78,6 @@ fi
 
 if [[ -n "$accent_hex" ]]; then
   rofi_tmp="$(mktemp "$(dirname -- "$rofi_colors")/.colors-rofi.XXXXXX")"
-  cleanup_rofi_tmp() {
-    rm -f -- "$rofi_tmp"
-  }
-  trap cleanup_rofi_tmp RETURN
   sed -E \
     -e "s|^(\s*selected-normal-background:\s*).*$|\1$accent_hex;|" \
     -e "s|^(\s*selected-active-background:\s*).*$|\1$accent_hex;|" \
@@ -84,7 +88,6 @@ if [[ -n "$accent_hex" ]]; then
     "$rofi_colors" >"$rofi_tmp"
   mv -f -- "$rofi_tmp" "$rofi_colors"
   rofi_tmp=''
-  trap - RETURN
 fi
 
 # Reload Hyprland so new border colors take effect.
