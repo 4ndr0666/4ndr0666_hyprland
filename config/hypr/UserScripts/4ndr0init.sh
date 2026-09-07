@@ -25,13 +25,73 @@ kill_quietly() {
     killall -q "$1" 2>/dev/null || true
 }
 
+started_portal_pids=()
+
+cleanup_started_portals() {
+    local pid
+    local cleanup_failed=0
+    for pid in "${started_portal_pids[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+            if ! kill "$pid" 2>/dev/null; then
+                if kill -0 "$pid" 2>/dev/null; then
+                    printf 'ERROR: failed to stop portal process %s during rollback\n' "$pid" >&2
+                    cleanup_failed=1
+                    continue
+                fi
+            fi
+        fi
+
+        if wait "$pid"; then
+            :
+        else
+            local status=$?
+            case "$status" in
+                130|137|143) ;;
+                *)
+                    printf 'ERROR: portal process %s exited with status %s during rollback\n' "$pid" "$status" >&2
+                    cleanup_failed=1
+                    ;;
+            esac
+        fi
+    done
+
+    return "$cleanup_failed"
+}
+
+on_exit() {
+    local status=$?
+    if (( status != 0 )) && ((${#started_portal_pids[@]} > 0)); then
+        if ! cleanup_started_portals; then
+            printf 'ERROR: portal startup rollback failed\n' >&2
+            status=1
+        fi
+    fi
+    exit "$status"
+}
+trap on_exit EXIT
+
 start_portal_binary() {
     local description="$1"
     shift
+    local candidate pid status
     for candidate in "$@"; do
         if [[ -x "$candidate" ]]; then
             "$candidate" &
-            return 0
+            pid=$!
+            sleep 0.2
+            if kill -0 "$pid" 2>/dev/null; then
+                started_portal_pids+=("$pid")
+                return 0
+            fi
+
+            if wait "$pid"; then
+                printf 'ERROR: %s exited before becoming ready (pid %s)\n' "$description" "$pid" >&2
+                return 1
+            else
+                status=$?
+                printf 'ERROR: %s exited during startup with status %s (pid %s)\n' "$description" "$status" "$pid" >&2
+                return "$status"
+            fi
         fi
     done
     printf 'ERROR: no %s binary found (checked: %s)\n' "$description" "$*" >&2
@@ -57,3 +117,5 @@ sleep 2
 start_portal_binary "xdg-desktop-portal" \
     /usr/lib/xdg-desktop-portal \
     /usr/libexec/xdg-desktop-portal
+
+started_portal_pids=()
