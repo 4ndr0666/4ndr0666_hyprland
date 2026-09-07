@@ -6,8 +6,8 @@ WORKFLOW="$ROOT/.github/workflows/golden-units.yml"
 
 [[ -f "$WORKFLOW" ]] || { printf '%s\n' 'missing Golden Unit workflow' >&2; exit 1; }
 
-grep -Eq 'uses:[[:space:]]*actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09[[:space:]]+# v5\.1\.0$' "$WORKFLOW" || {
-  printf '%s\n' 'Golden Unit checkout action is not pinned to the Node24-compatible immutable commit' >&2
+grep -Eq 'uses:[[:space:]]*actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1[[:space:]]+# v7\.0\.1$' "$WORKFLOW" || {
+  printf '%s\n' 'Golden Unit checkout action is not pinned to the latest Node24-compatible immutable commit' >&2
   exit 1
 }
 
