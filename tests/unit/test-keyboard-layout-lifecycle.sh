@@ -7,7 +7,7 @@ SCRIPT="$ROOT/config/hypr/scripts/KeyboardLayout.sh"
 [[ -f "$SCRIPT" ]] || { printf '%s\n' 'missing KeyboardLayout.sh' >&2; exit 1; }
 grep -Eq '^set -Eeuo pipefail$' "$SCRIPT" || { printf '%s\n' 'KeyboardLayout.sh lacks strict shell lifecycle semantics' >&2; exit 1; }
 grep -Eq 'devices_json=.*hyprctl devices -j' "$SCRIPT" || { printf '%s\n' 'keyboard device state is not captured once' >&2; exit 1; }
-if grep -Eq '\$1' "$SCRIPT"; then
+if grep -Fq '"$1"' "$SCRIPT"; then
   printf '%s\n' 'KeyboardLayout.sh reads a missing positional argument directly' >&2
   exit 1
 fi
