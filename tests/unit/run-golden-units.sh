@@ -62,6 +62,8 @@ TESTS=(
   tests/unit/test-asset-deployment-connectivity.sh
   tests/unit/test-autodispatch-lifecycle.sh
   tests/unit/test-4ndr0init-lifecycle.sh
+  tests/unit/test-keyboard-layout-lifecycle.sh
+  tests/unit/test-wallpaper-effect-lifecycle.sh
 )
 
 failures=()
