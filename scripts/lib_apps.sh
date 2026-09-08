@@ -25,13 +25,11 @@ enable_blueman() {
 enable_quickshell() {
   local log="$1"
   if command -v qs >/dev/null 2>&1; then
-    echo "${INFO:-[INFO]} Quickshell detected - enabling in startup and refresh scripts" 2>&1 | tee -a "$log"
+    echo "${INFO:-[INFO]} Quickshell detected - enabling in startup" | tee -a "$log"
     local OVERLAY_SA="config/hypr/configs/Startup_Apps.conf"
     mkdir -p "$(dirname "$OVERLAY_SA")"
     touch "$OVERLAY_SA"
     grep -qx 'exec-once = qs' "$OVERLAY_SA" || echo 'exec-once = qs' >>"$OVERLAY_SA"
-    sed -i '/#pkill qs && qs &/s/^#//' config/hypr/scripts/RefreshNoWaybar.sh
-    sed -i '/#pkill qs && qs &/s/^#//' config/hypr/scripts/Refresh.sh
   fi
 }
 
