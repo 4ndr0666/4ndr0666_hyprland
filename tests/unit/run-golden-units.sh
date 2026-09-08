@@ -65,6 +65,7 @@ TESTS=(
   tests/unit/test-keyboard-layout-lifecycle.sh
   tests/unit/test-wallpaper-effect-lifecycle.sh
   tests/unit/test-themechanger-lifecycle.sh
+  tests/unit/test-refresh-lifecycle.sh
 )
 
 failures=()
