@@ -68,6 +68,7 @@ TESTS=(
   tests/unit/test-refresh-lifecycle.sh
   tests/unit/test-detection-lifecycle.sh
   tests/unit/test-refresh-nowaybar-lifecycle.sh
+  tests/unit/test-quickshell-refresh-connectivity.sh
 )
 
 failures=()
