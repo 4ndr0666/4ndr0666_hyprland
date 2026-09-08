@@ -67,6 +67,7 @@ TESTS=(
   tests/unit/test-themechanger-lifecycle.sh
   tests/unit/test-refresh-lifecycle.sh
   tests/unit/test-detection-lifecycle.sh
+  tests/unit/test-refresh-nowaybar-lifecycle.sh
 )
 
 failures=()
