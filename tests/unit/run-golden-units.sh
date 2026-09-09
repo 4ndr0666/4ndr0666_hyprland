@@ -72,6 +72,7 @@ TESTS=(
   tests/unit/test-pristine-source-staging.sh
   tests/unit/test-resolution-profile-transaction.sh
   tests/unit/test-waybar-link-transaction.sh
+  tests/unit/test-clock-12h-mandatory.sh
 )
 
 failures=()
