@@ -14,6 +14,12 @@ grep -Fq 'COMMITTED=0' "$FILE"
 grep -Fq 'COMMITTED=1' "$FILE"
 grep -Fq 'sudo -n mv -- "$THEME_DEST" "$THEME_BACKUP"' "$FILE"
 grep -Fq 'sudo -n mv -- "$STAGED_THEME" "$THEME_DEST"' "$FILE"
+grep -Fq 'sudo -n rm -rf -- "$THEME_DEST"' "$FILE"
+grep -Fq 'sudo -n mv -- "$THEME_BACKUP" "$THEME_DEST"' "$FILE"
+grep -Fq 'SDDM_MODE=' "$FILE"
+grep -Fq 'stat -c '\''%a'\'' -- "$SDDM_CONF"' "$FILE"
+grep -Fq 'sudo -n cp -a -- "$SDDM_BACKUP" "$SDDM_CONF"' "$FILE"
+grep -Fq 'sudo -n chmod -- "$SDDM_MODE" "$SDDM_CONF"' "$FILE"
 grep -Fq 'sudo -n install -m 0644 -- "$SDDM_NEW" "$SDDM_CONF"' "$FILE"
 grep -Fq 'sudo -n rm -rf -- "$TRANSACTION_DIR"' "$FILE"
 ! grep -Fq 'sudo rm -rf "/usr/share/sddm/themes/$theme_name"' "$FILE"
@@ -26,4 +32,4 @@ grep -Fq 'sudo -n rm -rf -- "$TRANSACTION_DIR"' "$FILE"
 ! grep -Fq '|| true' "$FILE"
 
 bash -n "$FILE"
-printf '[PASS] SDDM theme installation is strict, staged, transactional, and fail-closed.\n'
+printf '[PASS] SDDM theme installation is strict, staged, transactional, rollback-safe, and mode-preserving.\n'
