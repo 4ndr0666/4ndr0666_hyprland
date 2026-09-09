@@ -47,10 +47,10 @@ grep -q 'detect_nvidia_adjust' "$COPY"
 grep -q 'detect_vm_adjust' "$COPY"
 grep -q 'detect_nixos_adjust' "$COPY"
 grep -q 'prompt_resolution_choice' "$COPY"
-grep -q 'prompt_clock_12h' "$COPY"
+grep -q 'apply_clock_12h' "$COPY"
+! grep -q 'prompt_clock_12h' "$COPY"
 
-grep -q 'trap cleanup EXIT INT TERM HUP' "$COPY"
-
+ grep -q 'trap cleanup EXIT INT TERM HUP' "$COPY"
 grep -Fq 'replace_dir_transaction "config/waybar" "$dir_path" "$log"' "$LIB_COPY"
 grep -Fq 'replace_dir_transaction "$source" "$dir_path" "$log"' "$LIB_COPY"
 grep -Fq 'LAST_HYPR_BACKUP_PATH="$backup_dir"' "$LIB_COPY"

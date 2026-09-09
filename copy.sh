@@ -210,7 +210,7 @@ enable_quickshell "$LOG"
 ensure_keybinds_init "$LOG"
 choose_default_editor "$LOG"
 resolution="$(prompt_resolution_choice)"
-prompt_clock_12h "$LOG"
+apply_clock_12h "$LOG"
 prompt_express_upgrade "$EXPRESS_SUPPORTED" "$LOG"
 
 INSTALLED_VERSION_AT_START="$(get_installed_dotfiles_version || true)"
