@@ -18,8 +18,7 @@ grep -Fq 'apply_sddm_12h_format_sequoia "/usr/share/sddm/themes/sequoia_2" "$log
 
 # Privileged SDDM mutations must fail loudly; no successful partial edit may be
 # silently accepted through a generic `|| true` fallback.
-! grep -Fq 'sudo -n sed -i' "$PROMPTS" | grep -Fq '|| true'
-! grep -Fq 'sudo -n sed -i' "$PROMPTS" | grep -Fq '|| true'
+! awk '/sudo -n sed -i/ && /\|\| true/ {found=1} END {exit found}' "$PROMPTS"
 
 # The active 24H formats are explicitly commented while their 12H variants are
 # enabled by the mandatory transformation.
