@@ -50,7 +50,13 @@ grep -q 'prompt_resolution_choice' "$COPY"
 grep -q 'apply_clock_12h' "$COPY"
 ! grep -q 'prompt_clock_12h' "$COPY"
 
- grep -q 'trap cleanup EXIT INT TERM HUP' "$COPY"
+grep -q 'get_installed_dotfiles_version' "$COPY"
+grep -Fq 'if current=' "$COPY"
+grep -Fq 'Failed to inspect the installed dotfiles version.' "$COPY"
+! grep -Fq 'get_installed_dotfiles_version || true' "$COPY"
+! grep -Fq '2>/dev/null \\' "$COPY"
+
+grep -q 'trap cleanup EXIT INT TERM HUP' "$COPY"
 grep -Fq 'replace_dir_transaction "config/waybar" "$dir_path" "$log"' "$LIB_COPY"
 grep -Fq 'replace_dir_transaction "$source" "$dir_path" "$log"' "$LIB_COPY"
 grep -Fq 'LAST_HYPR_BACKUP_PATH="$backup_dir"' "$LIB_COPY"
@@ -58,4 +64,4 @@ grep -Fq 'LAST_HYPR_BACKUP_PATH="$backup_dir"' "$LIB_COPY"
 ! grep -Fq 'cp -r "$DIRPATHw" "$DIRPATHw-backup-' "$LIB_COPY"
 ! grep -Fq 'mv "$DIRPATH" "$DIRPATH-backup-' "$LIB_COPY"
 
-printf '[PASS] copy and restore orchestration is strict and transaction-bounded.\n'
+printf '[PASS] copy and restore orchestration is strict, fail-closed, and transaction-bounded.\n'
