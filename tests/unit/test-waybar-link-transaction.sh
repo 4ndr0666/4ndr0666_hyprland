@@ -34,8 +34,9 @@ fi
 exec /usr/bin/ln "$@"
 EOF
 chmod +x "$SHIM_BIN/ln"
-export PATH="$SHIM_BIN:$PATH"
+ORIGINAL_PATH="$PATH"
 export TEST_ROOT
+export PATH="$SHIM_BIN:$PATH"
 
 if waybar_link_transaction desktop /dev/null; then
   printf '%s\n' '[FAIL] Waybar transaction unexpectedly succeeded during injected link failure.' >&2
@@ -49,7 +50,7 @@ fi
 [[ -f "$HOME/.config/waybar/configs/[TOP] Default (old v1)" ]]
 [[ "$(cat "$HOME/.config/waybar/configs/[TOP] Default (old v1)")" == 'old-config' ]]
 
-unset TEST_ROOT
+export PATH="$ORIGINAL_PATH"
 waybar_link_transaction desktop /dev/null
 [[ -L "$HOME/.config/waybar/config" ]]
 [[ "$(readlink "$HOME/.config/waybar/config")" == "$HOME/.config/waybar/configs/[TOP] Default" ]]
