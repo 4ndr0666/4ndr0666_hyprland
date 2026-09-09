@@ -37,7 +37,7 @@ fi
 
 clone_pinned() {
   local url="$1" revision="$2" destination="$3"
-  local tmp actual
+  local tmp
 
   if [[ ! "$revision" =~ ^[0-9a-f]{40}$ ]]; then
     printf '[ERROR] Dependency revision must be a full 40-character commit ID: %s\n' "$revision" >&2
@@ -53,20 +53,20 @@ clone_pinned() {
   fi
 
   tmp="$(mktemp -d --tmpdir="$(dirname "$destination") .clone.XXXXXX)"
-  trap 'rm -rf -- "$tmp"' RETURN
-
-  timeout --signal=TERM --kill-after=30s "${GIT_COMMAND_TIMEOUT}s" \
-    git clone --quiet --filter=blob:none --no-checkout "$url" "$tmp"
-  timeout --signal=TERM --kill-after=30s "${GIT_COMMAND_TIMEOUT}s" \
-    git -C "$tmp" checkout --quiet --detach "$revision"
-  actual="$(git -C "$tmp" rev-parse HEAD)"
-  if [[ "$actual" != "$revision" ]]; then
-    printf '[ERROR] Revision verification failed for %s\n' "$url" >&2
-    return 1
-  fi
-  rm -rf -- "$tmp/.git"
-  mv -- "$tmp" "$destination"
-  trap - RETURN
+  (
+    trap 'rm -rf -- "$tmp"' EXIT
+    timeout --signal=TERM --kill-after=30s "${GIT_COMMAND_TIMEOUT}s" \
+      git clone --quiet --filter=blob:none --no-checkout "$url" "$tmp"
+    timeout --signal=TERM --kill-after=30s "${GIT_COMMAND_TIMEOUT}s" \
+      git -C "$tmp" checkout --quiet --detach "$revision"
+    actual="$(git -C "$tmp" rev-parse HEAD)"
+    if [[ "$actual" != "$revision" ]]; then
+      printf '[ERROR] Revision verification failed for %s\n' "$url" >&2
+      exit 1
+    fi
+    rm -rf -- "$tmp/.git"
+    mv -- "$tmp" "$destination"
+  )
 }
 
 install_oh_my_zsh() {
