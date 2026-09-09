@@ -54,12 +54,7 @@ clone_pinned() {
 
   tmp="$(mktemp -d --tmpdir="$(dirname "$destination") .clone.XXXXXX)"
   cleanup_required=1
-  cleanup_clone() {
-    if ((cleanup_required)) && [[ -e "$tmp" || -L "$tmp" ]]; then
-      rm -rf -- "$tmp"
-    fi
-  }
-  trap cleanup_clone RETURN
+  trap 'if ((cleanup_required)) && [[ -e "$tmp" || -L "$tmp" ]]; then rm -rf -- "$tmp"; fi' RETURN
 
   timeout --signal=TERM --kill-after=30s "${GIT_COMMAND_TIMEOUT}s" \
     git clone --quiet --filter=blob:none --no-checkout "$url" "$tmp"
