@@ -52,6 +52,13 @@ fi
 
 export PATH="$ORIGINAL_PATH"
 waybar_link_transaction desktop /dev/null
+
+printf '%s\n' '[TRACE] committed Waybar state:'
+ls -la "$HOME/.config/waybar"
+ls -la "$HOME/.config/waybar/configs"
+readlink "$HOME/.config/waybar/config" || true
+readlink "$HOME/.config/waybar/style.css" || true
+
 [[ -L "$HOME/.config/waybar/config" ]]
 [[ "$(readlink "$HOME/.config/waybar/config")" == "$HOME/.config/waybar/configs/[TOP] Default" ]]
 [[ -L "$HOME/.config/waybar/style.css" ]]
