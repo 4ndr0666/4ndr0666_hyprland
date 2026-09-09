@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-source_theme="https://github.com/4ndr0666/simple-sddm-2.git"
-theme_name="simple_sddm_2"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/core/ui.sh"
 
 PARENT_DIR="$SCRIPT_DIR/.."
-cd "$PARENT_DIR"
+ASSET_THEME_DIR="$PARENT_DIR/assets/sddm"
+theme_name="simple_sddm_2"
 
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_sddm_theme.log"
 THEME_ROOT="/usr/share/sddm/themes"
@@ -60,15 +59,16 @@ mkdir -p -- "$(dirname -- "$LOG")"
 
 printf '%s\n' "${NOTE} Installing ${SKY_BLUE}Additional SDDM Theme${RESET}"
 
-git clone --depth 1 --no-tags "$source_theme" "$STAGED_THEME" 2>&1 | tee -a "$LOG"
-[[ -d "$STAGED_THEME/Backgrounds/default" ]] || {
-  printf '%s\n' '[ERROR] Staged SDDM theme is incomplete.' >&2
-  exit 1
-}
-[[ -f "$PARENT_DIR/assets/sddm.png" ]] || {
-  printf '%s\n' '[ERROR] Required SDDM background asset is missing.' >&2
-  exit 1
-}
+[[ -d "$ASSET_THEME_DIR" ]] || { printf '%s\n' '[ERROR] Native SDDM asset directory is missing.' >&2; exit 1; }
+[[ -f "$ASSET_THEME_DIR/Main.qml" ]] || { printf '%s\n' '[ERROR] Native SDDM Main.qml is missing.' >&2; exit 1; }
+[[ -f "$ASSET_THEME_DIR/theme.conf" ]] || { printf '%s\n' '[ERROR] Native SDDM theme.conf is missing.' >&2; exit 1; }
+[[ -x "$ASSET_THEME_DIR/sessionsDetector.sh" ]] || { printf '%s\n' '[ERROR] Native SDDM sessionsDetector.sh is missing or not executable.' >&2; exit 1; }
+
+mkdir -p -- "$STAGED_THEME"
+cp -a -- "$ASSET_THEME_DIR/." "$STAGED_THEME/"
+timeout --signal=TERM --kill-after=30s 30s "$STAGED_THEME/sessionsDetector.sh"
+[[ -s "$STAGED_THEME/sessions.txt" ]] || { printf '%s\n' '[ERROR] Native SDDM session discovery produced no sessions.txt.' >&2; exit 1; }
+rm -rf -- "$STAGED_THEME/.git"
 
 if [[ -e "$THEME_DEST" || -L "$THEME_DEST" ]]; then
   THEME_WAS_PRESENT=1
@@ -114,7 +114,6 @@ if ((THEME_WAS_PRESENT)); then
   sudo -n mv -- "$THEME_DEST" "$THEME_BACKUP"
 fi
 sudo -n mv -- "$STAGED_THEME" "$THEME_DEST"
-sudo -n install -m 0644 -- "$PARENT_DIR/assets/sddm.png" "$THEME_DEST/Backgrounds/default/sddm.png"
 sudo -n install -m 0644 -- "$SDDM_NEW" "$SDDM_CONF"
 if [[ -n "$SDDM_MODE" ]]; then
   sudo -n chmod -- "$SDDM_MODE" "$SDDM_CONF"
