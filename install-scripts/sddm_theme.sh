@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-source_theme="https://github.com/4ndr0666/simple-sddm-2.git"
-theme_name="simple_sddm_2"
+source_theme="https://github.com/achrefbenmbarek1/terminal-inspired-sddm-theme.git"
+theme_name="terminal-inspired"
+SDDM_THEME_REPOSITORY_REVISION="e0691c4f3a3cff22a3635045902b9fc949d6bbf5"
+GIT_COMMAND_TIMEOUT="${GIT_COMMAND_TIMEOUT:-900}"
+[[ "$GIT_COMMAND_TIMEOUT" =~ ^[1-9][0-9]*$ ]] || { printf '%s\n' '[ERROR] GIT_COMMAND_TIMEOUT must be a positive integer.' >&2; exit 1; }
+command -v timeout >/dev/null 2>&1 || { printf '%s\n' '[ERROR] timeout is required for bounded SDDM dependency operations.' >&2; exit 1; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/core/ui.sh"
 
@@ -60,8 +64,14 @@ mkdir -p -- "$(dirname -- "$LOG")"
 
 printf '%s\n' "${NOTE} Installing ${SKY_BLUE}Additional SDDM Theme${RESET}"
 
-git clone --depth 1 --no-tags "$source_theme" "$STAGED_THEME" 2>&1 | tee -a "$LOG"
-[[ -d "$STAGED_THEME/Backgrounds/default" ]] || {
+timeout --signal=TERM --kill-after=10s "$GIT_COMMAND_TIMEOUT" git clone --filter=blob:none --no-checkout --no-tags "$source_theme" "$STAGED_THEME" 2>>"$LOG"
+timeout --signal=TERM --kill-after=10s "$GIT_COMMAND_TIMEOUT" git -C "$STAGED_THEME" checkout --detach "$SDDM_THEME_REPOSITORY_REVISION" >>"$LOG" 2>&1
+ACTUAL_REVISION="$(git -C "$STAGED_THEME" rev-parse HEAD)"
+[[ "$ACTUAL_REVISION" == "$SDDM_THEME_REPOSITORY_REVISION" ]] || {
+  printf '%s\n' '[ERROR] Staged SDDM theme revision verification failed.' >&2
+  exit 1
+}
+[[ -d "$STAGED_THEME/Backgrounds" ]] || {
   printf '%s\n' '[ERROR] Staged SDDM theme is incomplete.' >&2
   exit 1
 }
