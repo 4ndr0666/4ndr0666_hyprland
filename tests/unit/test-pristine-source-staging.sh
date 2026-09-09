@@ -10,7 +10,8 @@ APPS="$ROOT/scripts/lib_apps.sh"
 
 grep -q 'DEPLOY_STAGE_DIR=' "$COPY"
 grep -q 'mktemp -d' "$COPY"
-grep -q 'cp -a -- "$SCRIPT_DIR/config"' "$COPY"
+grep -q 'cp -a -- "$SOURCE_ROOT/config"' "$COPY"
+grep -q 'cp -a -- "$SOURCE_ROOT/wallpapers"' "$COPY"
 grep -q 'cd -- "$DEPLOY_STAGE_DIR"' "$COPY"
 grep -q 'trap cleanup EXIT INT TERM HUP' "$COPY"
 grep -q 'SCRIPT_DIR="$DEPLOY_STAGE_DIR"' "$COPY"
@@ -22,7 +23,7 @@ stage_line="$(grep -n 'cd -- "$DEPLOY_STAGE_DIR"' "$COPY" | head -n1 | cut -d: -
 grep -Fq 'sed -i' "$DETECT"
 grep -Fq 'sed -i' "$APPS"
 
-if grep -Eq 'rm -rf -- "\$SCRIPT_DIR/config"|rm -rf -- "\$ROOT/config"' "$COPY"; then
+if grep -Eq 'rm -rf -- "\$SCRIPT_DIR/config"|rm -rf -- "\$SOURCE_ROOT/config"' "$COPY"; then
   printf '%s\n' '[FAIL] Staging cleanup may destroy the pristine source tree.' >&2
   exit 1
 fi
