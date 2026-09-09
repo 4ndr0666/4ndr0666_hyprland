@@ -129,56 +129,43 @@ prompt_resolution_choice() {
   done
 }
 
-# Prompt for 12H clock; sets waybar/hyprlock/SDDM changes when accepted.
-prompt_clock_12h() {
+# Apply the 12H clock format unconditionally during installation.
+apply_clock_12h() {
   local log="$1"
-  while true; do
-    echo -e "${NOTE} ${SKY_BLUE} By default, 4ndr0666's Dots are configured in 24H clock format."
-    echo -n "$CAT Do you want to change to 12H (AM/PM) clock format? (y/n): "
-    read answer
-    answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')
-    if [[ "$answer" == "y" ]]; then
-      # waybar clocks
-      sed -i 's#^\(\s*\)//\("format": " {:%I:%M %p}",\) #\1\2 #g' config/waybar/Modules 2>&1 | tee -a "$log"
-      sed -i 's#^\(\s*\)\("format": " {:%H:%M:%S}",\) #\1//\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
-      sed -i 's#^\(\s*\)\("format": "  {:%H:%M}",\) #\1//\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
-      sed -i 's#^\(\s*\)//\("format": "{:%I:%M %p - %d/%b}",\) #\1\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
-      sed -i 's#^\(\s*\)\("format": "{:%H:%M - %d/%b}",\) #\1//\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
-      sed -i 's#^\(\s*\)//\("format": "{:%B | %a %d, %Y | %I:%M %p}",\) #\1\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
-      sed -i 's#^\(\s*\)\("format": "{:%B | %a %d, %Y | %H:%M}",\) #\1//\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
-      sed -i 's#^\(\s*\)//\("format": "{:%A, %I:%M %P}",\) #\1\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
-      sed -i 's#^\(\s*\)\("format": "{:%a %d | %H:%M}",\) #\1//\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
 
-      # hyprlock
-      local HYPRLOCK_FILE="config/hypr/hyprlock.conf"
-      if [ ! -f "$HYPRLOCK_FILE" ] && [ -f "config/hypr/hyprlock-1080p.conf" ]; then
-        HYPRLOCK_FILE="config/hypr/hyprlock-1080p.conf"
-      fi
-      if [ -f "$HYPRLOCK_FILE" ]; then
-        sed -i 's/^\s*text = cmd\[update:1000\] echo \"\$(date +\"%H\")\"/# &/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
-        sed -i 's/^\(\s*\)# *text = cmd\[update:1000\] echo \"\$(date +\"%I\")\" #AM\/PM/\1    text = cmd\[update:1000\] echo \"\$(date +\"%I\")\" #AM\/PM/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
-        sed -i 's/^\s*text = cmd\[update:1000\] echo \"\$(date +\"%S\")\"/# &/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
-        sed -i 's/^\(\s*\)# *text = cmd\[update:1000\] echo \"\$(date +\"%S %p\")\" #AM\/PM/\1    text = cmd\[update:1000\] echo \"\$(date +\"%S %p\")\" #AM\/PM/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
-      else
-        echo "${WARN} hyprlock template not found; skipping 12H lock format edits" 2>&1 | tee -a "$log"
-      fi
+  # waybar clocks
+  sed -i 's#^\(\s*\)//\("format": " {:%I:%M %p}",\) #\1\2 #g' config/waybar/Modules 2>&1 | tee -a "$log"
+  sed -i 's#^\(\s*\)\("format": " {:%H:%M:%S}",\) #\1//\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
+  sed -i 's#^\(\s*\)\("format": "  {:%H:%M}",\) #\1//\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
+  sed -i 's#^\(\s*\)//\("format": "{:%I:%M %p - %d/%b}",\) #\1\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
+  sed -i 's#^\(\s*\)\("format": "{:%H:%M - %d/%b}",\) #\1//\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
+  sed -i 's#^\(\s*\)//\("format": "{:%B | %a %d, %Y | %I:%M %p}",\) #\1\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
+  sed -i 's#^\(\s*\)\("format": "{:%B | %a %d, %Y | %H:%M}",\) #\1//\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
+  sed -i 's#^\(\s*\)//\("format": "{:%A, %I:%M %P}",\) #\1\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
+  sed -i 's#^\(\s*\)\("format": "{:%a %d | %H:%M}",\) #\1//\2#g' config/waybar/Modules 2>&1 | tee -a "$log"
 
-      if [ "${EXPRESS_MODE:-0}" -eq 0 ]; then
-        apply_sddm_12h_format "/usr/share/sddm/themes/simple-sddm" "$log"
-        apply_sddm_12h_format "/usr/share/sddm/themes/simple_sddm_2" "$log"
-        apply_sddm_12h_format_sequoia "/usr/share/sddm/themes/sequoia_2" "$log"
-      else
-        echo "${NOTE:-[NOTE]} Express mode: skipping SDDM 12H edits to avoid sudo prompts." 2>&1 | tee -a "$log"
-      fi
-      echo "${OK} 12H format set on waybar clocks succesfully." 2>&1 | tee -a "$log"
-      return
-    elif [[ "$answer" == "n" ]]; then
-      echo "${NOTE} You chose not to change to 12H format." 2>&1 | tee -a "$log"
-      return
-    else
-      echo "${ERROR} Invalid choice. Please enter y for yes or n for no."
-    fi
-  done
+  # hyprlock
+  local HYPRLOCK_FILE="config/hypr/hyprlock.conf"
+  if [ ! -f "$HYPRLOCK_FILE" ] && [ -f "config/hypr/hyprlock-1080p.conf" ]; then
+    HYPRLOCK_FILE="config/hypr/hyprlock-1080p.conf"
+  fi
+  if [ -f "$HYPRLOCK_FILE" ]; then
+    sed -i 's/^\s*text = cmd\[update:1000\] echo \"\$(date +\"%H\")\"/# &/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
+    sed -i 's/^\(\s*\)# *text = cmd\[update:1000\] echo \"\$(date +\"%I\")\" #AM\/PM/\1    text = cmd\[update:1000\] echo \"\$(date +\"%I\")\" #AM\/PM/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
+    sed -i 's/^\s*text = cmd\[update:1000\] echo \"\$(date +\"%S\")\"/# &/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
+    sed -i 's/^\(\s*\)# *text = cmd\[update:1000\] echo \"\$(date +\"%S %p\")\" #AM\/PM/\1    text = cmd\[update:1000\] echo \"\$(date +\"%S %p\")\" #AM\/PM/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
+  else
+    echo "${WARN} hyprlock template not found; skipping 12H lock format edits" 2>&1 | tee -a "$log"
+  fi
+
+  if [ "${EXPRESS_MODE:-0}" -eq 0 ]; then
+    apply_sddm_12h_format "/usr/share/sddm/themes/simple-sddm" "$log"
+    apply_sddm_12h_format "/usr/share/sddm/themes/simple_sddm_2" "$log"
+    apply_sddm_12h_format_sequoia "/usr/share/sddm/themes/sequoia_2" "$log"
+  else
+    echo "${NOTE:-[NOTE]} Express mode: skipping SDDM 12H edits to avoid sudo prompts." 2>&1 | tee -a "$log"
+  fi
+  echo "${OK} 12H format set on waybar clocks succesfully." 2>&1 | tee -a "$log"
 }
 
 apply_sddm_12h_format() {
@@ -187,10 +174,10 @@ apply_sddm_12h_format() {
   if [ -d "$sddm_directory" ]; then
     echo "Editing ${SKY_BLUE}$sddm_directory${RESET} to 12H format" 2>&1 | tee -a "$log"
     if ! sudo -n sed -i 's|^## HourFormat="hh:mm AP"|HourFormat="hh:mm AP"|' "$sddm_directory/theme.conf" 2>&1 | tee -a "$log"; then
-      echo "${WARN:-[WARN]} Skipping SDDM 12H edit (sudo password required)." 2>&1 | tee -a "$log"
-      return
+      echo "${ERROR:-[ERROR]} Unable to apply mandatory 12H SDDM format to $sddm_directory; sudo credentials are required." 2>&1 | tee -a "$log"
+      return 1
     fi
-    sudo -n sed -i 's|^HourFormat="HH:mm"|## HourFormat="HH:mm"|' "$sddm_directory/theme.conf" 2>&1 | tee -a "$log" || true
+    sudo -n sed -i 's|^HourFormat="HH:mm"|## HourFormat="HH:mm"|' "$sddm_directory/theme.conf" 2>&1 | tee -a "$log"
   fi
 }
 
@@ -200,11 +187,11 @@ apply_sddm_12h_format_sequoia() {
   if [ -d "$sddm_directory" ]; then
     echo "${YELLOW}sddm sequoia_2${RESET} theme exists. Editing to 12H format" 2>&1 | tee -a "$log"
     if ! sudo -n sed -i 's|^clockFormat="HH:mm"|## clockFormat="HH:mm"|' "$sddm_directory/theme.conf" 2>&1 | tee -a "$log"; then
-      echo "${WARN:-[WARN]} Skipping sequoia SDDM 12H edit (sudo password required)." 2>&1 | tee -a "$log"
-      return
+      echo "${ERROR:-[ERROR]} Unable to apply mandatory 12H Sequoia SDDM format; sudo credentials are required." 2>&1 | tee -a "$log"
+      return 1
     fi
     if ! grep -q 'clockFormat="hh:mm AP"' "$sddm_directory/theme.conf"; then
-      sudo -n sed -i '/^clockFormat=/a clockFormat="hh:mm AP"' "$sddm_directory/theme.conf" 2>&1 | tee -a "$log" || true
+      sudo -n sed -i '/^clockFormat=/a clockFormat="hh:mm AP"' "$sddm_directory/theme.conf" 2>&1 | tee -a "$log"
     fi
     echo "${OK} 12H format set to SDDM successfully." 2>&1 | tee -a "$log"
   fi
