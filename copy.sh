@@ -13,6 +13,7 @@ source "$SOURCE_ROOT/scripts/lib_detect.sh"
 source "$SOURCE_ROOT/scripts/lib_prompts.sh"
 source "$SOURCE_ROOT/scripts/lib_apps.sh"
 source "$SOURCE_ROOT/scripts/lib_copy.sh"
+source "$SOURCE_ROOT/scripts/lib_resolution.sh"
 
 readonly MIN_EXPRESS_VERSION="2.3.18"
 readonly WALLPAPER_STATE="$HOME/.config/hypr/wallpaper_effects/.wallpaper_current"
@@ -70,28 +71,6 @@ prepare_log() {
   mkdir -p "$log_dir"
   LOG="$log_dir/install-$(date +%d-%H%M%S)_dotfiles.log"
   : >"$LOG"
-}
-
-apply_resolution_profile() {
-  local resolution="$1"
-  [[ "$resolution" == '< 1440p' ]] || return 0
-
-  local kitty="$HOME/.config/kitty/kitty.conf"
-  local lock="$HOME/.config/hypr/hyprlock.conf"
-  local lock1080="$HOME/.config/hypr/hyprlock-1080p.conf"
-  local rofi="$HOME/.config/rofi/0-shared-fonts.rasi"
-
-  if [[ -f "$kitty" ]]; then
-    sed -i 's/font_size 16.0/font_size 14.0/' "$kitty"
-  fi
-  if [[ -f "$lock" && -f "$lock1080" ]]; then
-    mv -- "$lock" "$HOME/.config/hypr/hyprlock-2k.conf"
-    mv -- "$lock1080" "$lock"
-  fi
-  if [[ -f "$rofi" ]]; then
-    sed -i '/element-text {/,/}/s/[[:space:]]*font: "JetBrainsMono Nerd Font SemiBold 13"/font: "JetBrainsMono Nerd Font SemiBold 11"/' "$rofi"
-    sed -i '/configuration {/,/}/s/[[:space:]]*font: "JetBrainsMono Nerd Font SemiBold 15"/font: "JetBrainsMono Nerd Font SemiBold 13"/' "$rofi"
-  fi
 }
 
 install_quickshell_config() {
