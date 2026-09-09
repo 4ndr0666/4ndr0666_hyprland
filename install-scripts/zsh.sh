@@ -2,7 +2,6 @@
 # 💫 https://github.com/4ndr0666 💫 #
 # zsh and oh my zsh#
 
-
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/core/packages.sh"
@@ -47,12 +46,11 @@ clone_pinned() {
     printf '[ERROR] Refusing repository destination outside HOME: %s\n' "$destination" >&2
     return 1
   fi
-
   if [[ -e "$destination" || -L "$destination" ]]; then
     return 0
   fi
 
-  tmp="$(mktemp -d --tmpdir="$(dirname "$destination") .clone.XXXXXX)"
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-zsh-clone.XXXXXX")"
   (
     trap 'rm -rf -- "$tmp"' EXIT
     timeout --signal=TERM --kill-after=30s "${GIT_COMMAND_TIMEOUT}s" \
