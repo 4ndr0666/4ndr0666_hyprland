@@ -24,6 +24,10 @@ grep -Fq 'detect_nixos_adjust "$LOG"' "$COPY"
 grep -Fq 'sed -i' "$DETECT"
 grep -Fq 'sed -i' "$APPS"
 
+grep -Fq 'local log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/4ndr0666-hyprland"' "$COPY"
+! grep -Fq 'mkdir -p "$SOURCE_ROOT/Copy-Logs"' "$COPY"
+! grep -Fq 'LOG="$SOURCE_ROOT/Copy-Logs/' "$COPY"
+
 awk '
   /cd -- "\$DEPLOY_STAGE_DIR"/ { staged=1; next }
   /detect_nvidia_adjust "\$LOG"/ && staged { found=1 }
