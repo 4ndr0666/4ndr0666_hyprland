@@ -1,7 +1,5 @@
-#!/bin/bash
-# 💫 https://github.com/4ndr0666 💫 #
-# SDDM themes #
-
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
 source_theme="https://github.com/4ndr0666/simple-sddm-2.git"
 theme_name="simple_sddm_2"
@@ -9,59 +7,109 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/core/ui.sh"
 
 PARENT_DIR="$SCRIPT_DIR/.."
-cd "$PARENT_DIR" || { echo "${ERROR} Failed to change directory to $PARENT_DIR"; exit 1; }
+cd "$PARENT_DIR"
 
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_sddm_theme.log"
+THEME_ROOT="/usr/share/sddm/themes"
+THEME_DEST="$THEME_ROOT/$theme_name"
+SDDM_CONF="/etc/sddm.conf"
+TRANSACTION_DIR="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-sddm-theme.XXXXXX")"
+STAGED_THEME="$TRANSACTION_DIR/$theme_name"
+THEME_BACKUP="$TRANSACTION_DIR/theme-backup"
+SDDM_BACKUP="$TRANSACTION_DIR/sddm.conf.backup"
+SDDM_NEW="$TRANSACTION_DIR/sddm.conf.new"
+THEME_WAS_PRESENT=0
+SDDM_WAS_PRESENT=0
+COMMITTED=0
+CLEANUP_FAILED=0
 
-printf "${NOTE} Installing ${SKY_BLUE}Additional SDDM Theme${RESET}\n"
-
-if [ -d "/usr/share/sddm/themes/$theme_name" ]; then
-  sudo rm -rf "/usr/share/sddm/themes/$theme_name"
-  echo -e "\e[1A\e[K${OK} - Removed existing $theme_name directory." 2>&1 | tee -a "$LOG"
-fi
-
-if git clone --depth 1 "$source_theme" "/tmp/$theme_name" 2>&1 | tee -a "$LOG"; then
-  sudo cp -r "/tmp/$theme_name" "/usr/share/sddm/themes/" 2>&1 | tee -a "$LOG"
-  rm -rf "/tmp/$theme_name"
-  echo -e "\e[1A\e[K${OK} - Theme cloned and copied successfully." 2>&1 | tee -a "$LOG"
-else
-  echo -e "\e[1A\e[K${ERROR} - Failed to clone the theme repository." 2>&1 | tee -a "$LOG"
-fi
-
-sddm_conf="/etc/sddm.conf"
-if [ -f "$sddm_conf" ]; then
-  if grep -q '^\[Theme\]' "$sddm_conf"; then
-    if grep -q '^Current=' "$sddm_conf"; then
-      sudo sed -i "s/^Current=.*/Current=$theme_name/" "$sddm_conf" 2>&1 | tee -a "$LOG"
-      echo "Updated Current to $theme_name in $sddm_conf" | tee -a "$LOG"
-    else
-      sudo sed -i "/^\[Theme\]/a Current=$theme_name" "$sddm_conf" 2>&1 | tee -a "$LOG"
-      echo "Added Current=$theme_name under [Theme] in $sddm_conf" | tee -a "$LOG"
+cleanup() {
+  local rc=$?
+  if ((COMMITTED == 0)); then
+    if ((THEME_WAS_PRESENT)); then
+      if [[ -d "$THEME_BACKUP" && ! -e "$THEME_DEST" ]]; then
+        sudo -n mv -- "$THEME_BACKUP" "$THEME_DEST" || CLEANUP_FAILED=1
+      fi
+    elif [[ -e "$THEME_DEST" ]]; then
+      sudo -n rm -rf -- "$THEME_DEST" || CLEANUP_FAILED=1
     fi
-  else
-    echo -e "\n[Theme]\nCurrent=$theme_name" | sudo tee -a "$sddm_conf" > /dev/null
-    echo "Added [Theme] section with Current=$theme_name in $sddm_conf" | tee -a "$LOG"
-  fi
-
-  if ! grep -q '^\[General\]' "$sddm_conf"; then
-    echo -e "\n[General]\nInputMethod=qtvirtualkeyboard" | sudo tee -a "$sddm_conf" > /dev/null
-    echo "Added [General] section with InputMethod=qtvirtualkeyboard" | tee -a "$LOG"
-  else
-    if grep -q '^\s*InputMethod=' "$sddm_conf"; then
-      sudo sed -i '/^\[General\]/,/^\[/{s/^\s*InputMethod=.*/InputMethod=qtvirtualkeyboard/}' "$sddm_conf" 2>&1 | tee -a "$LOG"
-      echo "Updated InputMethod to qtvirtualkeyboard in $sddm_conf" | tee -a "$LOG"
-    else
-      sudo sed -i '/^\[General\]/a InputMethod=qtvirtualkeyboard' "$sddm_conf" 2>&1 | tee -a "$LOG"
-      echo "Appended InputMethod=qtvirtualkeyboard under [General]" | tee -a "$LOG"
+    if ((SDDM_WAS_PRESENT)); then
+      if [[ -f "$SDDM_BACKUP" ]]; then
+        sudo -n install -m 0644 -- "$SDDM_BACKUP" "$SDDM_CONF" || CLEANUP_FAILED=1
+      fi
+    elif [[ -e "$SDDM_CONF" ]]; then
+      sudo -n rm -f -- "$SDDM_CONF" || CLEANUP_FAILED=1
     fi
   fi
+  sudo -n rm -rf -- "$TRANSACTION_DIR" || CLEANUP_FAILED=1
+  if ((CLEANUP_FAILED)); then
+    printf '%s\n' '[ERROR] SDDM theme transaction cleanup failed.' >&2
+    rc=1
+  fi
+  return "$rc"
+}
+trap cleanup EXIT INT TERM HUP
 
-  sudo cp -r assets/sddm.png "/usr/share/sddm/themes/$theme_name/Backgrounds/default" 2>&1 | tee -a "$LOG"
-  echo "Replaced theme background with assets/sddm.png" | tee -a "$LOG"
-else
-  echo -e "[Theme]\nCurrent=$theme_name\n\n[General]\nInputMethod=qtvirtualkeyboard" | sudo tee "$sddm_conf" > /dev/null
-  echo "Created $sddm_conf with $theme_name and qtvirtualkeyboard" | tee -a "$LOG"
-  sudo cp -r assets/sddm.png "/usr/share/sddm/themes/$theme_name/Backgrounds/default" 2>&1 | tee -a "$LOG"
+sudo -v
+mkdir -p -- "$(dirname -- "$LOG")"
+
+printf '%s\n' "${NOTE} Installing ${SKY_BLUE}Additional SDDM Theme${RESET}"
+
+git clone --depth 1 --no-tags "$source_theme" "$STAGED_THEME" 2>&1 | tee -a "$LOG"
+[[ -d "$STAGED_THEME/Backgrounds/default" ]] || {
+  printf '%s\n' '[ERROR] Staged SDDM theme is incomplete.' >&2
+  exit 1
+}
+[[ -f "$PARENT_DIR/assets/sddm.png" ]] || {
+  printf '%s\n' '[ERROR] Required SDDM background asset is missing.' >&2
+  exit 1
+}
+
+if [[ -d "$THEME_DEST" ]]; then
+  THEME_WAS_PRESENT=1
+  sudo -n cp -a -- "$THEME_DEST" "$THEME_BACKUP"
 fi
 
-printf "\n%.0s" {1..2}
+if [[ -f "$SDDM_CONF" ]]; then
+  SDDM_WAS_PRESENT=1
+  sudo -n cp -a -- "$SDDM_CONF" "$SDDM_BACKUP"
+fi
+
+if ((SDDM_WAS_PRESENT)); then
+  sudo -n cp -a -- "$SDDM_CONF" "$SDDM_NEW"
+else
+  : >"$SDDM_NEW"
+fi
+
+if grep -q '^\[Theme\]' "$SDDM_NEW"; then
+  if grep -q '^Current=' "$SDDM_NEW"; then
+    sed -i "s/^Current=.*/Current=$theme_name/" "$SDDM_NEW"
+  else
+    sed -i "/^\[Theme\]/a Current=$theme_name" "$SDDM_NEW"
+  fi
+else
+  printf '\n[Theme]\nCurrent=%s\n' "$theme_name" >>"$SDDM_NEW"
+fi
+
+if grep -q '^\[General\]' "$SDDM_NEW"; then
+  if grep -q '^\s*InputMethod=' "$SDDM_NEW"; then
+    sed -i '/^\[General\]/,/^\[/{s/^\s*InputMethod=.*/InputMethod=qtvirtualkeyboard/}' "$SDDM_NEW"
+  else
+    sed -i '/^\[General\]/a InputMethod=qtvirtualkeyboard' "$SDDM_NEW"
+  fi
+else
+  printf '\n[General]\nInputMethod=qtvirtualkeyboard\n' >>"$SDDM_NEW"
+fi
+
+grep -q '^Current=' "$SDDM_NEW"
+grep -q '^InputMethod=qtvirtualkeyboard$' "$SDDM_NEW"
+
+if ((THEME_WAS_PRESENT)); then
+  sudo -n mv -- "$THEME_DEST" "$THEME_BACKUP"
+fi
+sudo -n mv -- "$STAGED_THEME" "$THEME_DEST"
+sudo -n install -m 0644 -- "$PARENT_DIR/assets/sddm.png" "$THEME_DEST/Backgrounds/default/sddm.png"
+sudo -n install -m 0644 -- "$SDDM_NEW" "$SDDM_CONF"
+
+COMMITTED=1
+printf '%s\n' "${OK} SDDM theme transaction committed." | tee -a "$LOG"

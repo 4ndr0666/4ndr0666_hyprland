@@ -25,6 +25,7 @@ TESTS=(
   tests/unit/test-remote-exec-invariant.sh
   tests/unit/test-self-update-boundary.sh
   tests/unit/test-sddm-rollback.sh
+  tests/unit/test-sddm-theme-transaction.sh
   tests/unit/test-copy-orchestration-boundary.sh
   tests/unit/test-copy-phase1-atomicity.sh
   tests/unit/test-copy-transaction-runtime.sh
