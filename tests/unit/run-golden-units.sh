@@ -71,6 +71,7 @@ TESTS=(
   tests/unit/test-quickshell-refresh-connectivity.sh
   tests/unit/test-pristine-source-staging.sh
   tests/unit/test-resolution-profile-transaction.sh
+  tests/unit/test-waybar-link-transaction.sh
 )
 
 failures=()
