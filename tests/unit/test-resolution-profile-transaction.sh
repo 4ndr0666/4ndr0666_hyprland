@@ -8,9 +8,10 @@ bash -n "$HELPER"
 
 TEST_HOME="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-resolution-test.XXXXXX")"
 TEST_TMP="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-resolution-tmp.XXXXXX")"
+TEST_BIN="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-resolution-bin.XXXXXX")"
 cleanup() {
   local rc=$?
-  rm -rf -- "$TEST_HOME" "$TEST_TMP"
+  rm -rf -- "$TEST_HOME" "$TEST_TMP" "$TEST_BIN"
   return "$rc"
 }
 trap cleanup EXIT INT TERM HUP
@@ -29,9 +30,6 @@ EOF
 cat >"$HOME/.config/hypr/hyprlock-1080p.conf" <<'EOF'
 1080-lock
 EOF
-cat >"$HOME/.config/hypr/hyprlock-2k.conf" <<'EOF'
-existing-2k
-EOF
 cat >"$HOME/.config/rofi/0-shared-fonts.rasi" <<'EOF'
 element-text {
   font: "JetBrainsMono Nerd Font SemiBold 13"
@@ -44,23 +42,47 @@ EOF
 cp -a -- "$HOME/.config/kitty/kitty.conf" "$TEST_HOME/kitty.before"
 cp -a -- "$HOME/.config/hypr/hyprlock.conf" "$TEST_HOME/lock.before"
 cp -a -- "$HOME/.config/hypr/hyprlock-1080p.conf" "$TEST_HOME/lock1080.before"
-cp -a -- "$HOME/.config/hypr/hyprlock-2k.conf" "$TEST_HOME/lock2k.before"
 cp -a -- "$HOME/.config/rofi/0-shared-fonts.rasi" "$TEST_HOME/rofi.before"
 
-# An occupied destination forces failure after the Kitty mutation. The
-# component transaction must restore every prior target, not just the failed step.
+# Fail on the second sed invocation, after Kitty has committed. The component
+# transaction must restore the complete pre-operation state.
+cat >"$TEST_BIN/sed" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+count_file="${SED_TEST_COUNT:?}"
+count=0
+if [[ -f "$count_file" ]]; then
+  count="$(cat "$count_file")"
+fi
+count=$((count + 1))
+printf '%s\n' "$count" >"$count_file"
+if [[ "$count" -eq 2 ]]; then
+  printf '%s\n' '[TEST] forced sed failure' >&2
+  exit 73
+fi
+exec /usr/bin/sed "$@"
+EOF
+chmod +x "$TEST_BIN/sed"
+export SED_TEST_COUNT="$TEST_TMP/sed-count"
+export PATH="$TEST_BIN:$PATH"
+
 source "$HELPER"
 if apply_resolution_profile '< 1440p'; then
-  printf '[FAIL] Expected occupied hyprlock-2k destination to fail the transaction.\n' >&2
+  printf '[FAIL] Expected forced second sed failure to fail the transaction.\n' >&2
   exit 1
 fi
 cmp -s "$TEST_HOME/kitty.before" "$HOME/.config/kitty/kitty.conf"
 cmp -s "$TEST_HOME/lock.before" "$HOME/.config/hypr/hyprlock.conf"
 cmp -s "$TEST_HOME/lock1080.before" "$HOME/.config/hypr/hyprlock-1080p.conf"
-cmp -s "$TEST_HOME/lock2k.before" "$HOME/.config/hypr/hyprlock-2k.conf"
 cmp -s "$TEST_HOME/rofi.before" "$HOME/.config/rofi/0-shared-fonts.rasi"
+[[ ! -e "$HOME/.config/hypr/hyprlock-2k.conf" ]]
 
-rm -f -- "$HOME/.config/hypr/hyprlock-2k.conf"
+rm -f -- "$SED_TEST_COUNT"
+cat >"$TEST_BIN/sed" <<'EOF'
+#!/usr/bin/env bash
+exec /usr/bin/sed "$@"
+EOF
+chmod +x "$TEST_BIN/sed"
 apply_resolution_profile '< 1440p'
 
 grep -Fq 'font_size 14.0' "$HOME/.config/kitty/kitty.conf"
