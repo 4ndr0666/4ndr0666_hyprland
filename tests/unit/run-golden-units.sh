@@ -70,6 +70,7 @@ TESTS=(
   tests/unit/test-refresh-nowaybar-lifecycle.sh
   tests/unit/test-quickshell-refresh-connectivity.sh
   tests/unit/test-pristine-source-staging.sh
+  tests/unit/test-resolution-profile-transaction.sh
 )
 
 failures=()
