@@ -3,15 +3,16 @@
 # Main install/upgrade orchestrator. Component work lives in scripts/lib_*.sh.
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$SOURCE_ROOT"
 export COPY_TUI_BACKEND="${COPY_TUI_BACKEND:-basic}"
 
-source "$SCRIPT_DIR/scripts/copy_menu.sh"
-source "$SCRIPT_DIR/scripts/lib_backup.sh"
-source "$SCRIPT_DIR/scripts/lib_detect.sh"
-source "$SCRIPT_DIR/scripts/lib_prompts.sh"
-source "$SCRIPT_DIR/scripts/lib_apps.sh"
-source "$SCRIPT_DIR/scripts/lib_copy.sh"
+source "$SOURCE_ROOT/scripts/copy_menu.sh"
+source "$SOURCE_ROOT/scripts/lib_backup.sh"
+source "$SOURCE_ROOT/scripts/lib_detect.sh"
+source "$SOURCE_ROOT/scripts/lib_prompts.sh"
+source "$SOURCE_ROOT/scripts/lib_apps.sh"
+source "$SOURCE_ROOT/scripts/lib_copy.sh"
 
 readonly MIN_EXPRESS_VERSION="2.3.18"
 readonly WALLPAPER_STATE="$HOME/.config/hypr/wallpaper_effects/.wallpaper_current"
@@ -22,11 +23,17 @@ readonly WAYBAR_LAPTOP="$HOME/.config/waybar/configs/[TOP] Default Laptop"
 
 LOG=""
 DOWNLOAD_DIR=""
+DEPLOY_STAGE_DIR=""
 
 cleanup() {
+  local rc=$?
   if [[ -n "$DOWNLOAD_DIR" && -d "$DOWNLOAD_DIR" ]]; then
     rm -rf -- "$DOWNLOAD_DIR"
   fi
+  if [[ -n "$DEPLOY_STAGE_DIR" && -d "$DEPLOY_STAGE_DIR" ]]; then
+    rm -rf -- "$DEPLOY_STAGE_DIR"
+  fi
+  return "$rc"
 }
 trap cleanup EXIT INT TERM HUP
 
@@ -59,8 +66,8 @@ express_supported() {
 }
 
 prepare_log() {
-  mkdir -p "$SCRIPT_DIR/Copy-Logs"
-  LOG="$SCRIPT_DIR/Copy-Logs/install-$(date +%d-%H%M%S)_dotfiles.log"
+  mkdir -p "$SOURCE_ROOT/Copy-Logs"
+  LOG="$SOURCE_ROOT/Copy-Logs/install-$(date +%d-%H%M%S)_dotfiles.log"
   : >"$LOG"
 }
 
@@ -214,6 +221,13 @@ prepare_log
 xdg-user-dirs-update 2>&1 | tee -a "$LOG"
 printf '%s\n' "[INFO] Selected workflow: $RUN_MODE" | tee -a "$LOG"
 
+DEPLOY_STAGE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-copy-stage.XXXXXX")"
+cp -a -- "$SOURCE_ROOT/config" "$DEPLOY_STAGE_DIR/"
+cp -a -- "$SOURCE_ROOT/wallpapers" "$DEPLOY_STAGE_DIR/"
+SCRIPT_DIR="$DEPLOY_STAGE_DIR"
+cd -- "$DEPLOY_STAGE_DIR"
+
+# Environment-specific mutations are confined to the ephemeral stage.
 detect_nvidia_adjust "$LOG"
 detect_vm_adjust "$LOG"
 detect_nixos_adjust "$LOG"
@@ -231,7 +245,6 @@ prompt_express_upgrade "$EXPRESS_SUPPORTED" "$LOG"
 
 INSTALLED_VERSION_AT_START="$(get_installed_dotfiles_version || true)"
 
-cd -- "$SCRIPT_DIR"
 copy_phase1 "$LOG"
 copy_waybar "$LOG"
 copy_phase2 "$LOG"
