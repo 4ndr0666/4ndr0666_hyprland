@@ -102,40 +102,17 @@ install_quickshell_config() {
 
 configure_waybar_links() {
   local chassis_type answer
-  local obsolete_present=0
   chassis_type="$(detect_waybar_config)"
 
-  local obsolete_path
-  for obsolete_path in \
-    "$HOME/.config/waybar/configs/[TOP] Default" \
-    "$HOME/.config/waybar/configs/[TOP] Default Laptop" \
-    "$HOME/.config/waybar/configs/[BOT] Default" \
-    "$HOME/.config/waybar/configs/[BOT] Default Laptop" \
-    "$HOME/.config/waybar/configs/[TOP] Default (old v1)" \
-    "$HOME/.config/waybar/configs/[TOP] Default Laptop (old v1)" \
-    "$HOME/.config/waybar/configs/[TOP] Default (old v2)" \
-    "$HOME/.config/waybar/configs/[TOP] Default Laptop (old v2)" \
-    "$HOME/.config/waybar/configs/[TOP] Default (old v3)" \
-    "$HOME/.config/waybar/configs/[TOP] Default Laptop (old v3)" \
-    "$HOME/.config/waybar/configs/[TOP] Default (old v4)" \
-    "$HOME/.config/waybar/configs/[TOP] Default Laptop (old v4)"; do
-    if [[ -e "$obsolete_path" || -L "$obsolete_path" ]]; then
-      obsolete_present=1
-      break
-    fi
-  done
-
-  if [[ -e "$WAYBAR_CONFIG" && ! -L "$WAYBAR_CONFIG" || -e "$HOME/.config/waybar/style.css" && ! -L "$HOME/.config/waybar/style.css" || "$obsolete_present" -eq 1 ]]; then
-    printf '%s' '[ACTION] Manage Waybar symlinks and remove obsolete layouts? [y/N] ' >/dev/tty
-    read -r answer </dev/tty
-    case "$answer" in
-      y|Y|yes|YES) ;;
-      *)
-        printf '%s\n' '[INFO] Existing Waybar state retained; skipping link transaction.' | tee -a "$LOG"
-        return 0
-        ;;
-    esac
-  fi
+  printf '%s' '[ACTION] Manage Waybar symlinks and remove obsolete layouts? [y/N] ' >/dev/tty
+  read -r answer </dev/tty
+  case "$answer" in
+    y|Y|yes|YES) ;;
+    *)
+      printf '%s\n' '[INFO] Waybar link management declined; existing state retained.' | tee -a "$LOG"
+      return 0
+      ;;
+  esac
 
   waybar_link_transaction "$chassis_type" "$LOG"
 }
