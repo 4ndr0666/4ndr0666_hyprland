@@ -55,9 +55,10 @@ waybar_link_transaction() {
   done
 
   if ! {
-    if [[ ! -e "$config_link" || -L "$config_link" ]]; then
-      ln -sfn -- "$config_target" "$config_link"
+    if [[ -e "$config_link" && ! -L "$config_link" ]]; then
+      rm -rf -- "$config_link"
     fi
+    ln -sfn -- "$config_target" "$config_link"
 
     local remove_target
     for remove_target in \
@@ -70,9 +71,10 @@ waybar_link_transaction() {
       rm -rf -- "$remove_target"
     done
 
-    if [[ ! -e "$style_link" || -L "$style_link" ]]; then
-      ln -sfn -- "style/[Extra] Neon Circuit.css" "$style_link"
+    if [[ -e "$style_link" && ! -L "$style_link" ]]; then
+      rm -rf -- "$style_link"
     fi
+    ln -sfn -- "style/[Extra] Neon Circuit.css" "$style_link"
   }; then
     local rollback_target rollback_snapshot rollback_marker rollback_hash
     for rollback_target in "${targets[@]}"; do
