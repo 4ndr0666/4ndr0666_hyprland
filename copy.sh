@@ -14,6 +14,7 @@ source "$SOURCE_ROOT/scripts/lib_prompts.sh"
 source "$SOURCE_ROOT/scripts/lib_apps.sh"
 source "$SOURCE_ROOT/scripts/lib_copy.sh"
 source "$SOURCE_ROOT/scripts/lib_resolution.sh"
+source "$SOURCE_ROOT/scripts/lib_waybar.sh"
 
 readonly MIN_EXPRESS_VERSION="2.3.18"
 readonly WALLPAPER_STATE="$HOME/.config/hypr/wallpaper_effects/.wallpaper_current"
@@ -100,31 +101,20 @@ install_quickshell_config() {
 }
 
 configure_waybar_links() {
-  local chassis_type config_file config_remove
+  local chassis_type answer
   chassis_type="$(detect_waybar_config)"
-  if [[ "$chassis_type" == desktop ]]; then
-    config_file="$WAYBAR_DESKTOP"
-    config_remove=" Laptop"
-  else
-    config_file="$WAYBAR_LAPTOP"
-    config_remove=""
-  fi
 
-  if [[ ! -e "$WAYBAR_CONFIG" || -L "$WAYBAR_CONFIG" ]]; then
-    ln -sfn -- "$config_file" "$WAYBAR_CONFIG"
-  fi
+  printf '%s' '[ACTION] Manage Waybar symlinks and remove obsolete layouts? [y/N] ' >/dev/tty
+  read -r answer </dev/tty
+  case "$answer" in
+    y|Y|yes|YES) ;;
+    *)
+      printf '%s\n' '[INFO] Waybar link management declined; existing state retained.' | tee -a "$LOG"
+      return 0
+      ;;
+  esac
 
-  rm -rf -- \
-    "$HOME/.config/waybar/configs/[TOP] Default$config_remove" \
-    "$HOME/.config/waybar/configs/[BOT] Default$config_remove" \
-    "$HOME/.config/waybar/configs/[TOP] Default$config_remove (old v1)" \
-    "$HOME/.config/waybar/configs/[TOP] Default$config_remove (old v2)" \
-    "$HOME/.config/waybar/configs/[TOP] Default$config_remove (old v3)" \
-    "$HOME/.config/waybar/configs/[TOP] Default$config_remove (old v4)"
-
-  if [[ ! -e "$HOME/.config/waybar/style.css" || -L "$HOME/.config/waybar/style.css" ]]; then
-    ln -sfn -- "$WAYBAR_STYLE" "$HOME/.config/waybar/style.css"
-  fi
+  waybar_link_transaction "$chassis_type" "$LOG"
 }
 
 apply_sddm_wallpaper() {
