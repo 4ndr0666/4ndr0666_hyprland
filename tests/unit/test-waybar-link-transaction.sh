@@ -19,14 +19,23 @@ source "$ROOT/scripts/lib_waybar.sh"
 [[ -f "$HOME/.config/waybar/config" ]]
 [[ -f "$HOME/.config/waybar/style.css" ]]
 
-LN_CALLS=0
-ln() {
-  ((LN_CALLS++))
-  if ((LN_CALLS == 2)); then
-    return 1
-  fi
-  command /usr/bin/ln "$@"
-}
+SHIM_BIN="$TEST_ROOT/bin"
+mkdir -p "$SHIM_BIN"
+printf '%s\n' 0 >"$TEST_ROOT/ln.calls"
+cat >"$SHIM_BIN/ln" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+calls="$(cat "$TEST_ROOT/ln.calls")"
+((calls += 1))
+printf '%s\n' "$calls" >"$TEST_ROOT/ln.calls"
+if ((calls == 2)); then
+  exit 1
+fi
+exec /usr/bin/ln "$@"
+EOF
+chmod +x "$SHIM_BIN/ln"
+export PATH="$SHIM_BIN:$PATH"
+export TEST_ROOT
 
 if waybar_link_transaction desktop /dev/null; then
   printf '%s\n' '[FAIL] Waybar transaction unexpectedly succeeded during injected link failure.' >&2
@@ -40,7 +49,7 @@ fi
 [[ -f "$HOME/.config/waybar/configs/[TOP] Default (old v1)" ]]
 [[ "$(cat "$HOME/.config/waybar/configs/[TOP] Default (old v1)")" == 'old-config' ]]
 
-unset -f ln
+unset TEST_ROOT
 waybar_link_transaction desktop /dev/null
 [[ -L "$HOME/.config/waybar/config" ]]
 [[ "$(readlink "$HOME/.config/waybar/config")" == "$HOME/.config/waybar/configs/[TOP] Default" ]]
