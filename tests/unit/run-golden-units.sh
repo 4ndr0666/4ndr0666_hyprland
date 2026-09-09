@@ -13,6 +13,7 @@ TESTS=(
   tests/unit/test-dotfile-backup-atomicity.sh
   tests/unit/test-dotfile-destructive-patterns.sh
   tests/unit/test-bootstrap.sh
+  tests/unit/test-zsh-pinned-clone.sh
   tests/unit/test-bootstrap-docs.sh
   tests/unit/test-bootstrap-authority.sh
   tests/unit/test-release-ref-consistency.sh
