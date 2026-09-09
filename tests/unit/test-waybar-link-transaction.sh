@@ -7,7 +7,6 @@ trap 'rm -rf -- "$TEST_ROOT"' EXIT
 
 export HOME="$TEST_ROOT/home"
 mkdir -p "$HOME/.config/waybar/configs" "$HOME/.config/waybar/style"
-mkdir -p "$ROOT/config/waybar" "$ROOT/config/waybar/style"
 printf '%s\n' 'desktop-config' >"$HOME/.config/waybar/configs/[TOP] Default"
 printf '%s\n' 'laptop-config' >"$HOME/.config/waybar/configs/[TOP] Default Laptop"
 printf '%s\n' 'old-config' >"$HOME/.config/waybar/configs/[TOP] Default (old v1)"
@@ -20,11 +19,13 @@ source "$ROOT/scripts/lib_waybar.sh"
 [[ -f "$HOME/.config/waybar/config" ]]
 [[ -f "$HOME/.config/waybar/style.css" ]]
 
+LN_CALLS=0
 ln() {
-  command /usr/bin/ln "$@"
-  if [[ "$1" == "-sfn" ]]; then
+  ((LN_CALLS++))
+  if ((LN_CALLS == 2)); then
     return 1
   fi
+  command /usr/bin/ln "$@"
 }
 
 if waybar_link_transaction desktop /dev/null; then
