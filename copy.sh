@@ -66,8 +66,9 @@ express_supported() {
 }
 
 prepare_log() {
-  mkdir -p "$SOURCE_ROOT/Copy-Logs"
-  LOG="$SOURCE_ROOT/Copy-Logs/install-$(date +%d-%H%M%S)_dotfiles.log"
+  local log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/4ndr0666-hyprland"
+  mkdir -p "$log_dir"
+  LOG="$log_dir/install-$(date +%d-%H%M%S)_dotfiles.log"
   : >"$LOG"
 }
 
