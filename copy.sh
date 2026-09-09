@@ -56,14 +56,22 @@ version_gte() {
 
 get_installed_dotfiles_version() {
   local hypr_dir="$HOME/.config/hypr"
+  local current
+
   [[ -d "$hypr_dir" ]] || return 1
-  find "$hypr_dir" -maxdepth 1 -type f -name 'v*.*.*' -printf '%f\n' 2>/dev/null \
-    | sed 's/^v//' | sort -V | tail -n1
+  if current="$(find "$hypr_dir" -maxdepth 1 -type f -name 'v*.*.*' -printf '%f\n' |
+    sed 's/^v//' | sort -V | tail -n1)"; then
+    [[ -n "$current" ]] || return 1
+    printf '%s\n' "$current"
+  else
+    printf '%s\n' '[ERROR] Failed to inspect the installed dotfiles version.' >&2
+    return 2
+  fi
 }
 
 express_supported() {
   local current
-  current="$(get_installed_dotfiles_version)" || return 1
+  current="$(get_installed_dotfiles_version)" || return $?
   [[ -n "$current" ]] && version_gte "$current" "$MIN_EXPRESS_VERSION"
 }
 
@@ -165,6 +173,12 @@ done
 EXPRESS_SUPPORTED=0
 if express_supported; then
   EXPRESS_SUPPORTED=1
+else
+  version_rc=$?
+  if ((version_rc != 1)); then
+    printf '%s\n' '[ERROR] Installed dotfiles version discovery failed.' >&2
+    exit "$version_rc"
+  fi
 fi
 if [[ "$EXPRESS_MODE" -eq 1 && "$EXPRESS_SUPPORTED" -eq 0 ]]; then
   printf '%s\n' '[ERROR] Express upgrade requires the installed dotfiles version to meet the minimum supported version.' >&2
@@ -213,7 +227,16 @@ resolution="$(prompt_resolution_choice)"
 apply_clock_12h "$LOG"
 prompt_express_upgrade "$EXPRESS_SUPPORTED" "$LOG"
 
-INSTALLED_VERSION_AT_START="$(get_installed_dotfiles_version || true)"
+INSTALLED_VERSION_AT_START=""
+if INSTALLED_VERSION_AT_START="$(get_installed_dotfiles_version)"; then
+  :
+else
+  version_rc=$?
+  if ((version_rc != 1)); then
+    printf '%s\n' '[ERROR] Installed dotfiles version discovery failed during workflow initialization.' >&2
+    exit "$version_rc"
+  fi
+fi
 
 copy_phase1 "$LOG"
 copy_waybar "$LOG"
