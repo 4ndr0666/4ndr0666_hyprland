@@ -71,12 +71,27 @@ ACTUAL_REVISION="$(git -C "$STAGED_THEME" rev-parse HEAD)"
   printf '%s\n' '[ERROR] Staged SDDM theme revision verification failed.' >&2
   exit 1
 }
-[[ -d "$STAGED_THEME/Backgrounds" ]] || {
-  printf '%s\n' '[ERROR] Staged SDDM theme is incomplete.' >&2
+[[ -f "$STAGED_THEME/Main.qml" ]] || {
+  printf '%s\n' '[ERROR] Staged SDDM theme is incomplete: Main.qml is missing.' >&2
   exit 1
 }
-[[ -f "$PARENT_DIR/assets/sddm.png" ]] || {
-  printf '%s\n' '[ERROR] Required SDDM background asset is missing.' >&2
+[[ -f "$STAGED_THEME/theme.conf" ]] || {
+  printf '%s\n' '[ERROR] Staged SDDM theme is incomplete: theme.conf is missing.' >&2
+  exit 1
+}
+[[ -x "$STAGED_THEME/sessionsDetector.sh" ]] || {
+  printf '%s\n' '[ERROR] Staged SDDM theme is incomplete: sessionsDetector.sh is not executable.' >&2
+  exit 1
+}
+timeout --signal=TERM --kill-after=10s "$GIT_COMMAND_TIMEOUT" bash -c 'cd "$1" && ./sessionsDetector.sh' _ "$STAGED_THEME" >>"$LOG" 2>&1
+[[ -s "$STAGED_THEME/sessions.txt" ]] || {
+  printf '%s\n' '[ERROR] SDDM session discovery produced no sessions.txt.' >&2
+  exit 1
+}
+timeout --signal=TERM --kill-after=10s "$GIT_COMMAND_TIMEOUT" git -C "$STAGED_THEME" clean -fdx >>"$LOG" 2>&1
+rm -rf -- "$STAGED_THEME/.git"
+[[ ! -e "$STAGED_THEME/.git" ]] || {
+  printf '%s\n' '[ERROR] Failed to remove SDDM dependency metadata before deployment.' >&2
   exit 1
 }
 
@@ -124,7 +139,6 @@ if ((THEME_WAS_PRESENT)); then
   sudo -n mv -- "$THEME_DEST" "$THEME_BACKUP"
 fi
 sudo -n mv -- "$STAGED_THEME" "$THEME_DEST"
-sudo -n install -m 0644 -- "$PARENT_DIR/assets/sddm.png" "$THEME_DEST/Backgrounds/default/sddm.png"
 sudo -n install -m 0644 -- "$SDDM_NEW" "$SDDM_CONF"
 if [[ -n "$SDDM_MODE" ]]; then
   sudo -n chmod -- "$SDDM_MODE" "$SDDM_CONF"
