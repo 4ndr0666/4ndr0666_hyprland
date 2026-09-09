@@ -88,7 +88,6 @@ timeout --signal=TERM --kill-after=10s "$GIT_COMMAND_TIMEOUT" bash -c 'cd "$1" &
   printf '%s\n' '[ERROR] SDDM session discovery produced no sessions.txt.' >&2
   exit 1
 }
-timeout --signal=TERM --kill-after=10s "$GIT_COMMAND_TIMEOUT" git -C "$STAGED_THEME" clean -fdx >>"$LOG" 2>&1
 rm -rf -- "$STAGED_THEME/.git"
 [[ ! -e "$STAGED_THEME/.git" ]] || {
   printf '%s\n' '[ERROR] Failed to remove SDDM dependency metadata before deployment.' >&2
