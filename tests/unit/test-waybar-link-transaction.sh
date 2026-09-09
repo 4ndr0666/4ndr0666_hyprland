@@ -9,7 +9,8 @@ export HOME="$TEST_ROOT/home"
 mkdir -p "$HOME/.config/waybar/configs" "$HOME/.config/waybar/style"
 printf '%s\n' 'desktop-config' >"$HOME/.config/waybar/configs/[TOP] Default"
 printf '%s\n' 'laptop-config' >"$HOME/.config/waybar/configs/[TOP] Default Laptop"
-printf '%s\n' 'old-config' >"$HOME/.config/waybar/configs/[TOP] Default (old v1)"
+printf '%s\n' 'desktop-old-config' >"$HOME/.config/waybar/configs/[TOP] Default (old v1)"
+printf '%s\n' 'laptop-old-config' >"$HOME/.config/waybar/configs/[TOP] Default Laptop (old v1)"
 printf '%s\n' 'user-config' >"$HOME/.config/waybar/config"
 printf '%s\n' 'user-style' >"$HOME/.config/waybar/style.css"
 printf '%s\n' 'neon-style' >"$HOME/.config/waybar/style/[Extra] Neon Circuit.css"
@@ -47,23 +48,20 @@ fi
 [[ "$(cat "$HOME/.config/waybar/config")" == 'user-config' ]]
 [[ -f "$HOME/.config/waybar/style.css" ]]
 [[ "$(cat "$HOME/.config/waybar/style.css")" == 'user-style' ]]
-[[ -f "$HOME/.config/waybar/configs/[TOP] Default (old v1)" ]]
-[[ "$(cat "$HOME/.config/waybar/configs/[TOP] Default (old v1)")" == 'old-config' ]]
+[[ -f "$HOME/.config/waybar/configs/[TOP] Default Laptop" ]]
+[[ -f "$HOME/.config/waybar/configs/[TOP] Default Laptop (old v1)" ]]
+[[ "$(cat "$HOME/.config/waybar/configs/[TOP] Default Laptop (old v1)")" == 'laptop-old-config' ]]
 
 export PATH="$ORIGINAL_PATH"
 waybar_link_transaction desktop /dev/null
-
-printf '%s\n' '[TRACE] committed Waybar state:'
-ls -la "$HOME/.config/waybar"
-ls -la "$HOME/.config/waybar/configs"
-readlink "$HOME/.config/waybar/config" || true
-readlink "$HOME/.config/waybar/style.css" || true
 
 [[ -L "$HOME/.config/waybar/config" ]]
 [[ "$(readlink "$HOME/.config/waybar/config")" == "$HOME/.config/waybar/configs/[TOP] Default" ]]
 [[ -L "$HOME/.config/waybar/style.css" ]]
 [[ "$(readlink "$HOME/.config/waybar/style.css")" == 'style/[Extra] Neon Circuit.css' ]]
 [[ ! -e "$HOME/.config/waybar/configs/[TOP] Default Laptop" ]]
-[[ ! -e "$HOME/.config/waybar/configs/[TOP] Default (old v1)" ]]
+[[ ! -e "$HOME/.config/waybar/configs/[TOP] Default Laptop (old v1)" ]]
+[[ -f "$HOME/.config/waybar/configs/[TOP] Default" ]]
+[[ -f "$HOME/.config/waybar/configs/[TOP] Default (old v1)" ]]
 
 printf '%s\n' '[PASS] Waybar link transaction preserves prior state on failure and commits on success.'
