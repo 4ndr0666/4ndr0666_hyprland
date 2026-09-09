@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Golden Unit Protocol: systemd state contract tests.
 # A fake systemctl provides deterministic unit state without touching the host.
 
@@ -114,5 +114,19 @@ systemd_restore_units
 [[ "$(systemd_unit_enabled_state sddm.service)" == disabled ]] || fail 'sddm enabled state was not restored'
 [[ "$(systemd_unit_active_state lightdm.service)" == active ]] || fail 'lightdm active state was not restored'
 [[ "$(systemd_unit_enabled_state gdm.service)" == masked ]] || fail 'masked state was not restored'
+
+# Query failures are not equivalent to absent units and must fail loudly.
+cp "$FAKEBIN/systemctl" "$FAKEBIN/systemctl.real"
+cat > "$FAKEBIN/systemctl" <<'EOF'
+#!/bin/bash
+if [[ "${1:-}" == show ]]; then
+  exit 7
+fi
+exec "$(dirname "$0")/systemctl.real" "$@"
+EOF
+chmod +x "$FAKEBIN/systemctl"
+if systemd_unit_exists sddm.service; then
+  fail 'systemd load-state query failure was accepted'
+fi
 
 printf 'PASS: systemd core\n'
