@@ -22,17 +22,25 @@ done
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
 pidfile="$RUNTIME_DIR/waybar-cava.pid"
 if [[ -f "$pidfile" ]]; then
-  oldpid="$(cat "$pidfile" || true)"
+  oldpid="$(cat "$pidfile")"
   if [[ -n "$oldpid" ]] && kill -0 "$oldpid" 2>/dev/null; then
-    kill "$oldpid" 2>/dev/null || true
-    sleep 0.1 || true
+    kill "$oldpid" 2>/dev/null || {
+      rc=$?
+      if ((rc != 1)); then
+        echo "failed to stop previous WaybarCava process (exit $rc)" >&2
+        exit "$rc"
+      fi
+    }
+    sleep 0.1
   fi
 fi
 printf '%d' $$ >"$pidfile"
 
 # Unique temp config + cleanup on exit
 config_file="$(mktemp "$RUNTIME_DIR/waybar-cava.XXXXXX.conf")"
-cleanup() { rm -f "$config_file" "$pidfile"; }
+cleanup() {
+  rm -f -- "$config_file" "$pidfile"
+}
 trap cleanup EXIT INT TERM
 
 cat >"$config_file" <<EOF
