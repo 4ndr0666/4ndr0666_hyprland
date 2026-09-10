@@ -15,7 +15,7 @@ backup_dir() {
   [[ -n "$dir" ]] || return 1
   [[ -d "$dir" ]] || return 1
   backup="${dir}-backup-$(get_backup_dirname)"
-  mv -- "$dir" "$backup" 2>&1 | tee -a "$log"
+  mv -- "$dir" "$backup" 2>&1 | tee -a "$log" || return 1
   printf '%s\n' "$backup"
 }
 
@@ -61,8 +61,9 @@ cleanup_backups() {
 }
 
 # Transactional directory replacement. The candidate is owned by this
-# function until commit; RETURN cleanup makes every failure path reclaim it.
-replace_dir_transaction() {
+# function until commit; the subshell scopes the EXIT cleanup trap so it
+# cannot clobber a caller's trap state.
+replace_dir_transaction() (
   local source="$1"
   local destination="$2"
   local log="${3:-/dev/null}"
@@ -73,7 +74,7 @@ replace_dir_transaction() {
   mkdir -p -- "$parent"
   candidate="$(mktemp -d --tmpdir="$parent" '.dotfiles.XXXXXX')"
   backup=''
-  trap 'if [[ -n "${candidate:-}" && -d "$candidate" ]]; then rm -rf -- "$candidate"; fi' RETURN
+  trap 'if [[ -n "${candidate:-}" && -d "$candidate" ]]; then rm -rf -- "$candidate"; fi' EXIT
 
   if ! cp -a -- "$source/." "$candidate/" 2>&1 | tee -a "$log"; then
     return 1
@@ -88,13 +89,16 @@ replace_dir_transaction() {
 
   if mv -- "$candidate" "$destination" 2>&1 | tee -a "$log"; then
     candidate=''
-    trap - RETURN
+    trap - EXIT
     printf '%s\n' "$backup"
     return 0
   fi
 
   if [[ -n "$backup" ]] && [[ ! -e "$destination" && ! -L "$destination" ]]; then
-    mv -- "$backup" "$destination"
+    if ! mv -- "$backup" "$destination"; then
+      printf '%s\n' '[ERROR] Directory replacement rollback failed.' >&2
+      return 1
+    fi
   fi
   return 1
-}
+)
