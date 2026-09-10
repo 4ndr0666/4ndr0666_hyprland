@@ -23,7 +23,13 @@ PIPEWIRE_PACKAGES=(
 )
 
 printf '%s\n' "[INFO] Disabling pulseaudio user units to avoid conflicts."
-systemctl --user disable --now pulseaudio.socket pulseaudio.service >> "$LOG" 2>&1 || true
+if ! systemctl --user disable --now pulseaudio.socket pulseaudio.service >>"$LOG" 2>&1; then
+  if systemctl --user is-enabled pulseaudio.socket pulseaudio.service >/dev/null 2>&1 || systemctl --user is-active pulseaudio.socket pulseaudio.service >/dev/null 2>&1; then
+    printf '%s\n' "[ERROR] Failed to disable active/enabled PulseAudio user units." | tee -a "$LOG" >&2
+    exit 1
+  fi
+  printf '%s\n' "[INFO] PulseAudio user units are already absent/inactive; continuing." | tee -a "$LOG"
+fi
 
 printf '%s\n' "[INFO] Installing PipeWire packages."
 package_install "${PIPEWIRE_PACKAGES[@]}"
