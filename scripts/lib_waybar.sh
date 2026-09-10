@@ -4,7 +4,7 @@
 
 set -Eeuo pipefail
 
-waybar_link_transaction() {
+waybar_link_transaction() (
   local chassis_type="$1"
   local log="$2"
   local waybar_dir="$HOME/.config/waybar"
@@ -24,7 +24,7 @@ waybar_link_transaction() {
   fi
 
   transaction_dir="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-waybar-links.XXXXXX")" || return 1
-  trap 'if [[ -n "${transaction_dir:-}" && -d "$transaction_dir" ]]; then rm -rf -- "$transaction_dir"; fi' RETURN
+  trap 'if [[ -n "${transaction_dir:-}" && -d "$transaction_dir" ]]; then rm -rf -- "$transaction_dir"; fi' EXIT
 
   local -a targets=(
     "$config_link"
@@ -95,4 +95,4 @@ waybar_link_transaction() {
   fi
 
   printf '%s\n' '[OK] Waybar links committed.' | tee -a "$log" || return 1
-}
+)
