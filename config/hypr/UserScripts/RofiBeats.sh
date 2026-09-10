@@ -11,29 +11,48 @@ music_list="$HOME/.config/rofi/online_music.list"
 mkdir -p "$(dirname "$music_list")"
 [[ -f "$music_list" ]] || touch "$music_list"
 
-# Send notification
 notification() {
   notify-send -u normal -i "$iDIR/music.png" "$@"
 }
 
-# Check if mpv is currently playing
 music_playing() { pgrep -x "mpv" >/dev/null; }
 
-# Stop all mpv processes except mpvpaper
 stop_music() {
-  mpv_pids=$(pgrep -x mpv)
-  if [ -n "$mpv_pids" ]; then
-    mpvpaper_pid=$(ps aux | grep -- 'unique-wallpaper-process' | grep -v 'grep' | awk '{print $2}')
-    for pid in $mpv_pids; do
-      if ! echo "$mpvpaper_pid" | grep -q "$pid"; then
-        kill -9 $pid || true
+  local mpv_pids pid cmdline status=0
+  mpv_pids="$(pgrep -x mpv || true)"
+  [[ -n "$mpv_pids" ]] || return 0
+
+  while read -r pid; do
+    [[ -n "$pid" ]] || continue
+    cmdline="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+    case "$cmdline" in
+      *unique-wallpaper-process*) continue ;;
+    esac
+
+    if ! kill -TERM "$pid" 2>/dev/null; then
+      if kill -0 "$pid" 2>/dev/null; then
+        printf '[ERROR] failed to terminate mpv process %s\n' "$pid" >&2
+        status=1
       fi
+      continue
+    fi
+
+    for _ in {1..10}; do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep 0.05
     done
-    notification "Music stopped"
-  fi
+    if kill -0 "$pid" 2>/dev/null; then
+      if ! kill -KILL "$pid" 2>/dev/null && kill -0 "$pid" 2>/dev/null; then
+        printf '[ERROR] failed to terminate mpv process %s after TERM\n' "$pid" >&2
+        status=1
+      fi
+    fi
+  done <<< "$mpv_pids"
+
+  ((status == 0)) && notification "Music stopped"
+  return "$status"
 }
 
-# Populate local music file list
 populate_local_music() {
   local_music=()
   filenames=()
@@ -43,7 +62,6 @@ populate_local_music() {
   done < <(find -L "$mDIR" -type f \( -iname "*.mp3" -o -iname "*.flac" -o -iname "*.wav" -o -iname "*.ogg" -o -iname "*.mp4" \))
 }
 
-# Play selected local music file
 play_local_music() {
   populate_local_music
   choice=$(printf "%s\n" "${filenames[@]}" | rofi -i -dmenu -config "$rofi_theme" \
@@ -59,14 +77,12 @@ play_local_music() {
   done
 }
 
-# Shuffle and play all local music
 shuffle_local_music() {
   music_playing && stop_music
   notification "Shuffle Play local music"
   mpv --no-video --shuffle --loop-playlist "$mDIR"
 }
 
-# Play selected online music
 play_online_music() {
   if [ ! -s "$music_list" ]; then
     notify-send -u low -i "$iDIR/music.png" "No online music found" "Add some with Manage Music"
@@ -85,8 +101,8 @@ play_online_music() {
   mpv --no-video --shuffle "$link"
 }
 
-# Manage online music list (add, remove, view)
 manage_music() {
+  local entry tmp
   sub_choice=$(printf "Add Music\nRemove Music\nView List" | rofi -dmenu \
     -config "$rofi_theme_menu" \
     -theme-str 'entry { placeholder: "🛠️ Manage Music List"; }')
@@ -99,25 +115,25 @@ manage_music() {
     url=$(rofi -dmenu -lines 0 -config "$rofi_theme_menu" \
       -theme-str 'entry { placeholder: "🔗 Enter Music URL"; }')
     [[ -z "$url" ]] && return
-    echo "$name|$url" >>"$music_list"
+    printf '%s\n' "$name|$url" >>"$music_list"
     notification "Added" "$name"
     ;;
   "Remove Music")
     entry=$(awk -F'|' '{print $1}' "$music_list" | rofi -dmenu -config "$rofi_theme_menu" \
       -theme-str 'entry { placeholder: "🗑️ Select Music to Remove"; }')
     [[ -z "$entry" ]] && return
-    grep -vF "$entry" "$music_list" >"$music_list.tmp" && mv "$music_list.tmp" "$music_list"
+    tmp="$(mktemp "${music_list}.tmp.XXXXXX")"
+    awk -F'|' -v entry="$entry" '$1 != entry' "$music_list" >"$tmp" || { rm -f -- "$tmp"; return 1; }
+    mv -- "$tmp" "$music_list"
     notification "Removed" "$entry"
     ;;
   "View List")
-    # Show only titles, not URLs
     awk -F'|' '{print $1}' "$music_list" | rofi -dmenu -config "$rofi_theme_menu" \
       -theme-str 'entry { placeholder: "📜 Online Music List"; }' >/dev/null
     ;;
   esac
 }
 
-# Main menu
 user_choice=$(printf "%s\n" \
   "Play from Online Stations" \
   "Play from Music directory" \
