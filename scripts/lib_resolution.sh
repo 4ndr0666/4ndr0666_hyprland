@@ -83,44 +83,50 @@ apply_resolution_profile() {
 # Overlay composition is consumed by the copy/upgrade transaction. The legacy
 # implementation used grep pipelines followed by `|| true`, which made both
 # expected "no match" statuses and real I/O/read errors indistinguishable.
-# Keep the capability intact while making the extraction boundary fail-closed.
+# Keep the capability intact while making the extraction boundary fail-closed
+# and the two generated artifacts atomic.
 compose_overlay_from_backup() {
   local type="$1"
   local base_file="$2"
   local old_user_file="$3"
   local new_user_file="$4"
   local disable_file="$5"
-  local old_tmp base_tmp
+  local old_tmp base_tmp new_tmp disable_tmp
 
-  mkdir -p -- "$(dirname -- "$new_user_file")"
+  mkdir -p -- "$(dirname -- "$new_user_file")" "$(dirname -- "$disable_file")"
   old_tmp="$(mktemp)"
   base_tmp="$(mktemp)"
-  trap 'rm -f -- "$old_tmp" "$base_tmp"' RETURN
+  new_tmp="$(mktemp --tmpdir="$(dirname -- "$new_user_file")" '.overlay.XXXXXX')"
+  disable_tmp="$(mktemp --tmpdir="$(dirname -- "$disable_file")" '.overlay.XXXXXX')"
+  trap 'rm -f -- "$old_tmp" "$base_tmp" "$new_tmp" "$disable_tmp"' RETURN
 
   case "$type" in
     startup)
-      awk '/^[[:space:]]*exec-once[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$old_user_file" | sort -u >"$old_tmp"
-      awk '/^[[:space:]]*exec-once[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$base_file" | sort -u >"$base_tmp"
-      comm -23 "$old_tmp" "$base_tmp" >"$new_user_file"
+      awk '/^[[:space:]]*exec-once[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$old_user_file" | sort -u >"$old_tmp" || return 1
+      awk '/^[[:space:]]*exec-once[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$base_file" | sort -u >"$base_tmp" || return 1
+      comm -23 "$old_tmp" "$base_tmp" >"$new_tmp" || return 1
       awk '/^[[:space:]]*#[[:space:]]*exec-once[[:space:]]*=/ {
         sub(/^[[:space:]]*#[[:space:]]*exec-once[[:space:]]*=[[:space:]]*/, "")
         sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "")
         if ($0 != "" && $0 != "$scriptsDir/KeybindsLayoutInit.sh") print
-      }' "$old_user_file" | sort -u >"$disable_file"
+      }' "$old_user_file" | sort -u >"$disable_tmp" || return 1
       ;;
     windowrules)
-      awk '/^(windowrule|layerrule)[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$old_user_file" | sort -u >"$old_tmp"
-      awk '/^(windowrule|layerrule)[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$base_file" | sort -u >"$base_tmp"
-      comm -23 "$old_tmp" "$base_tmp" >"$new_user_file"
+      awk '/^(windowrule|layerrule)[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$old_user_file" | sort -u >"$old_tmp" || return 1
+      awk '/^(windowrule|layerrule)[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$base_file" | sort -u >"$base_tmp" || return 1
+      comm -23 "$old_tmp" "$base_tmp" >"$new_tmp" || return 1
       awk '/^[[:space:]]*#[[:space:]]*(windowrule|layerrule)[[:space:]]*=/ {
         sub(/^[[:space:]]*#[[:space:]]*/, "")
         sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "")
         if ($0 != "") print
-      }' "$old_user_file" | sort -u >"$disable_file"
+      }' "$old_user_file" | sort -u >"$disable_tmp" || return 1
       ;;
     *)
       printf '%s\n' "unsupported overlay type: $type" >&2
       return 2
       ;;
   esac
+
+  mv -- "$new_tmp" "$new_user_file" || return 1
+  mv -- "$disable_tmp" "$disable_file" || return 1
 }
