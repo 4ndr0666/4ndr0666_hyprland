@@ -43,13 +43,13 @@ grep -Fxq 'exec-once = user-command' "$out" || fail 'startup overlay lost user e
 ! grep -Fq 'base-command' "$out" || fail 'startup overlay retained base entry'
 grep -Fxq 'disabled-command' "$disable" || fail 'startup disable entry was not preserved'
 
-: >"out.empty"
-: >"disable.empty"
 empty="$tmp/empty.conf"
+empty_out="$tmp/out.empty"
+empty_disable="$tmp/disable.empty"
 : >"$empty"
-compose_overlay_from_backup startup "$empty" "$empty" "$tmp/out.empty" "$tmp/disable.empty"
-[[ ! -s "$tmp/out.empty" ]] || fail 'empty startup overlay is not empty'
-[[ ! -s "$tmp/disable.empty" ]] || fail 'empty startup disable overlay is not empty'
+compose_overlay_from_backup startup "$empty" "$empty" "$empty_out" "$empty_disable"
+[[ ! -s "$empty_out" ]] || fail 'empty startup overlay is not empty'
+[[ ! -s "$empty_disable" ]] || fail 'empty startup disable overlay is not empty'
 
 if compose_overlay_from_backup startup "$tmp/missing-base" "$old" "$tmp/fail.out" "$tmp/fail.disable"; then
   fail 'unreadable base input was silently accepted'
