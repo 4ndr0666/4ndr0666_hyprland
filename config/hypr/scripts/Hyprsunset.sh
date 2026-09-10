@@ -47,7 +47,13 @@ cmd_toggle() {
 
   # Always stop any running hyprsunset first to avoid CTM manager conflicts
   if pgrep -x hyprsunset >/dev/null 2>&1; then
-    pkill -x hyprsunset || true
+    pkill -x hyprsunset || {
+      rc=$?
+      if ((rc != 1)); then
+        printf '%s\n' "[ERROR] Failed to stop hyprsunset (exit $rc)." >&2
+        return "$rc"
+      fi
+    }
     # give it a moment to release the CTM manager
     sleep 0.2
   fi
@@ -57,7 +63,15 @@ if [[ "$state" == "on" ]]; then
     if command -v hyprsunset >/dev/null 2>&1; then
       nohup hyprsunset -i >/dev/null 2>&1 &
       # if hyprsunset persists, stop it shortly after applying identity
-      sleep 0.3 && pkill -x hyprsunset || true
+      sleep 0.3 && {
+        pkill -x hyprsunset || {
+          rc=$?
+          if ((rc != 1)); then
+            printf '%s\n' "[ERROR] Failed to stop hyprsunset after identity reset (exit $rc)." >&2
+            return "$rc"
+          fi
+        }
+      }
     fi
     echo off > "$STATE_FILE"
     notify-send -u low "Hyprsunset: Disabled" || true
