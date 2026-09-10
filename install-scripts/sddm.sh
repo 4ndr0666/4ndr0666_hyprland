@@ -38,14 +38,22 @@ systemd_capture_units "${LOGIN_MANAGER_UNITS[@]}"
 
 restore_on_failure() {
   local rc=$?
+  local restore_failed=0
   printf '%s\n' '[ERROR] SDDM transition failed; restoring captured service state.' | tee -a "$LOG" >&2
   if ! systemd_restore_units >>"$LOG" 2>&1; then
+    restore_failed=1
     printf '%s\n' '[ERROR] Service-state restoration also failed; inspect the SDDM log immediately.' | tee -a "$LOG" >&2
   fi
   if [[ -s "$SDDM_STATE_MANIFEST" ]] && grep -Fqx 'wayland_sessions_dir|created' "$SDDM_STATE_MANIFEST"; then
     if [[ -d "$wayland_sessions_dir" ]] && [[ -z "$(find "$wayland_sessions_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
-      sudo rmdir -- "$wayland_sessions_dir" >>"$LOG" 2>&1 || true
+      if ! sudo rmdir -- "$wayland_sessions_dir" >>"$LOG" 2>&1; then
+        restore_failed=1
+        printf '%s\n' '[ERROR] Failed to remove the wayland sessions directory created by the failed SDDM transition.' | tee -a "$LOG" >&2
+      fi
     fi
+  fi
+  if ((restore_failed)); then
+    return 1
   fi
   return "$rc"
 }
