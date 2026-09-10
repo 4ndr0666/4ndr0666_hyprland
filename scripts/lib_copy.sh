@@ -198,48 +198,6 @@ restore_hypr_assets() {
   done
 }
 
-compose_overlay_from_backup() {
-  local type="$1"
-  local base_file="$2"
-  local old_user_file="$3"
-  local new_user_file="$4"
-  local disable_file="$5"
-  local old_tmp base_tmp
-
-  mkdir -p -- "$(dirname -- "$new_user_file")"
-  old_tmp="$(mktemp)"
-  base_tmp="$(mktemp)"
-  trap 'rm -f -- "$old_tmp" "$base_tmp"' RETURN
-  : >"$new_user_file"
-  : >"$disable_file"
-
-  case "$type" in
-    startup)
-      grep -E '^\s*exec-once\s*=' "$old_user_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$old_tmp" || true
-      grep -E '^\s*exec-once\s*=' "$base_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$base_tmp" || true
-      comm -23 "$old_tmp" "$base_tmp" >"$new_user_file"
-      grep -E '^\s*#\s*exec-once\s*=' "$old_user_file" |
-        sed -E 's/^\s*#\s*exec-once\s*=\s*//' |
-        sed -E 's/^\s+//;s/\s+$//' |
-        grep -Ev '^\$scriptsDir/KeybindsLayoutInit\.sh$' |
-        sort -u >"$disable_file" || true
-      ;;
-    windowrules)
-      grep -E '^(windowrule|layerrule)\s*=' "$old_user_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$old_tmp" || true
-      grep -E '^(windowrule|layerrule)\s*=' "$base_file" | sed -E 's/^\s+//;s/\s+$//' | sort -u >"$base_tmp" || true
-      comm -23 "$old_tmp" "$base_tmp" >"$new_user_file"
-      grep -E '^\s*#\s*(windowrule|layerrule)\s*=' "$old_user_file" |
-        sed -E 's/^\s*#\s*//' |
-        sed -E 's/^\s+//;s/\s+$//' |
-        sort -u >"$disable_file" || true
-      ;;
-    *)
-      printf '%s\n' "unsupported overlay type: $type" >&2
-      return 2
-      ;;
-  esac
-}
-
 cleanup_duplicate_userconfigs() {
   local current_version="$1"
   local log="$2"
