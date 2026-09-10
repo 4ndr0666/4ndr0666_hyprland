@@ -24,14 +24,10 @@ readonly WAYBAR_DESKTOP="$HOME/.config/waybar/configs/[TOP] Default"
 readonly WAYBAR_LAPTOP="$HOME/.config/waybar/configs/[TOP] Default Laptop"
 
 LOG=""
-DOWNLOAD_DIR=""
 DEPLOY_STAGE_DIR=""
 
 cleanup() {
   local rc=$?
-  if [[ -n "$DOWNLOAD_DIR" && -d "$DOWNLOAD_DIR" ]]; then
-    rm -rf -- "$DOWNLOAD_DIR"
-  fi
   if [[ -n "$DEPLOY_STAGE_DIR" && -d "$DEPLOY_STAGE_DIR" ]]; then
     rm -rf -- "$DEPLOY_STAGE_DIR"
   fi
@@ -123,37 +119,6 @@ configure_waybar_links() {
   esac
 
   waybar_link_transaction "$chassis_type" "$LOG"
-}
-
-apply_sddm_wallpaper() {
-  local target='/usr/share/sddm/themes/simple_sddm_2/Backgrounds/default'
-  local answer
-  [[ -d '/usr/share/sddm/themes/simple_sddm_2' ]] || return 0
-  [[ -f "$WALLPAPER_STATE" ]] || return 0
-  [[ "$EXPRESS_MODE" -eq 1 ]] && return 0
-
-  printf '%s' '[ACTION] Apply current wallpaper to SDDM? [y/N] ' >/dev/tty
-  read -r answer </dev/tty
-  case "$answer" in
-    y|Y|yes|YES) sudo -n install -m 0644 -- "$WALLPAPER_STATE" "$target" ;;
-    *) : ;;
-  esac
-}
-
-offer_additional_wallpapers() {
-  [[ "$EXPRESS_MODE" -eq 0 ]] || return 0
-  local answer
-  printf '%s' '[ACTION] Download the optional 1GB wallpaper bank? [y/N] ' >/dev/tty
-  read -r answer </dev/tty
-  case "$answer" in
-    y|Y|yes|YES) ;;
-    *) return 0 ;;
-  esac
-
-  DOWNLOAD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-wallpaper-bank.XXXXXX")"
-  git clone --depth=1 --no-tags 'https://github.com/4ndr0666/Wallpaper-Bank.git' "$DOWNLOAD_DIR/Wallpaper-Bank"
-  mkdir -p "$HOME/Pictures/wallpapers"
-  cp -a -- "$DOWNLOAD_DIR/Wallpaper-Bank/wallpapers/." "$HOME/Pictures/wallpapers/"
 }
 
 RUN_MODE=""
@@ -260,8 +225,6 @@ done
 chmod +x -- "$HOME/.config/hypr/initial-boot.sh"
 
 configure_waybar_links
-apply_sddm_wallpaper
-offer_additional_wallpapers
 
 if [[ "$EXPRESS_MODE" -eq 1 ]]; then
   cleanup_backups auto "$LOG"
