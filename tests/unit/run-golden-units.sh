@@ -76,6 +76,7 @@ TESTS=(
   tests/unit/test-waybar-link-transaction.sh
   tests/unit/test-clock-12h-mandatory.sh
   tests/unit/test-gtk-theme-installer.sh
+  tests/unit/test-installer-dry-run.sh
 )
 
 failures=()
