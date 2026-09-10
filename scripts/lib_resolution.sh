@@ -4,7 +4,7 @@
 
 set -Eeuo pipefail
 
-apply_resolution_profile() {
+apply_resolution_profile() (
   local resolution="$1"
   [[ "$resolution" == '< 1440p' ]] || return 0
 
@@ -20,7 +20,7 @@ apply_resolution_profile() {
   local rollback_failed=0
 
   transaction_dir="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-resolution.XXXXXX")" || return 1
-  trap 'rm -f -- "$kitty_temp" "$rofi_temp"; if [[ -n "${transaction_dir:-}" && -d "$transaction_dir" ]]; then rm -rf -- "$transaction_dir"; fi' RETURN
+  trap 'rm -f -- "$kitty_temp" "$rofi_temp"; if [[ -n "${transaction_dir:-}" && -d "$transaction_dir" ]]; then rm -rf -- "$transaction_dir"; fi' EXIT
 
   local -a targets=("$kitty" "$lock" "$lock1080" "$lock2k" "$rofi")
   local target snapshot marker
@@ -78,14 +78,15 @@ apply_resolution_profile() {
   fi
 
   printf '%s\n' '[OK] Resolution-profile customization committed.' | tee -a "$log" || return 1
-}
+)
 
 # Overlay composition is consumed by the copy/upgrade transaction. The legacy
 # implementation used grep pipelines followed by `|| true`, which made both
 # expected "no match" statuses and real I/O/read errors indistinguishable.
 # Keep the capability intact while making the extraction boundary fail-closed
-# and the two generated artifacts atomic.
-compose_overlay_from_backup() {
+# and the two generated artifacts atomic. The subshell scopes the cleanup trap
+# so this helper cannot overwrite a caller's RETURN trap.
+compose_overlay_from_backup() (
   local type="$1"
   local base_file="$2"
   local old_user_file="$3"
@@ -98,7 +99,7 @@ compose_overlay_from_backup() {
   base_tmp="$(mktemp)"
   new_tmp="$(mktemp --tmpdir="$(dirname -- "$new_user_file")" '.overlay.XXXXXX')"
   disable_tmp="$(mktemp --tmpdir="$(dirname -- "$disable_file")" '.overlay.XXXXXX')"
-  trap 'rm -f -- "$old_tmp" "$base_tmp" "$new_tmp" "$disable_tmp"' RETURN
+  trap 'rm -f -- "$old_tmp" "$base_tmp" "$new_tmp" "$disable_tmp"' EXIT
 
   case "$type" in
     startup)
@@ -129,4 +130,4 @@ compose_overlay_from_backup() {
 
   mv -- "$new_tmp" "$new_user_file" || return 1
   mv -- "$disable_tmp" "$disable_file" || return 1
-}
+)
