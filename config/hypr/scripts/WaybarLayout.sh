@@ -54,7 +54,15 @@ main() {
 
     case "$choice" in
         "no panel")
-            pgrep -x "waybar" && pkill waybar || true
+            if pgrep -x waybar >/dev/null 2>&1; then
+                pkill -x waybar || {
+                    rc=$?
+                    if ((rc != 1)); then
+                        printf '%s\n' "[ERROR] Failed to stop waybar (exit $rc)." >&2
+                        return "$rc"
+                    fi
+                }
+            fi
             ;;
         *)
             apply_config "$choice"
