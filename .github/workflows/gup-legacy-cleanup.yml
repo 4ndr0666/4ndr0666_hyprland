@@ -62,7 +62,7 @@ jobs:
 
       - name: Run overlay regression
         shell: bash
-        run: tests/unit/test-overlay-composition-error-semantics.sh
+        run: bash tests/unit/test-overlay-composition-error-semantics.sh
 
       - name: Commit cleanup
         shell: bash
