@@ -24,7 +24,9 @@ package_aur_helper() {
 package_is_installed() { pacman -Q -- "$1" >/dev/null 2>&1; }
 package_manifest_contains() { grep -Fqx -- "$1" "$PACKAGE_MANIFEST"; }
 
-package_manifest_record() {
+# The subshell scopes the cleanup trap so package helpers cannot overwrite a
+# caller's RETURN trap while retaining the same manifest transaction semantics.
+package_manifest_record() (
   local package
   local -a entries=() updated=()
   package_core_init
@@ -37,11 +39,11 @@ package_manifest_record() {
   ((${#updated[@]})) || return 0
   local tmp
   tmp="$(mktemp "${PACKAGE_MANIFEST}.tmp.XXXXXX")"
-  trap 'rm -f -- "$tmp"' RETURN
+  trap 'rm -f -- "$tmp"' EXIT
   printf '%s\n' "${updated[@]}" > "$tmp"
   mv -- "$tmp" "$PACKAGE_MANIFEST"
-  trap - RETURN
-}
+  trap - EXIT
+)
 
 package_normalize() {
   local package
@@ -121,7 +123,9 @@ package_install_aur() {
   package_record_newly_owned "${newly_owned[@]}"
 }
 
-package_remove() {
+# The subshell scopes the manifest cleanup trap so package removal remains
+# transaction-local and cannot clobber a caller's RETURN trap.
+package_remove() (
   local package tmp
   local -a requested=() installed=()
   package_core_init
@@ -144,11 +148,11 @@ package_remove() {
     fi
   done
   tmp="$(mktemp "${PACKAGE_MANIFEST}.tmp.XXXXXX")"
-  trap 'rm -f -- "$tmp"' RETURN
+  trap 'rm -f -- "$tmp"' EXIT
   awk -v packages="$(printf '%s\034' "${installed[@]}")" 'BEGIN { n=split(packages,a,"\034"); for (i=1;i<=n;i++) if (a[i] != "") remove[a[i]]=1 } !remove[$0]' "$PACKAGE_MANIFEST" > "$tmp"
   mv -- "$tmp" "$PACKAGE_MANIFEST"
-  trap - RETURN
-}
+  trap - EXIT
+)
 
 package_remove_owned() {
   local package
