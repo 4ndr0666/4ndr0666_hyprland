@@ -3,7 +3,15 @@
 # searchable enabled keybinds using rofi (supports bindd descriptions)
 
 # kill yad to not interfere with this binds
-pkill yad || true
+if pgrep -x yad >/dev/null 2>&1; then
+  pkill -x yad || {
+    rc=$?
+    if ((rc != 1)); then
+      printf '%s\n' "[ERROR] Failed to stop yad (exit $rc)." >&2
+      exit "$rc"
+    fi
+  }
+fi
 
 # check if rofi is already running
 if pidof rofi > /dev/null; then
