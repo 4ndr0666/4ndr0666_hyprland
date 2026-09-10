@@ -22,7 +22,8 @@ NVIDIA_PACKAGES=(
   libva-nvidia-driver
 )
 
-mapfile -t KERNELS < <(pacman -Qq | grep -E '^(linux|linux-lts|linux-zen|linux-hardened)$' || true)
+KERNEL_QUERY="$(pacman -Qq)"
+mapfile -t KERNELS < <(printf '%s\n' "$KERNEL_QUERY" | awk '/^(linux|linux-lts|linux-zen|linux-hardened)$/')
 if ((${#KERNELS[@]} == 0)); then
   log '[ERROR] No supported installed Arch kernel package was found.'
   exit 1
