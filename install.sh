@@ -2,37 +2,10 @@
 # https://github.com/4ndr0666
 set -Eeuo pipefail
 
-clear
-
-OK="$(tput setaf 2)[OK]$(tput sgr0)"
-ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
-INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_DIR="$ROOT/install-scripts"
-DRY_RUN=false
+
 if [[ "${1:-}" == --dry-run ]]; then
-  DRY_RUN=true
-  LOG=/dev/stderr
-else
-  LOG_DIR="$ROOT/Install-Logs"
-  mkdir -p "$LOG_DIR"
-  LOG="$LOG_DIR/01-Hyprland-Install-Scripts-$(date +%d-%H%M%S).log"
-fi
-export LOG
-
-if ((EUID == 0)); then
-  printf '[ERROR] Do not run this installer as root.\n' | tee -a "$LOG" >&2
-  exit 1
-fi
-
-[[ -r /etc/os-release ]] || { printf '[ERROR] Cannot determine operating system.\n' >&2; exit 1; }
-# shellcheck disable=SC1091
-source /etc/os-release
-[[ "${ID:-}" == arch ]] || { printf '[ERROR] This installer supports Arch Linux only.\n' >&2; exit 1; }
-
-source "$SCRIPT_DIR/core/packages.sh"
-
-if [[ "$DRY_RUN" == true ]]; then
   printf '[DRY-RUN] Installer plan; no system or user-state mutation will be performed.\n'
   printf '[DRY-RUN] Required bootstrap modules: 00-base.sh pacman.sh yay.sh 01-hypr-pkgs.sh pipewire.sh fonts.sh hyprland.sh\n'
   printf '[DRY-RUN] Optional modules are selected interactively during a normal installation.\n'
@@ -47,6 +20,28 @@ if [[ "$DRY_RUN" == true ]]; then
   printf '[DRY-RUN] PASS: installer graph is present and syntactically valid.\n'
   exit 0
 fi
+
+clear
+
+OK="$(tput setaf 2)[OK]$(tput sgr0)"
+ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
+INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
+LOG_DIR="$ROOT/Install-Logs"
+mkdir -p "$LOG_DIR"
+LOG="$LOG_DIR/01-Hyprland-Install-Scripts-$(date +%d-%H%M%S).log"
+export LOG
+
+if ((EUID == 0)); then
+  printf '[ERROR] Do not run this installer as root.\n' | tee -a "$LOG" >&2
+  exit 1
+fi
+
+[[ -r /etc/os-release ]] || { printf '[ERROR] Cannot determine operating system.\n' >&2; exit 1; }
+# shellcheck disable=SC1091
+source /etc/os-release
+[[ "${ID:-}" == arch ]] || { printf '[ERROR] This installer supports Arch Linux only.\n' >&2; exit 1; }
+
+source "$SCRIPT_DIR/core/packages.sh"
 
 if package_is_installed pulseaudio; then
   printf '[ERROR] PulseAudio is installed; remove it before continuing.\n' | tee -a "$LOG" >&2
