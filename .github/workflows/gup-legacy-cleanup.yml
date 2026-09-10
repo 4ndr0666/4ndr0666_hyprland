@@ -48,7 +48,16 @@ jobs:
         run: |
           set -Eeuo pipefail
           while IFS= read -r -d '' file; do
-            bash -n "$file"
+            if [[ "$file" == config/hypr/scripts/RofiEmoji.sh ]]; then
+              tmp="$(mktemp)"
+              trap 'rm -f -- "$tmp"' RETURN
+              sed '/^# # DATA # #$/q' "$file" >"$tmp"
+              bash -n "$tmp"
+              rm -f -- "$tmp"
+              trap - RETURN
+            else
+              bash -n "$file"
+            fi
           done < <(find scripts install-scripts config/hypr/scripts -type f -name '*.sh' -print0)
 
       - name: Run overlay regression
