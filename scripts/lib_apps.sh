@@ -53,7 +53,10 @@ install_terminal_configs() {
     mkdir -p "$GHOSTTY_DIR"
     install -m 0644 "$GHOSTTY_SRC" "$GHOSTTY_DEST" 2>&1 | tee -a "$log"
     if [ -f "$GHOSTTY_DIR/wallust.conf" ]; then
-      sed -i -E 's/^(\s*palette\s*=\s*)([0-9]{1,2}):/\1\2=/' "$GHOSTTY_DIR/wallust.conf" 2>&1 | tee -a "$log" || true
+      if ! sed -i -E 's/^(\s*palette\s*=\s*)([0-9]{1,2}):/\1\2=/' "$GHOSTTY_DIR/wallust.conf" 2>&1 | tee -a "$log"; then
+        printf '%s\n' "${ERROR:-[ERROR]} - Failed to normalize Ghostty wallust palette." | tee -a "$log" >&2
+        return 1
+      fi
     fi
   else
     echo "${ERROR:-[ERROR]} -$GHOSTTY_SRC not found; skipping Ghostty config install." 2>&1 | tee -a "$log"
