@@ -9,9 +9,15 @@ ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
 INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_DIR="$ROOT/install-scripts"
-LOG_DIR="$ROOT/Install-Logs"
-mkdir -p "$LOG_DIR"
-LOG="$LOG_DIR/01-Hyprland-Install-Scripts-$(date +%d-%H%M%S).log"
+DRY_RUN=false
+if [[ "${1:-}" == --dry-run ]]; then
+  DRY_RUN=true
+  LOG=/dev/stderr
+else
+  LOG_DIR="$ROOT/Install-Logs"
+  mkdir -p "$LOG_DIR"
+  LOG="$LOG_DIR/01-Hyprland-Install-Scripts-$(date +%d-%H%M%S).log"
+fi
 export LOG
 
 if ((EUID == 0)); then
@@ -25,6 +31,22 @@ source /etc/os-release
 [[ "${ID:-}" == arch ]] || { printf '[ERROR] This installer supports Arch Linux only.\n' >&2; exit 1; }
 
 source "$SCRIPT_DIR/core/packages.sh"
+
+if [[ "$DRY_RUN" == true ]]; then
+  printf '[DRY-RUN] Installer plan; no system or user-state mutation will be performed.\n'
+  printf '[DRY-RUN] Required bootstrap modules: 00-base.sh pacman.sh yay.sh 01-hypr-pkgs.sh pipewire.sh fonts.sh hyprland.sh\n'
+  printf '[DRY-RUN] Optional modules are selected interactively during a normal installation.\n'
+  printf '[DRY-RUN] Validate module presence and shell syntax below.\n'
+  for module in 00-base.sh pacman.sh yay.sh 01-hypr-pkgs.sh pipewire.sh fonts.sh hyprland.sh sddm.sh nvidia.sh nvidia_nouveau.sh gtk_themes.sh InputGroup.sh quickshell.sh xdph.sh bluetooth.sh thunar.sh thunar_default.sh sddm_theme.sh zsh.sh zsh_pokemon.sh rog.sh dotfiles-main.sh 02-Final-Check.sh; do
+    path="$SCRIPT_DIR/$module"
+    [[ -f "$path" ]] || { printf '[ERROR] Missing installer module: %s\n' "$path" >&2; exit 1; }
+    bash -n "$path" || { printf '[ERROR] Shell syntax failure: %s\n' "$path" >&2; exit 1; }
+    printf '[DRY-RUN] OK %s\n' "$module"
+  done
+  bash -n "$0"
+  printf '[DRY-RUN] PASS: installer graph is present and syntactically valid.\n'
+  exit 0
+fi
 
 if package_is_installed pulseaudio; then
   printf '[ERROR] PulseAudio is installed; remove it before continuing.\n' | tee -a "$LOG" >&2
