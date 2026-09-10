@@ -80,7 +80,7 @@ apply_resolution_profile() {
   printf '%s\n' '[OK] Resolution-profile customization committed.' | tee -a "$log" || return 1
 }
 
-# Overlay composition is consumed by the copy/upgrade transaction.  The legacy
+# Overlay composition is consumed by the copy/upgrade transaction. The legacy
 # implementation used grep pipelines followed by `|| true`, which made both
 # expected "no match" statuses and real I/O/read errors indistinguishable.
 # Keep the capability intact while making the extraction boundary fail-closed.
@@ -105,7 +105,7 @@ compose_overlay_from_backup() {
       awk '/^[[:space:]]*#[[:space:]]*exec-once[[:space:]]*=/ {
         sub(/^[[:space:]]*#[[:space:]]*exec-once[[:space:]]*=[[:space:]]*/, "")
         sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "")
-        if ($0 != "" && $0 != "\\$scriptsDir/KeybindsLayoutInit.sh") print
+        if ($0 != "" && $0 != "$scriptsDir/KeybindsLayoutInit.sh") print
       }' "$old_user_file" | sort -u >"$disable_file"
       ;;
     windowrules)
