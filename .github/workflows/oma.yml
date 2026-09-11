@@ -1,0 +1,39 @@
+name: GUP-O.M.A. Machine Assurance
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner_label:
+        description: 'Self-hosted runner label representing the declared machine class'
+        required: true
+        default: 'oma'
+        type: string
+      mode:
+        description: 'Non-destructive machine verification mode'
+        required: true
+        default: 'verify'
+        type: choice
+        options:
+          - inventory
+          - verify
+
+permissions:
+  contents: read
+
+jobs:
+  oma-machine:
+    runs-on: [self-hosted, linux, arch, '${{ inputs.runner_label }}']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Verify Arch host
+        run: test "$(. /etc/os-release && printf '%s' "$ID")" = arch
+      - name: Run O.M.A. machine harness
+        run: bash tests/oma/run-oma.sh --${{ inputs.mode }}
+      - name: Publish machine evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: oma-machine-evidence-${{ inputs.runner_label }}
+          path: oma-evidence/
+          if-no-files-found: error
