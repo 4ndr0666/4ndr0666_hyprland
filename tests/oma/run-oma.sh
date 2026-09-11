@@ -31,10 +31,14 @@ mkdir -p -- "$OUT_DIR"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 REPORT="$OUT_DIR/oma-$STAMP.txt"
 TMP="$(mktemp "$OUT_DIR/.oma-$STAMP.XXXXXX")"
-cleanup() {
-  rm -f -- "$TMP"
+finalize() {
+  local rc=$?
+  if [[ -f "$TMP" ]]; then
+    mv -- "$TMP" "$REPORT"
+  fi
+  exit "$rc"
 }
-trap cleanup EXIT HUP INT TERM
+trap finalize EXIT
 
 run_probe() {
   local name="$1"; shift
