@@ -17,6 +17,8 @@ if [[ "${1:-}" == --dry-run ]]; then
     printf '[DRY-RUN] OK %s\n' "$module"
   done
   bash -n "$0"
+  bash -n "$SCRIPT_DIR/core/platform.sh"
+  printf '[DRY-RUN] OK core/platform.sh\n'
   printf '[DRY-RUN] PASS: installer graph is present and syntactically valid.\n'
   exit 0
 fi
@@ -39,7 +41,12 @@ fi
 [[ -r /etc/os-release ]] || { printf '[ERROR] Cannot determine operating system.\n' >&2; exit 1; }
 # shellcheck disable=SC1091
 source /etc/os-release
-[[ "${ID:-}" == arch ]] || { printf '[ERROR] This installer supports Arch Linux only.\n' >&2; exit 1; }
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/core/platform.sh"
+if ! is_arch_family; then
+  printf '[ERROR] This installer supports Arch-family distributions only (detected: %s).\n' "${PRETTY_NAME:-${ID:-unknown}}" >&2
+  exit 1
+fi
 
 source "$SCRIPT_DIR/core/packages.sh"
 
@@ -72,7 +79,7 @@ run_module() {
   env "$path"
 }
 
-printf '\n4ndr0666 Arch Linux Installation\n\n' | tee -a "$LOG"
+printf '\n4ndr0666 Arch-family Installation\n\n' | tee -a "$LOG"
 whiptail --title '4ndr0666 Arch-Hyprland' \
   --msgbox 'Run a full system update and reboot before installation. VM users should enable 3D acceleration.' 12 72
 
