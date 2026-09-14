@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # === 4ndr0666 === #
-# Arch Linux bootstrap for this repository at an immutable revision.
+# Arch-family bootstrap for this repository at an immutable revision.
 
 set -Eeuo pipefail
 
@@ -51,8 +51,17 @@ fi
 # shellcheck disable=SC1091
 . /etc/os-release
 if [[ "${ID:-}" != "arch" ]]; then
-    printf '%s This repository currently supports Arch Linux only (detected: %s).\n' "$ERROR" "${PRETTY_NAME:-${ID:-unknown}}" >&2
-    exit 1
+    arch_family=false
+    for token in ${ID_LIKE:-}; do
+        if [[ "$token" == "arch" ]]; then
+            arch_family=true
+            break
+        fi
+    done
+    if [[ "$arch_family" != true ]]; then
+        printf '%s This repository currently supports Arch-family distributions only (detected: %s).\n' "$ERROR" "${PRETTY_NAME:-${ID:-unknown}}" >&2
+        exit 1
+    fi
 fi
 
 if ! command -v git >/dev/null 2>&1; then
