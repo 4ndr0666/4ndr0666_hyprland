@@ -17,7 +17,6 @@ mkdir -p "$(dirname "$SDDM_STATE_MANIFEST")"
 SDDM_PACKAGES=(
   qt6-declarative
   qt6-svg
-  qt6-virtualkeyboard
   qt6-multimedia-ffmpeg
   qt5-quickcontrols2
   sddm
