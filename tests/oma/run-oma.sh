@@ -25,7 +25,12 @@ done
 [[ -r /etc/os-release ]] || { printf '[ERROR] /etc/os-release is unavailable.\n' >&2; exit 1; }
 # shellcheck disable=SC1091
 source /etc/os-release
-[[ "${ID:-}" == arch ]] || { printf '[ERROR] O.M.A. machine execution requires Arch Linux; detected %s.\n' "${ID:-unknown}" >&2; exit 1; }
+# shellcheck disable=SC1091
+source "$ROOT/install-scripts/core/platform.sh"
+if ! is_arch_family; then
+  printf '[ERROR] O.M.A. machine execution requires an Arch-family distribution; detected %s.\n' "${PRETTY_NAME:-${ID:-unknown}}" >&2
+  exit 1
+fi
 
 mkdir -p -- "$OUT_DIR"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -63,8 +68,10 @@ run_probe() {
   printf 'hostname=%s\n' "$(hostname)"
   printf 'architecture=%s\n' "$(uname -m)"
   printf 'kernel=%s\n' "$(uname -r)"
-  printf 'os=%s\n' "${PRETTY_NAME:-Arch Linux}"
-  printf 'cpu=%s\n' "$(lscpu 2>/dev/null | awk -F: '/Model name/{gsub(/^ +/,"",$2); print $2; exit}' || printf 'unavailable')"
+  printf 'os_id=%s\n' "${ID:-unknown}"
+  printf 'os_id_like=%s\n' "${ID_LIKE:-unknown}"
+  printf 'os=%s\n' "${PRETTY_NAME:-Arch-family Linux}"
+  printf 'cpu=%s\n' "$(lscpu 2>/dev/null | awk -F: '/Model name/{gsub(/^ +/,"",$2); print $2; exit || true}' || printf 'unavailable')"
   printf 'gpu=%s\n' "$(lspci 2>/dev/null | awk -F': ' '/VGA compatible controller|3D controller/{print $2}' | paste -sd ';' - || printf 'unavailable')"
   printf 'boot=%s\n' "$(test -d /sys/firmware/efi && printf 'UEFI' || printf 'legacy-or-unavailable')"
   printf 'session=%s\n' "${XDG_SESSION_TYPE:-unavailable}"
@@ -89,13 +96,8 @@ for cmd in bash awk findmnt lspci lscpu pacman systemctl ip git; do
   if command -v "$cmd" >/dev/null 2>&1; then
     printf '%s=present\n' "$cmd" >> "$TMP"
   else
-    printf '%s=absent\n' "$cmd" >> "$TMP"
+    printf '%s=missing\n' "$cmd" >> "$TMP"
   fi
 done
 
-printf '\n[non-destructive-boundary]\nstatus=PASS\nmutation_mode=disabled\n' >> "$TMP"
-printf '\n[adversarial-boundary]\nstatus=NOT-EXERCISED\nreason=destructive fault injection requires an explicitly provisioned recovery machine\n' >> "$TMP"
-
-mv -- "$TMP" "$REPORT"
-printf 'O.M.A. evidence: %s\n' "$REPORT"
-printf 'O.M.A. machine execution complete; destructive/adversarial certification remains gated on a provisioned recovery machine.\n'
+printf '%s\n' "O.M.A. $MODE evidence written to $REPORT"
