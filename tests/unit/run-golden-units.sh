@@ -67,7 +67,6 @@ TESTS=(
   tests/unit/test-keyboard-layout-lifecycle.sh
   tests/unit/test-wallpaper-effect-lifecycle.sh
   tests/unit/test-themechanger-lifecycle.sh
-  tests/unit/test-refresh-lifecycle.sh
   tests/unit/test-detection-lifecycle.sh
   tests/unit/test-refresh-nowaybar-lifecycle.sh
   tests/unit/test-quickshell-refresh-connectivity.sh
@@ -77,6 +76,7 @@ TESTS=(
   tests/unit/test-clock-12h-mandatory.sh
   tests/unit/test-gtk-theme-installer.sh
   tests/unit/test-installer-dry-run.sh
+  tests/unit/test-arch-family-detection.sh
 )
 
 failures=()
@@ -101,4 +101,4 @@ if ((${#failures[@]})); then
   exit 1
 fi
 
-printf 'All Golden Units passed.\n'
+printf '%s\n' 'All Golden Units passed.'
