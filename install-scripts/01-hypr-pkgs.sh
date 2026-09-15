@@ -15,8 +15,8 @@ mkdir -p "$(dirname "$LOG")"
 export LOG
 
 # This is the baseline desktop package set. Keep it minimal: package-manager
-# dependencies may expand the transaction, but no convenience application is
-# admitted here merely because it was present in the legacy installer.
+a# dependencies may expand the transaction, but no convenience application
+# is admitted here merely because it was present in the legacy installer.
 CORE_PACKAGES=(
   bc
   cliphist
@@ -51,10 +51,11 @@ CORE_PACKAGES=(
   yad
 )
 
-# These packages are deliberately explicit AUR inputs. The installer must
-# never silently reinterpret an unavailable official package as an AUR package.
+# The wallpaper stack was deliberately migrated from swww to awww.
+# Keep the daemon package explicit because the runtime configuration invokes
+# awww/awww-daemon directly; a stale swww entry would certify the wrong stack.
 AUR_PACKAGES=(
-  swww
+  awww
   wallust
 )
 
