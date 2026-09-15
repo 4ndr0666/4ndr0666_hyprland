@@ -9,7 +9,8 @@ LOG="${LOG:-Install-Logs/install-$(date +%d-%H%M%S)_final-check.log}"
 mkdir -p "$(dirname "$LOG")"
 source "$SCRIPT_DIR/core/packages.sh"
 
-# Final-check must validate the canonical baseline, not a stale legacy list.
+# Final-check mirrors the canonical installer-owned baseline. Feature-specific
+# modules must own and verify their own package contracts.
 packages=(
   bc
   cliphist
@@ -36,7 +37,7 @@ packages=(
   slurp
   swappy
   swaync
-  swww
+  awww
   wallust
   waybar
   wl-clipboard
