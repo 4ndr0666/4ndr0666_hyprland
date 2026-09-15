@@ -7,67 +7,11 @@ cd "$ROOT_DIR"
 
 LOG="${LOG:-Install-Logs/install-$(date +%d-%H%M%S)_final-check.log}"
 mkdir -p "$(dirname "$LOG")"
+source "$SCRIPT_DIR/core/package-manifest.sh"
 source "$SCRIPT_DIR/core/packages.sh"
 
-# Final-check mirrors the canonical installer-owned baseline. Feature-specific
-# modules must own and verify their own package contracts.
-packages=(
-  bc
-  cliphist
-  curl
-  grim
-  gvfs
-  gvfs-mtp
-  hyprpolkitagent
-  imagemagick
-  jq
-  kitty
-  kvantum
-  libspng
-  network-manager-applet
-  pamixer
-  pavucontrol
-  playerctl
-  python-requests
-  python-pyquery
-  qt5ct
-  qt6ct
-  qt6-svg
-  rofi
-  slurp
-  swappy
-  swaync
-  awww
-  wallust
-  waybar
-  wl-clipboard
-  wlogout
-  xdg-user-dirs
-  xdg-utils
-  yad
-  hypridle
-  hyprlock
-  hyprland
-  pipewire
-  wireplumber
-  pipewire-audio
-  pipewire-alsa
-  pipewire-pulse
-  sof-firmware
-  adobe-source-code-pro-fonts
-  noto-fonts-emoji
-  otf-font-awesome
-  ttf-droid
-  ttf-fira-code
-  ttf-fantasque-nerd
-  ttf-jetbrains-mono
-  ttf-jetbrains-mono-nerd
-  ttf-victor-mono
-  noto-fonts
-)
-
 missing=()
-for pkg in "${packages[@]}"; do
+for pkg in "${CANONICAL_BASELINE_PACKAGES[@]}" "${CANONICAL_BASELINE_AUR_PACKAGES[@]}"; do
   package_is_installed "$pkg" || missing+=("$pkg")
 done
 
