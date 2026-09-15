@@ -1,10 +1,10 @@
 #!/bin/bash
 # 💫 https://github.com/4ndr0666 💫 #
-# Hyprland Packages #
+# Canonical Hyprland runtime package manifest.
+# Every package listed here is an intentional installer-owned runtime input.
+# Feature-specific applications belong to their own opt-in installer modules.
 
-# edit your packages desired here. 
-# WARNING! If you remove packages here, dotfiles may not work properly.
-# and also, ensure that packages are present in AUR and official Arch Repo
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$SCRIPT_DIR/.."
@@ -12,9 +12,11 @@ cd "$PARENT_DIR"
 
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_hypr-pkgs.log"
 mkdir -p "$(dirname "$LOG")"
+export LOG
 
-# Package intent is kept here; transaction and ownership semantics live in
-# core/packages.sh. Do not add package-manager commands to this file.
+# This is the baseline desktop package set. Keep it minimal: package-manager
+# dependencies may expand the transaction, but no convenience application is
+# admitted here merely because it was present in the legacy installer.
 CORE_PACKAGES=(
   bc
   cliphist
@@ -24,12 +26,10 @@ CORE_PACKAGES=(
   gvfs-mtp
   hyprpolkitagent
   imagemagick
-  inxi
   jq
   kitty
   kvantum
   libspng
-  nano
   network-manager-applet
   pamixer
   pavucontrol
@@ -43,9 +43,7 @@ CORE_PACKAGES=(
   slurp
   swappy
   swaync
-  unzip
   waybar
-  wget
   wl-clipboard
   wlogout
   xdg-user-dirs
@@ -53,26 +51,8 @@ CORE_PACKAGES=(
   yad
 )
 
-OPTIONAL_PACKAGES=(
-  brightnessctl
-  btop
-  cava
-  loupe
-  fastfetch
-  gnome-system-monitor
-  mousepad
-  mpv
-  mpv-mpris
-  nvtop
-  nwg-look
-  nwg-displays
-  pacman-contrib
-  qalculate-gtk
-  yt-dlp
-)
-
-# These names are intentionally explicit AUR inputs. The installer must never
-# silently reinterpret an unavailable official package as an AUR package.
+# These packages are deliberately explicit AUR inputs. The installer must
+# never silently reinterpret an unavailable official package as an AUR package.
 AUR_PACKAGES=(
   swww
   wallust
@@ -80,7 +60,7 @@ AUR_PACKAGES=(
 
 source "$SCRIPT_DIR/core/packages.sh"
 
-package_install "${CORE_PACKAGES[@]}" "${OPTIONAL_PACKAGES[@]}"
+package_install "${CORE_PACKAGES[@]}"
 package_install_aur "${AUR_PACKAGES[@]}"
 
 printf '%s\n' "[OK] Hyprland package transactions completed."
