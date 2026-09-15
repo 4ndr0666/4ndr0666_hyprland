@@ -15,7 +15,7 @@ mkdir -p "$(dirname "$LOG")"
 export LOG
 
 # This is the baseline desktop package set. Keep it minimal: package-manager
-a# dependencies may expand the transaction, but no convenience application
+dependencies may expand the transaction, but no convenience application
 # is admitted here merely because it was present in the legacy installer.
 CORE_PACKAGES=(
   bc
