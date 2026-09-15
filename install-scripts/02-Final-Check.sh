@@ -1,21 +1,79 @@
-#!/bin/bash
-# 💫 https://github.com/4ndr0666 💫 #
-# Final checking if packages are installed
-# NOTE: These package check are only the essentials
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$SCRIPT_DIR/.."
-cd "$ROOT"
-LOG="Install-Logs/00_CHECK-$(date +%d-%H%M%S)_installed.log"
+ROOT_DIR="$SCRIPT_DIR/.."
+cd "$ROOT_DIR"
+
+LOG="${LOG:-Install-Logs/install-$(date +%d-%H%M%S)_final-check.log}"
 mkdir -p "$(dirname "$LOG")"
 source "$SCRIPT_DIR/core/packages.sh"
 
-packages=(cliphist kvantum rofi-wayland imagemagick swaync swww wallust waybar wl-clipboard wlogout kitty hypridle hyprlock hyprland)
+# Final-check must validate the canonical baseline, not a stale legacy list.
+packages=(
+  bc
+  cliphist
+  curl
+  grim
+  gvfs
+  gvfs-mtp
+  hyprpolkitagent
+  imagemagick
+  jq
+  kitty
+  kvantum
+  libspng
+  network-manager-applet
+  pamixer
+  pavucontrol
+  playerctl
+  python-requests
+  python-pyquery
+  qt5ct
+  qt6ct
+  qt6-svg
+  rofi
+  slurp
+  swappy
+  swaync
+  swww
+  wallust
+  waybar
+  wl-clipboard
+  wlogout
+  xdg-user-dirs
+  xdg-utils
+  yad
+  hypridle
+  hyprlock
+  hyprland
+  pipewire
+  wireplumber
+  pipewire-audio
+  pipewire-alsa
+  pipewire-pulse
+  sof-firmware
+  adobe-source-code-pro-fonts
+  noto-fonts-emoji
+  otf-font-awesome
+  ttf-droid
+  ttf-fira-code
+  ttf-fantasque-nerd
+  ttf-jetbrains-mono
+  ttf-jetbrains-mono-nerd
+  ttf-victor-mono
+  noto-fonts
+)
+
 missing=()
-for pkg in "${packages[@]}"; do package_is_installed "$pkg" || missing+=("$pkg"); done
+for pkg in "${packages[@]}"; do
+  package_is_installed "$pkg" || missing+=("$pkg")
+done
+
 if ((${#missing[@]} == 0)); then
-  printf '[OK] All essential packages are installed.\n' | tee -a "$LOG"
-else
-  printf '[WARN] Missing packages:\n' | tee -a "$LOG"
-  printf '%s\n' "${missing[@]}" | tee -a "$LOG"
+  printf '%s\n' '[OK] Canonical baseline package verification passed.' | tee -a "$LOG"
+  exit 0
 fi
+
+printf '[ERROR] Missing canonical baseline packages: %s\n' "${missing[*]}" | tee -a "$LOG" >&2
+exit 1
