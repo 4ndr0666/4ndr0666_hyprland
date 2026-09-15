@@ -12,16 +12,8 @@ LOG="Install-Logs/install-$(date +%d-%H%M%S)_pipewire.log"
 mkdir -p "$(dirname "$LOG")"
 export LOG
 
+source "$SCRIPT_DIR/core/package-manifest.sh"
 source "$SCRIPT_DIR/core/packages.sh"
-
-PIPEWIRE_PACKAGES=(
-  pipewire
-  wireplumber
-  pipewire-audio
-  pipewire-alsa
-  pipewire-pulse
-  sof-firmware
-)
 
 printf '%s\n' "[INFO] Disabling pulseaudio user units to avoid conflicts."
 if ! systemctl --user disable --now pulseaudio.socket pulseaudio.service >>"$LOG" 2>&1; then
