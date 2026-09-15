@@ -1,6 +1,6 @@
 #!/bin/bash
 # 💫 https://github.com/4ndr0666 💫 #
-# base-devel + archlinux-keyring #
+# Base installation prerequisites.
 
 set -Eeuo pipefail
 
@@ -12,13 +12,8 @@ LOG="Install-Logs/install-$(date +%d-%H%M%S)_base.log"
 mkdir -p "$(dirname "$LOG")"
 export LOG
 
+source "$SCRIPT_DIR/core/package-manifest.sh"
 source "$SCRIPT_DIR/core/packages.sh"
-
-BASE_PACKAGES=(
-  base-devel
-  archlinux-keyring
-  findutils
-)
 
 printf '%s\n' "[INFO] Installing base development packages."
 package_install "${BASE_PACKAGES[@]}"
