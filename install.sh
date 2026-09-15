@@ -18,7 +18,9 @@ if [[ "${1:-}" == --dry-run ]]; then
   done
   bash -n "$0"
   bash -n "$SCRIPT_DIR/core/platform.sh"
+  bash -n "$SCRIPT_DIR/core/package-manifest.sh"
   printf '[DRY-RUN] OK core/platform.sh\n'
+  printf '[DRY-RUN] OK core/package-manifest.sh\n'
   printf '[DRY-RUN] PASS: installer graph is present and syntactically valid.\n'
   exit 0
 fi
@@ -48,6 +50,7 @@ if ! is_arch_family; then
   exit 1
 fi
 
+source "$SCRIPT_DIR/core/package-manifest.sh"
 source "$SCRIPT_DIR/core/packages.sh"
 
 if package_is_installed pulseaudio; then
@@ -55,10 +58,7 @@ if package_is_installed pulseaudio; then
   exit 1
 fi
 
-if ! command -v whiptail >/dev/null 2>&1; then
-  package_install libnewt
-fi
-package_install pciutils
+package_install "${INSTALLER_RUNTIME_PACKAGES[@]}"
 
 check_login_managers() {
   local -a active_services=()
