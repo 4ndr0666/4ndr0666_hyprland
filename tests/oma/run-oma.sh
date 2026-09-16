@@ -70,7 +70,7 @@ GPU_INFO="$(lspci | awk -F': ' '/VGA compatible controller|3D controller/{if (ou
 ROOT_FS="$(findmnt -n -o FSTYPE /)"
 ROOT_SOURCE="$(findmnt -n -o SOURCE /)"
 DEFAULT_ROUTE="$(ip route show default | awk 'NR==1{print "default-route"; exit}')"
-PACMAN_VERSION="$(pacman --version | awk '/Pacman v/{print; exit}')"
+PACMAN_VERSION="$(pacman --version | awk '/Pacman v/{print $2; exit}')"
 RELEASE_REF="$(tr -d '[:space:]' < "$ROOT/release.ref")"
 MEMORY_KB="$(awk '/^MemTotal:/{print $2; exit}' /proc/meminfo)"
 [[ -r /etc/resolv.conf ]] || { printf '[ERROR] /etc/resolv.conf is unavailable.\n' >&2; exit 1; }
@@ -82,6 +82,7 @@ for pair in \
   "filesystem=$ROOT_FS" \
   "root_storage=$ROOT_SOURCE" \
   "network=$DEFAULT_ROUTE" \
+  "dns_nameservers=$DNS_NAMESERVERS" \
   "package_manager=$PACMAN_VERSION" \
   "release_ref=$RELEASE_REF" \
   "memory_kb=$MEMORY_KB"; do
@@ -92,6 +93,15 @@ for pair in \
     exit 1
   fi
 done
+
+[[ "$PACMAN_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+  printf '[ERROR] Invalid pacman version evidence: %s\n' "$PACMAN_VERSION" >&2
+  exit 1
+}
+[[ "$RELEASE_REF" =~ ^[[:xdigit:]]{40}$ ]] || {
+  printf '[ERROR] Invalid release.ref evidence: %s\n' "$RELEASE_REF" >&2
+  exit 1
+}
 
 {
   printf 'GUP-O.M.A. machine evidence\n'
