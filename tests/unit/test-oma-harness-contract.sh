@@ -22,7 +22,7 @@ assert_absent() {
   fi
 }
 
-assert_contains 'PACMAN_VERSION="$(pacman --version | awk '\''/Pacman v/{print $2; exit}'\'')"'
+assert_contains 'PACMAN_VERSION="$(pacman --version | awk '\''/^Pacman[[:space:]]+v?/{gsub(/^Pacman[[:space:]]+v?/, ""); print "v" $1; exit}'\'')"'
 assert_contains '"dns_nameservers=$DNS_NAMESERVERS"'
 assert_contains '[[ "$PACMAN_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
 assert_contains '[[ "$RELEASE_REF" =~ ^[[:xdigit:]]{40}$ ]]'
