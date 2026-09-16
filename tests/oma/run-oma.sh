@@ -23,6 +23,7 @@ done
 
 [[ -f "$ROOT/install.sh" ]] || { printf '[ERROR] Repository root is invalid: %s\n' "$ROOT" >&2; exit 1; }
 [[ -r /etc/os-release ]] || { printf '[ERROR] /etc/os-release is unavailable.\n' >&2; exit 1; }
+[[ -r "$ROOT/release.ref" ]] || { printf '[ERROR] release.ref is unavailable.\n' >&2; exit 1; }
 # shellcheck disable=SC1091
 source /etc/os-release
 # shellcheck disable=SC1091
@@ -32,7 +33,7 @@ if ! is_arch_family; then
   exit 1
 fi
 
-for cmd in bash awk findmnt lspci lscpu pacman systemctl ip git; do
+for cmd in bash awk findmnt lspci lscpu pacman systemctl ip git date mktemp mv tr; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     printf '[ERROR] Required O.M.A. host capability is missing: %s\n' "$cmd" >&2
     exit 1
@@ -64,6 +65,33 @@ run_probe() {
   fi
 }
 
+CPU_MODEL="$(lscpu | awk -F: '/Model name/{gsub(/^ +/,"",$2); print $2; exit}')"
+GPU_INFO="$(lspci | awk -F': ' '/VGA compatible controller|3D controller/{if (out != "") out=out ";"; out=out $2} END{print out}')"
+ROOT_FS="$(findmnt -n -o FSTYPE /)"
+ROOT_SOURCE="$(findmnt -n -o SOURCE /)"
+DEFAULT_ROUTE="$(ip route show default | awk 'NR==1{print "default-route"; exit}')"
+PACMAN_VERSION="$(pacman --version | awk '/Pacman v/{print; exit}')"
+RELEASE_REF="$(tr -d '[:space:]' < "$ROOT/release.ref")"
+MEMORY_KB="$(awk '/^MemTotal:/{print $2; exit}' /proc/meminfo)"
+DNS_NAMESERVERS="$(awk '$1 == "nameserver" {if (out != "") out=out ";"; out=out $2} END{print out}' /etc/resolv.conf 2>/dev/null || true)"
+
+for pair in \
+  "cpu=$CPU_MODEL" \
+  "gpu=$GPU_INFO" \
+  "filesystem=$ROOT_FS" \
+  "root_storage=$ROOT_SOURCE" \
+  "network=$DEFAULT_ROUTE" \
+  "package_manager=$PACMAN_VERSION" \
+  "release_ref=$RELEASE_REF" \
+  "memory_kb=$MEMORY_KB"; do
+  key="${pair%%=*}"
+  value="${pair#*=}"
+  if [[ -z "$value" ]]; then
+    printf '[ERROR] Required O.M.A. evidence field is empty: %s\n' "$key" >&2
+    exit 1
+  fi
+done
+
 {
   printf 'GUP-O.M.A. machine evidence\n'
   printf 'protocol=GUP-O.M.A.\n'
@@ -78,19 +106,21 @@ run_probe() {
   printf 'os_id=%s\n' "${ID:-unknown}"
   printf 'os_id_like=%s\n' "${ID_LIKE:-unknown}"
   printf 'os=%s\n' "${PRETTY_NAME:-Arch-family Linux}"
-  printf 'cpu=%s\n' "$(lscpu | awk -F: '/Model name/{gsub(/^ +/,"",$2); print $2; exit}')"
-  printf 'gpu=%s\n' "$(lspci | awk -F': ' '/VGA compatible controller|3D controller/{print $2}' | paste -sd ';' -)"
+  printf 'cpu=%s\n' "$CPU_MODEL"
+  printf 'gpu=%s\n' "$GPU_INFO"
+  printf 'memory_kb=%s\n' "$MEMORY_KB"
   printf 'boot=%s\n' "$(test -d /sys/firmware/efi && printf 'UEFI' || printf 'legacy-or-unavailable')"
   printf 'session=%s\n' "${XDG_SESSION_TYPE:-unavailable}"
   printf 'desktop=%s\n' "${XDG_CURRENT_DESKTOP:-unavailable}"
   printf 'wayland_display=%s\n' "${WAYLAND_DISPLAY:-unavailable}"
-  printf 'filesystem=%s\n' "$(findmnt -n -o FSTYPE /)"
-  printf 'root_storage=%s\n' "$(findmnt -n -o SOURCE /)"
+  printf 'filesystem=%s\n' "$ROOT_FS"
+  printf 'root_storage=%s\n' "$ROOT_SOURCE"
   printf 'locale=%s\n' "${LANG:-unavailable}"
   printf 'timezone=%s\n' "$(timedatectl show -p Timezone --value 2>/dev/null || printf 'unavailable')"
-  printf 'network=%s\n' "$(ip route show default | awk 'NR==1{print "default-route"; exit}')"
-  printf 'package_manager=%s\n' "$(pacman --version | awk 'NR==1{print; exit}')"
-  printf 'release_ref=%s\n' "$(tr -d '[:space:]' < "$ROOT/release.ref")"
+  printf 'network=%s\n' "$DEFAULT_ROUTE"
+  printf 'dns_nameservers=%s\n' "${DNS_NAMESERVERS:-unavailable}"
+  printf 'package_manager=%s\n' "$PACMAN_VERSION"
+  printf 'release_ref=%s\n' "$RELEASE_REF"
 } > "$TMP"
 
 if [[ "$MODE" == verify ]]; then
@@ -99,7 +129,7 @@ if [[ "$MODE" == verify ]]; then
 fi
 
 printf '\n[capability-inventory]\n' >> "$TMP"
-for cmd in bash awk findmnt lspci lscpu pacman systemctl ip git; do
+for cmd in bash awk findmnt lspci lscpu pacman systemctl ip git date mktemp mv tr; do
   printf '%s=present\n' "$cmd" >> "$TMP"
 done
 
