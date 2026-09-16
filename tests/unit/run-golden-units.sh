@@ -78,6 +78,7 @@ TESTS=(
   tests/unit/test-installer-dry-run.sh
   tests/unit/test-canonical-package-manifest.sh
   tests/unit/test-arch-family-detection.sh
+  tests/unit/test-oma-harness-contract.sh
 )
 
 failures=()
