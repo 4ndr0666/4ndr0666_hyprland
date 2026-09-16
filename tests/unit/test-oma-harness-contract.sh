@@ -27,7 +27,7 @@ assert_contains '"dns_nameservers=$DNS_NAMESERVERS"'
 assert_contains '[[ "$PACMAN_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
 assert_contains '[[ "$RELEASE_REF" =~ ^[[:xdigit:]]{40}$ ]]'
 assert_contains '"memory_kb=$MEMORY_KB"'
-assert_contains '"hostname=%s\\n" "$(uname -n)"'
+assert_contains 'printf '\''hostname=%s\\n'\'' "$(uname -n)"'
 assert_absent '$(hostname)'
 assert_absent 'exit || true'
 
