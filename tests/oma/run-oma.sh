@@ -73,7 +73,8 @@ DEFAULT_ROUTE="$(ip route show default | awk 'NR==1{print "default-route"; exit}
 PACMAN_VERSION="$(pacman --version | awk '/Pacman v/{print; exit}')"
 RELEASE_REF="$(tr -d '[:space:]' < "$ROOT/release.ref")"
 MEMORY_KB="$(awk '/^MemTotal:/{print $2; exit}' /proc/meminfo)"
-DNS_NAMESERVERS="$(awk '$1 == "nameserver" {if (out != "") out=out ";"; out=out $2} END{print out}' /etc/resolv.conf 2>/dev/null || true)"
+[[ -r /etc/resolv.conf ]] || { printf '[ERROR] /etc/resolv.conf is unavailable.\n' >&2; exit 1; }
+DNS_NAMESERVERS="$(awk '$1 == "nameserver" {if (out != "") out=out ";"; out=out $2} END{print out}' /etc/resolv.conf)"
 
 for pair in \
   "cpu=$CPU_MODEL" \
@@ -118,7 +119,7 @@ done
   printf 'locale=%s\n' "${LANG:-unavailable}"
   printf 'timezone=%s\n' "$(timedatectl show -p Timezone --value 2>/dev/null || printf 'unavailable')"
   printf 'network=%s\n' "$DEFAULT_ROUTE"
-  printf 'dns_nameservers=%s\n' "${DNS_NAMESERVERS:-unavailable}"
+  printf 'dns_nameservers=%s\n' "$DNS_NAMESERVERS"
   printf 'package_manager=%s\n' "$PACMAN_VERSION"
   printf 'release_ref=%s\n' "$RELEASE_REF"
 } > "$TMP"
