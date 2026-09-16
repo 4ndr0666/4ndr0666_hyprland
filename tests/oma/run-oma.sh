@@ -72,7 +72,7 @@ run_probe() {
   printf 'commit=%s\n' "$(git -C "$ROOT" rev-parse HEAD)"
   printf 'timestamp=%s\n' "$STAMP"
   printf 'mode=%s\n' "$MODE"
-  printf 'hostname=%s\n' "$(hostname)"
+  printf 'hostname=%s\n' "$(uname -n)"
   printf 'architecture=%s\n' "$(uname -m)"
   printf 'kernel=%s\n' "$(uname -r)"
   printf 'os_id=%s\n' "${ID:-unknown}"
