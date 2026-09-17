@@ -22,13 +22,19 @@ assert_absent() {
   fi
 }
 
-assert_contains 'PACMAN_VERSION="$(pacman --version | awk '\''/^Pacman[[:space:]]+v?/{gsub(/^Pacman[[:space:]]+v?/, ""); print "v" $1; exit}'\'')"'
+assert_contains 'case "$MODE" in'
+assert_contains '--inventory|--verify)'
+assert_contains 'PACMAN_VERSION="$(pacman --version 2>&1 | awk'
 assert_contains '"dns_nameservers=$DNS_NAMESERVERS"'
 assert_contains '[[ "$PACMAN_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
-assert_contains '[[ "$RELEASE_REF" =~ ^[[:xdigit:]]{40}$ ]]'
+assert_contains '[[ "$RELEASE_REF" =~ ^[0-9a-fA-F]{40}$ ]]'
 assert_contains '"memory_kb=$MEMORY_KB"'
 assert_contains 'printf '\''hostname=%s\\n'\'' "$(uname -n)"'
+assert_contains 'bash "$ROOT/tests/unit/run-golden-units.sh"'
+assert_contains 'bash "$ROOT/install.sh" --dry-run'
+assert_contains 'sha256sum "$EVIDENCE" > "$EVIDENCE.sha256"'
 assert_absent '$(hostname)'
 assert_absent 'exit || true'
+assert_absent 'pacman --version | awk '\''/^Pacman'
 
-printf '%s\n' 'O.M.A. harness evidence contract: PASS'
+printf '%s\n' 'O.M.A. harness execution contract: PASS'
