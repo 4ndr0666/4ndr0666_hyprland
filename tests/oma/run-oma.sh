@@ -70,11 +70,11 @@ GPU_INFO="$(lspci | awk -F': ' '/VGA compatible controller|3D controller/{if (ou
 ROOT_FS="$(findmnt -n -o FSTYPE /)"
 ROOT_SOURCE="$(findmnt -n -o SOURCE /)"
 DEFAULT_ROUTE="$(ip route show default | awk 'NR==1{print "default-route"; exit}')"
-PACMAN_VERSION="$(pacman --version | awk '/^Pacman[[:space:]]+v?/{gsub(/^Pacman[[:space:]]+v?/, ""); print "v" $1; exit}')"
+PACMAN_VERSION="$(pacman --version | awk '{for (i=1; i<=NF; i++) if ($i ~ /^v?[0-9]+\.[0-9]+\.[0-9]+$/) {v=$i; sub(/^v/,"",v); print "v" v; exit}}')"
 RELEASE_REF="$(tr -d '[:space:]' < "$ROOT/release.ref")"
 MEMORY_KB="$(awk '/^MemTotal:/{print $2; exit}' /proc/meminfo)"
 [[ -r /etc/resolv.conf ]] || { printf '[ERROR] /etc/resolv.conf is unavailable.\n' >&2; exit 1; }
-DNS_NAMESERVERS="$(awk '$1 == "nameserver" {if (out != "") out=out ";"; out=out $2} END{print out}' /etc/resolv.conf)"
+DNS_NAMESERVERS="$(awk '$1 == "nameserver" {if (out != "") out=";"; out=out $2} END{print out}' /etc/resolv.conf)"
 
 for pair in \
   "cpu=$CPU_MODEL" \
