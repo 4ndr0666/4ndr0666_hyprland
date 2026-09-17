@@ -3,6 +3,17 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EVIDENCE_DIR="$ROOT/oma-evidence"
+MODE="${1:---inventory}"
+
+case "$MODE" in
+  --inventory|--verify) ;;
+  *)
+    printf '[ERROR] Unsupported O.M.A. mode: %s\n' "$MODE" >&2
+    printf '%s\n' 'Usage: run-oma.sh [--inventory|--verify]' >&2
+    exit 2
+    ;;
+esac
+
 mkdir -p "$EVIDENCE_DIR"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 TMP="$(mktemp)"
@@ -13,13 +24,22 @@ error() {
   exit 1
 }
 
+for cmd in bash awk findmnt lspci lscpu pacman systemctl ip git date mktemp mv tr; do
+  command -v "$cmd" >/dev/null 2>&1 || error "Required O.M.A. command unavailable: $cmd"
+done
+
+[[ -r /etc/os-release ]] || error '/etc/os-release is unavailable.'
+# shellcheck disable=SC1091
+source /etc/os-release
+# shellcheck disable=SC1091
+source "$ROOT/install-scripts/core/platform.sh"
+is_arch_family "${ID:-}" "${ID_LIKE:-}" || error "O.M.A. requires an Arch-family host: ${PRETTY_NAME:-unknown}"
+
 CPU_MODEL="$(lscpu | awk -F: '/Model name/{gsub(/^ +/,"",$2); print $2; exit}')"
 GPU_INFO="$(lspci | awk -F': ' '/VGA compatible controller|3D controller/{if (out != "") out=out ";"; out=out $2} END{print out}')"
 ROOT_FS="$(findmnt -n -o FSTYPE /)"
 ROOT_SOURCE="$(findmnt -n -o SOURCE /)"
 DEFAULT_ROUTE="$(ip route show default | awk 'NR==1{print "default-route"; exit}')"
-# Pacman's banner contains ASCII art before the version-bearing token:
-#   .--.                  Pacman v7.1.0 - libalpm v16.0.1
 PACMAN_VERSION="$(pacman --version 2>&1 | awk '{for (i=1; i<NF; i++) if ($i == "Pacman" && $(i+1) ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/) {print $(i+1); exit}}')"
 RELEASE_REF="$(tr -d '[:space:]' < "$ROOT/release.ref")"
 MEMORY_KB="$(awk '/^MemTotal:/{print $2; exit}' /proc/meminfo)"
@@ -44,9 +64,13 @@ done
 [[ "$PACMAN_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || error "Invalid pacman version evidence: $PACMAN_VERSION"
 [[ "$RELEASE_REF" =~ ^[0-9a-fA-F]{40}$ ]] || error "Invalid release reference: $RELEASE_REF"
 
+EVIDENCE="$EVIDENCE_DIR/oma-$TIMESTAMP.txt"
 {
+  printf 'mode=%s\n' "${MODE#--}"
   printf 'timestamp=%s\n' "$TIMESTAMP"
   printf 'hostname=%s\n' "$(uname -n)"
+  printf 'distribution=%s\n' "${PRETTY_NAME:-${ID:-unknown}}"
+  printf 'arch_family=true\n'
   printf 'cpu=%s\n' "$CPU_MODEL"
   printf 'gpu=%s\n' "$GPU_INFO"
   printf 'filesystem=%s\n' "$ROOT_FS"
@@ -58,9 +82,18 @@ done
   printf 'release_ref=%s\n' "$RELEASE_REF"
   printf '\n[required-host-capabilities]\n'
   for cmd in bash awk findmnt lspci lscpu pacman systemctl ip git date mktemp mv tr; do
-    command -v "$cmd" >/dev/null 2>&1 || error "Required O.M.A. command unavailable: $cmd"
     printf '%s=%s\n' "$cmd" "$(command -v "$cmd")"
   done
-} > "$EVIDENCE_DIR/oma-$TIMESTAMP.txt"
+} > "$EVIDENCE"
 
-printf 'O.M.A. inventory evidence written to %s\n' "$EVIDENCE_DIR/oma-$TIMESTAMP.txt"
+if [[ "$MODE" == '--verify' ]]; then
+  printf '[VERIFY] Running complete Golden Unit suite.\n'
+  bash "$ROOT/tests/unit/run-golden-units.sh"
+  printf '[VERIFY] Running installer dry-run.\n'
+  bash "$ROOT/install.sh" --dry-run
+  printf '[VERIFY] PASS: repository verification completed without system mutation.\n'
+fi
+
+sha256sum "$EVIDENCE" > "$EVIDENCE.sha256"
+printf 'O.M.A. %s evidence written to %s\n' "${MODE#--}" "$EVIDENCE"
+printf 'O.M.A. evidence SHA-256 written to %s.sha256\n' "$EVIDENCE"
