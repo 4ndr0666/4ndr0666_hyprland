@@ -79,6 +79,7 @@ TESTS=(
   tests/unit/test-canonical-package-manifest.sh
   tests/unit/test-arch-family-detection.sh
   tests/unit/test-oma-harness-contract.sh
+  tests/unit/test-oma1-runtime-contract.sh
 )
 
 failures=()
