@@ -18,7 +18,6 @@ hl.on("hyprland.start", function ()
     -- System Applets
     hl.exec_cmd("nm-applet --indicator")
     hl.exec_cmd("nm-tray")
-    hl.exec_cmd("mako")
     hl.exec_cmd("waybar")
     hl.exec_cmd("hypridle")
 
