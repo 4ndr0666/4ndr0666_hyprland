@@ -100,7 +100,6 @@ start_portal_binary() {
 
 sleep 1
 kill_quietly waybar
-kill_quietly mako
 kill_quietly xdg-desktop-portal-hyprland
 kill_quietly xdg-desktop-portal-wlr
 kill_quietly xdg-desktop-portal-gnome
