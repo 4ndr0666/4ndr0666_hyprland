@@ -15,7 +15,7 @@ error() {
 
 mkdir -p "$EVIDENCE_DIR"
 
-for cmd in bash awk date mktemp mv tr uname id systemctl busctl hyprctl pactl awww pidof findmnt; do
+for cmd in bash awk date mktemp mv tr uname id systemctl busctl hyprctl pactl awww pidof findmnt sha256sum; do
   command -v "$cmd" >/dev/null 2>&1 || error "Required O.M.A.-1 command unavailable: $cmd"
 done
 
@@ -36,6 +36,28 @@ check() {
   fi
 }
 
+check_user_manager() {
+  local state failed_units
+  state="$(systemctl --user is-system-running 2>&1)" || true
+  printf '  state=%s\n' "$state" > "$TMP"
+
+  case "$state" in
+    running)
+      return 0
+      ;;
+    degraded)
+      failed_units="$(systemctl --user --failed --no-legend --no-pager 2>&1 || true)"
+      printf '%s\n' "$failed_units" >> "$TMP"
+      return 1
+      ;;
+    *)
+      printf '  failed_units:\n' >> "$TMP"
+      systemctl --user --failed --no-legend --no-pager >> "$TMP" 2>&1 || true
+      return 1
+      ;;
+  esac
+}
+
 {
   printf 'mode=oma1-baseline\n'
   printf 'timestamp=%s\n' "$TIMESTAMP"
@@ -50,7 +72,14 @@ check() {
 } > "$EVIDENCE"
 
 failures=0
-check 'user_manager' systemctl --user is-system-running || failures=$((failures + 1))
+if check_user_manager; then
+  printf 'user_manager=PASS\n' >> "$EVIDENCE"
+  sed 's/[[:space:]]\+$//' "$TMP" | sed 's/^/  /' >> "$EVIDENCE"
+else
+  printf 'user_manager=FAIL\n' >> "$EVIDENCE"
+  sed 's/[[:space:]]\+$//' "$TMP" | sed 's/^/  /' >> "$EVIDENCE"
+  failures=$((failures + 1))
+fi
 check 'dbus_user_bus' busctl --user list || failures=$((failures + 1))
 check 'hyprland_runtime' hyprctl monitors || failures=$((failures + 1))
 check 'audio_server' pactl info || failures=$((failures + 1))
