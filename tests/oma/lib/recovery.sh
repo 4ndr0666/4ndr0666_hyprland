@@ -18,9 +18,11 @@ oma2_recovery() {
   oma2_probe prestate_created grep -Fxq "$before" "$target" || failures=$((failures + 1))
 
   printf '%s\n' "$after" > "$staged"
-  false || true
+  if mv -- "$workdir/missing" "$target" 2>"$OMA2_TMP"; then
+    failures=$((failures + 1))
+  fi
   oma2_probe injected_failure_preserves_prestate grep -Fxq "$before" "$target" || failures=$((failures + 1))
-  oma2_probe staged_state_is_not_committed test ! -e "$target.tmp" || failures=$((failures + 1))
+  oma2_probe staged_state_is_not_committed test -e "$staged" || failures=$((failures + 1))
 
   mv -- "$staged" "$target"
   oma2_probe committed_state grep -Fxq "$after" "$target" || failures=$((failures + 1))
