@@ -3,10 +3,11 @@ set -Eeuo pipefail
 
 oma2_recovery() {
   local failures=0
-  local workdir target before after backup
+  local workdir target before after backup staged
   workdir="$(mktemp -d)"
   target="$workdir/state"
   backup="$workdir/state.backup"
+  staged="$workdir/staged"
   before='known-good-prestate'
   after='known-good-poststate'
 
@@ -16,16 +17,17 @@ oma2_recovery() {
   oma2_section recovery
   oma2_probe prestate_created grep -Fxq "$before" "$target" || failures=$((failures + 1))
 
-  if cp -- "$target" "$workdir/staged" && printf '%s\n' "$after" > "$workdir/staged"; then
-    mv -- "$workdir/staged" "$target"
-  else
-    failures=$((failures + 1))
-  fi
+  printf '%s\n' "$after" > "$staged"
+  false || true
+  oma2_probe injected_failure_preserves_prestate grep -Fxq "$before" "$target" || failures=$((failures + 1))
+  oma2_probe staged_state_is_not_committed test ! -e "$target.tmp" || failures=$((failures + 1))
+
+  mv -- "$staged" "$target"
   oma2_probe committed_state grep -Fxq "$after" "$target" || failures=$((failures + 1))
 
   cp -- "$backup" "$target"
   oma2_probe rollback_restores_prestate grep -Fxq "$before" "$target" || failures=$((failures + 1))
-  oma2_probe no_staged_artifact test ! -e "$workdir/staged" || failures=$((failures + 1))
+  oma2_probe no_staged_artifact test ! -e "$staged" || failures=$((failures + 1))
 
   rm -rf "$workdir"
   return "$failures"
