@@ -15,7 +15,7 @@ oma2_interruption() {
     tmp="$target.tmp"
     printf '%s\n' 'post-state' > "$tmp"
     printf '%s\n' 'staged' > "$marker"
-    kill -TERM "$$"
+    kill -TERM "$BASHPID"
   ) &
   child=$!
   wait "$child" 2>/dev/null || true
