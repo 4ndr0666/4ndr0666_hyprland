@@ -15,7 +15,7 @@ case "$MODE" in
     ;;
 esac
 
-for cmd in bash awk date mktemp rm sha256sum flock systemctl busctl pidof; do
+for cmd in bash awk date mktemp rm sha256sum flock systemctl busctl pidof uname id tr; do
   command -v "$cmd" >/dev/null 2>&1 || {
     printf '[ERROR] Required O.M.A.-2 command unavailable: %s\n' "$cmd" >&2
     exit 1
@@ -26,6 +26,22 @@ done
   printf '[ERROR] O.M.A.-1 runner is unavailable or not executable.\n' >&2
   exit 1
 }
+
+for script in \
+  "$ROOT/tests/oma/run-oma1.sh" \
+  "$ROOT/tests/oma/run-oma.sh" \
+  "$ROOT/tests/oma/run-oma2.sh" \
+  "$LIB_DIR/evidence.sh" \
+  "$LIB_DIR/lifecycle.sh" \
+  "$LIB_DIR/concurrency.sh" \
+  "$LIB_DIR/interruption.sh" \
+  "$LIB_DIR/recovery.sh"; do
+  [[ -r "$script" ]] || {
+    printf '[ERROR] O.M.A.-2 harness file missing: %s\n' "$script" >&2
+    exit 1
+  }
+  bash -n "$script"
+done
 
 # shellcheck disable=SC1091
 source "$LIB_DIR/evidence.sh"
@@ -50,6 +66,7 @@ oma2_emit "release_ref=$(tr -d '[:space:]' < "$ROOT/release.ref")"
 
 failures=0
 oma2_section prerequisites
+oma2_probe harness_syntax bash -n "$ROOT/tests/oma/run-oma2.sh" || failures=$((failures + 1))
 oma2_probe gup_suite bash "$ROOT/tests/unit/run-golden-units.sh" || failures=$((failures + 1))
 oma2_probe oma1_baseline bash "$ROOT/tests/oma/run-oma1.sh" || failures=$((failures + 1))
 
