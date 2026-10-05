@@ -59,6 +59,3 @@ swaync.target = '~/.config/swaync/wallust/colors-wallust.css'
 
 #wezterm.template = 'colors-wezterm.toml'
 #wezterm.target = '~/.config/wezterm/colors/wallust.toml'
-
-zathura.template = 'colors-zathura'
-zathura.target = '~/.config/zathura/zathurarc'
