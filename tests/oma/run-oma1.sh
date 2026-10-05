@@ -10,6 +10,12 @@ trap 'rm -f "$TMP"' EXIT
 
 error() {
   printf '[ERROR] %s\n' "$*" >&2
+  if [[ -f "$EVIDENCE" ]]; then
+    printf 'fatal_error=%s\n' "$*" >> "$EVIDENCE"
+    sha256sum "$EVIDENCE" > "$EVIDENCE.sha256"
+    printf 'O.M.A.-1 evidence written to %s\n' "$EVIDENCE" >&2
+    printf 'O.M.A.-1 evidence SHA-256 written to %s.sha256\n' "$EVIDENCE" >&2
+  fi
   exit 1
 }
 
@@ -19,12 +25,38 @@ for cmd in bash awk date mktemp mv tr uname id systemctl busctl hyprctl pactl aw
   command -v "$cmd" >/dev/null 2>&1 || error "Required O.M.A.-1 command unavailable: $cmd"
 done
 
+{
+  printf 'mode=oma1-baseline\n'
+  printf 'timestamp=%s\n' "$TIMESTAMP"
+  printf 'hostname=%s\n' "$(uname -n)"
+  printf 'user=%s\n' "$(id -un)"
+  printf 'uid=%s\n' "$(id -u)"
+  printf '\n[session_discovery]\n'
+} > "$EVIDENCE"
+
 GRAPHICAL_UID="$(id -u)"
-HYPRLAND_PID="$(
+if HYPRLAND_PID="$(
   pgrep -u "$GRAPHICAL_UID" -x Hyprland 2>/dev/null |
     awk 'NR==1{print; exit}'
-)"
-[[ -n "$HYPRLAND_PID" ]] || error 'Active Hyprland compositor process was not found for the current user.'
+)"; then
+  :
+else
+  HYPRLAND_PID=
+fi
+
+if [[ -z "$HYPRLAND_PID" ]]; then
+  printf 'hyprland_process=FAIL\n' >> "$EVIDENCE"
+  printf 'reason=Active Hyprland compositor process was not found for the current user.\n' >> "$EVIDENCE"
+  printf '\nsummary_failures=1\n' >> "$EVIDENCE"
+  sha256sum "$EVIDENCE" > "$EVIDENCE.sha256"
+  printf '[FAIL] O.M.A.-1 session discovery failed: active Hyprland compositor process was not found for the current user.\n' >&2
+  printf 'O.M.A.-1 evidence written to %s\n' "$EVIDENCE" >&2
+  printf 'O.M.A.-1 evidence SHA-256 written to %s.sha256\n' "$EVIDENCE" >&2
+  exit 1
+fi
+
+printf 'hyprland_process=PASS\n' >> "$EVIDENCE"
+printf 'pid=%s\n' "$HYPRLAND_PID" >> "$EVIDENCE"
 
 HYPRLAND_ENV="/proc/$HYPRLAND_PID/environ"
 [[ -r "$HYPRLAND_ENV" ]] || error "Hyprland process environment is unavailable: $HYPRLAND_ENV"
@@ -54,6 +86,15 @@ load_session_environment() {
 }
 
 load_session_environment
+
+{
+  printf '\n[session]\n'
+  printf 'wayland_display=%s\n' "$WAYLAND_DISPLAY"
+  printf 'xdg_current_desktop=%s\n' "$XDG_CURRENT_DESKTOP"
+  printf 'xdg_session_type=%s\n' "${XDG_SESSION_TYPE:-unset}"
+  printf 'runtime_dir=%s\n' "$XDG_RUNTIME_DIR"
+  printf '\n[probes]\n'
+} >> "$EVIDENCE"
 
 check() {
   local name="$1"
@@ -89,19 +130,6 @@ check_user_manager() {
       ;;
   esac
 }
-
-{
-  printf 'mode=oma1-baseline\n'
-  printf 'timestamp=%s\n' "$TIMESTAMP"
-  printf 'hostname=%s\n' "$(uname -n)"
-  printf 'user=%s\n' "$(id -un)"
-  printf 'uid=%s\n' "$(id -u)"
-  printf 'wayland_display=%s\n' "$WAYLAND_DISPLAY"
-  printf 'xdg_current_desktop=%s\n' "$XDG_CURRENT_DESKTOP"
-  printf 'xdg_session_type=%s\n' "${XDG_SESSION_TYPE:-unset}"
-  printf 'runtime_dir=%s\n' "$XDG_RUNTIME_DIR"
-  printf '\n[probes]\n'
-} > "$EVIDENCE"
 
 failures=0
 if check_user_manager; then
