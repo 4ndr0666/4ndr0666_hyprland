@@ -37,6 +37,30 @@ is_arch_family "${ID:-}" "${ID_LIKE:-}" || error "O.M.A. requires an Arch-family
 
 CPU_MODEL="$(lscpu | awk -F: '/Model name/{gsub(/^ +/,"",$2); print $2; exit}')"
 GPU_INFO="$(lspci | awk -F': ' '/VGA compatible controller|3D controller/{if (out != "") out=out ";"; out=out $2} END{print out}')"
+if [[ -z "$GPU_INFO" ]]; then
+  GPU_INFO="$(
+    for device in /sys/class/drm/card*/device; do
+      [[ -r "$device/uevent" ]] || continue
+      driver=''; vendor=''; of_name=''
+      while IFS='=' read -r key value; do
+        case "$key" in
+          DRIVER) driver="$value" ;;
+          PCI_ID) vendor="$value" ;;
+          OF_NAME) of_name="$value" ;;
+        esac
+      done < "$device/uevent"
+      [[ -n "$driver" || -n "$vendor" || -n "$of_name" ]] || continue
+      card="$(basename "$(dirname "$device")")"
+      entry="$card"
+      [[ -n "$driver" ]] && entry+=" driver=$driver"
+      [[ -n "$vendor" ]] && entry+=" pci_id=$vendor"
+      [[ -n "$of_name" ]] && entry+=" of_name=$of_name"
+      if [[ -n "$GPU_INFO" ]]; then GPU_INFO+=";"; fi
+      GPU_INFO+="$entry"
+    done
+    printf '%s' "$GPU_INFO"
+  )"
+fi
 ROOT_FS="$(findmnt -n -o FSTYPE /)"
 ROOT_SOURCE="$(findmnt -n -o SOURCE /)"
 DEFAULT_ROUTE="$(ip route show default | awk 'NR==1{print "default-route"; exit}')"
