@@ -12,7 +12,7 @@ mapfile -t templates < <(
   awk -F"'" '/^[[:alnum:]_-]+\.template[[:space:]]*=/ {print $2}' "$WALLUST"
 )
 
-(\${#templates[@]} > 0) || { printf '[FAIL] Wallust declares no active templates.\n' >&2; exit 1; }
+(${#templates[@]} > 0) || { printf '[FAIL] Wallust declares no active templates.\n' >&2; exit 1; }
 
 for template in "${templates[@]}"; do
   [[ -f "$TEMPLATE_DIR/$template" ]] || {
