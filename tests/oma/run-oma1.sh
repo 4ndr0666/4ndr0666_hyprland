@@ -15,11 +15,10 @@ error() {
 
 mkdir -p "$EVIDENCE_DIR"
 
-for cmd in bash awk date mktemp mv tr uname id systemctl busctl hyprctl pactl awww pidof findmnt sha256sum loginctl; do
+for cmd in bash awk date mktemp mv tr uname id systemctl busctl hyprctl pactl awww pidof pgrep findmnt sha256sum; do
   command -v "$cmd" >/dev/null 2>&1 || error "Required O.M.A.-1 command unavailable: $cmd"
 done
 
-GRAPHICAL_USER="$(id -un)"
 GRAPHICAL_UID="$(id -u)"
 HYPRLAND_PID="$(
   pgrep -u "$GRAPHICAL_UID" -x Hyprland 2>/dev/null |
