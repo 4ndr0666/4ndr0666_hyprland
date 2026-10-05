@@ -12,11 +12,9 @@ fi
 
 # 0..7 → ▁▂▃▄▅▆▇█
 bar="▁▂▃▄▅▆▇█"
-dict="s/;//g"
-bar_length=${#bar}
-for ((i = 0; i < bar_length; i++)); do
-  dict+=";s/$i/${bar:$i:1}/g"
-done
+# Keep the mapping literal: Bash substring extraction is locale-sensitive
+# and must not be allowed to split UTF-8 glyphs into individual bytes.
+dict='s/;//g;s/0/▁/g;s/1/▂/g;s/2/▃/g;s/3/▄/g;s/4/▅/g;s/5/▆/g;s/6/▇/g;s/7/█/g'
 
 # Single-instance guard (only kill our previous instance if it’s still alive)
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
