@@ -21,7 +21,7 @@ window {
 /* ---- Entry ---- */
 entry {
   expand: true;
-  placeholder: " 🖼️  Search / Choose Waybar Style";
+  placeholder: "  Search / Choose Waybar Style";
 }
 
 /* ---- Listview ---- */
