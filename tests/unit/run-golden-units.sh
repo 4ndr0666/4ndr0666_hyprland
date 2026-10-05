@@ -42,6 +42,7 @@ TESTS=(
   tests/unit/test-waybar-wallust-pipeline.sh
   tests/unit/test-waybar-wallust-orchestration.sh
   tests/unit/test-wallust-ghostty-alignment.sh
+  tests/unit/test-wallust-lua-consumer.sh
   tests/unit/test-gamemode-wallust-boundary.sh
   tests/unit/test-quickshell-overview-boundary.sh
   tests/unit/test-ags-retirement-boundary.sh
