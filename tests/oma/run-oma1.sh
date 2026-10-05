@@ -15,13 +15,46 @@ error() {
 
 mkdir -p "$EVIDENCE_DIR"
 
-for cmd in bash awk date mktemp mv tr uname id systemctl busctl hyprctl pactl awww pidof findmnt sha256sum; do
+for cmd in bash awk date mktemp mv tr uname id systemctl busctl hyprctl pactl awww pidof findmnt sha256sum loginctl; do
   command -v "$cmd" >/dev/null 2>&1 || error "Required O.M.A.-1 command unavailable: $cmd"
 done
 
-[[ -n "${WAYLAND_DISPLAY:-}" ]] || error 'WAYLAND_DISPLAY is unset.'
-[[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" ]] || error 'XDG_RUNTIME_DIR is unavailable.'
-[[ "${XDG_CURRENT_DESKTOP:-}" == *Hyprland* || "${XDG_CURRENT_DESKTOP:-}" == *hyprland* ]] || error "Hyprland desktop session is not identified: ${XDG_CURRENT_DESKTOP:-unset}"
+GRAPHICAL_USER="$(id -un)"
+GRAPHICAL_UID="$(id -u)"
+HYPRLAND_PID="$(
+  pgrep -u "$GRAPHICAL_UID" -x Hyprland 2>/dev/null |
+    awk 'NR==1{print; exit}'
+)"
+[[ -n "$HYPRLAND_PID" ]] || error 'Active Hyprland compositor process was not found for the current user.'
+
+HYPRLAND_ENV="/proc/$HYPRLAND_PID/environ"
+[[ -r "$HYPRLAND_ENV" ]] || error "Hyprland process environment is unavailable: $HYPRLAND_ENV"
+
+load_session_environment() {
+  local key value found_wayland=0 found_runtime=0 found_desktop=0 found_session=0
+  while IFS= read -r -d '' entry; do
+    key="${entry%%=*}"
+    value="${entry#*=}"
+    case "$key" in
+      WAYLAND_DISPLAY) export WAYLAND_DISPLAY="$value"; found_wayland=1 ;;
+      XDG_RUNTIME_DIR) export XDG_RUNTIME_DIR="$value"; found_runtime=1 ;;
+      XDG_CURRENT_DESKTOP) export XDG_CURRENT_DESKTOP="$value"; found_desktop=1 ;;
+      XDG_SESSION_TYPE) export XDG_SESSION_TYPE="$value"; found_session=1 ;;
+      DBUS_SESSION_BUS_ADDRESS) export DBUS_SESSION_BUS_ADDRESS="$value" ;;
+    esac
+  done < "$HYPRLAND_ENV"
+
+  (( found_wayland )) || error 'Hyprland environment does not contain WAYLAND_DISPLAY.'
+  (( found_runtime )) || error 'Hyprland environment does not contain XDG_RUNTIME_DIR.'
+  (( found_desktop )) || error 'Hyprland environment does not contain XDG_CURRENT_DESKTOP.'
+  [[ -d "$XDG_RUNTIME_DIR" ]] || error "Hyprland XDG_RUNTIME_DIR is unavailable: $XDG_RUNTIME_DIR"
+  [[ "$XDG_CURRENT_DESKTOP" == *Hyprland* || "$XDG_CURRENT_DESKTOP" == *hyprland* ]] ||
+    error "Hyprland desktop session is not identified: $XDG_CURRENT_DESKTOP"
+  [[ "$XDG_SESSION_TYPE" == "wayland" ]] ||
+    error "Hyprland session type is not Wayland: ${XDG_SESSION_TYPE:-unset}"
+}
+
+load_session_environment
 
 check() {
   local name="$1"
