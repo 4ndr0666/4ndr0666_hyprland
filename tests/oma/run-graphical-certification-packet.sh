@@ -19,7 +19,7 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "Required command unavailable: $1"
 }
 
-for cmd in bash date git grep awk sed sha256sum pgrep id uname tr; do
+for cmd in bash date git sed sha256sum pgrep id uname; do
   require_command "$cmd"
 done
 
@@ -61,7 +61,7 @@ packet_exit() {
 
 trap packet_exit EXIT
 
-HYPRLAND_PID="$(pgrep -u "$(id -u)" -x Hyprland 2>/dev/null | awk 'NR==1{print; exit}' || true)"
+HYPRLAND_PID="$(pgrep -u "$(id -u)" -x Hyprland 2>/dev/null | while IFS= read -r pid; do printf '%s' "$pid"; break; done || true)"
 if [[ -z "$HYPRLAND_PID" ]]; then
   printf 'hyprland_process=FAIL\n' >> "$PACKET_EVIDENCE"
   printf 'reason=Active Hyprland compositor process was not found for the current user.\n' >> "$PACKET_EVIDENCE"
@@ -76,13 +76,45 @@ HYPRLAND_ENV="/proc/$HYPRLAND_PID/environ"
 [[ -r "$HYPRLAND_ENV" ]] || fail "Hyprland environment is unavailable: $HYPRLAND_ENV"
 
 SESSION_ENV="$PACKET_TMP"
-tr '\0' '\n' < "$HYPRLAND_ENV" |  grep -E '^(WAYLAND_DISPLAY|XDG_RUNTIME_DIR|XDG_CURRENT_DESKTOP|XDG_SESSION_TYPE|DBUS_SESSION_BUS_ADDRESS)=' > "$SESSION_ENV" || true
+found_wayland=0
+found_runtime=0
+found_desktop=0
+found_session=0
+while IFS= read -r -d '' entry; do
+  key="${entry%%=*}"
+  value="${entry#*=}"
+  case "$key" in
+    WAYLAND_DISPLAY)
+      printf '%s\n' "$entry" >> "$SESSION_ENV"
+      WAYLAND_DISPLAY_VALUE="$value"
+      found_wayland=1
+      ;;
+    XDG_RUNTIME_DIR)
+      printf '%s\n' "$entry" >> "$SESSION_ENV"
+      XDG_RUNTIME_DIR_VALUE="$value"
+      found_runtime=1
+      ;;
+    XDG_CURRENT_DESKTOP)
+      printf '%s\n' "$entry" >> "$SESSION_ENV"
+      XDG_CURRENT_DESKTOP_VALUE="$value"
+      found_desktop=1
+      ;;
+    XDG_SESSION_TYPE)
+      printf '%s\n' "$entry" >> "$SESSION_ENV"
+      XDG_SESSION_TYPE_VALUE="$value"
+      found_session=1
+      ;;
+    DBUS_SESSION_BUS_ADDRESS)
+      printf '%s\n' "$entry" >> "$SESSION_ENV"
+      DBUS_SESSION_BUS_ADDRESS_VALUE="$value"
+      ;;
+  esac
+done < "$HYPRLAND_ENV"
 
-WAYLAND_DISPLAY_VALUE="$(awk -F= '$1=="WAYLAND_DISPLAY"{print substr($0,index($0,"=")+1)}' "$SESSION_ENV")"
-XDG_RUNTIME_DIR_VALUE="$(awk -F= '$1=="XDG_RUNTIME_DIR"{print substr($0,index($0,"=")+1)}' "$SESSION_ENV")"
-XDG_CURRENT_DESKTOP_VALUE="$(awk -F= '$1=="XDG_CURRENT_DESKTOP"{print substr($0,index($0,"=")+1)}' "$SESSION_ENV")"
-XDG_SESSION_TYPE_VALUE="$(awk -F= '$1=="XDG_SESSION_TYPE"{print substr($0,index($0,"=")+1)}' "$SESSION_ENV")"
-DBUS_SESSION_BUS_ADDRESS_VALUE="$(awk -F= '$1=="DBUS_SESSION_BUS_ADDRESS"{print substr($0,index($0,"=")+1)}' "$SESSION_ENV")"
+(( found_wayland )) || fail 'Hyprland environment does not contain WAYLAND_DISPLAY.'
+(( found_runtime )) || fail 'Hyprland environment does not contain XDG_RUNTIME_DIR.'
+(( found_desktop )) || fail 'Hyprland environment does not contain XDG_CURRENT_DESKTOP.'
+(( found_session )) || fail 'Hyprland environment does not contain XDG_SESSION_TYPE.'
 
 {
   printf 'hyprland_process=PASS\n'
