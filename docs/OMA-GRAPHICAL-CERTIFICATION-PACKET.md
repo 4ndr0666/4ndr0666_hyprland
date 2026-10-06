@@ -166,7 +166,8 @@ Expected packet result:
 
 Collect the exact O.M.A.-2 evidence:
 
-```latest2="$(ls -1t oma-evidence/oma2-*.txt | head -n1)"
+```bash
+latest2="$(ls -1t oma-evidence/oma2-*.txt | head -n1)"
 cat "$latest2"
 printf '\nSHA256:\n'
 cat "$latest2.sha256"
