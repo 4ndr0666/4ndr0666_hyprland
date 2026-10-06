@@ -136,12 +136,14 @@ fi
 [[ -S "$WAYLAND_SOCKET_PATH" ]] || fail "Hyprland Wayland socket is unavailable: $WAYLAND_SOCKET_PATH."
 
 if (( found_runtime )); then
+  XDG_RUNTIME_DIR_SOURCE="hyprland_process_environment"
   [[ -d "$XDG_RUNTIME_DIR_VALUE" ]] || fail "Hyprland XDG_RUNTIME_DIR is unavailable: $XDG_RUNTIME_DIR_VALUE."
   [[ "$XDG_RUNTIME_DIR_VALUE" == "$DERIVED_RUNTIME_DIR" ]] ||
     fail "Hyprland XDG_RUNTIME_DIR does not match Wayland socket parent: environment=$XDG_RUNTIME_DIR_VALUE socket_parent=$DERIVED_RUNTIME_DIR."
 else
   XDG_RUNTIME_DIR_VALUE="$DERIVED_RUNTIME_DIR"
   found_runtime=1
+  XDG_RUNTIME_DIR_SOURCE="wayland_socket_parent"
   printf 'XDG_RUNTIME_DIR=%s\n' "$XDG_RUNTIME_DIR_VALUE" >> "$SESSION_ENV"
 fi
 
@@ -177,7 +179,7 @@ fi
   printf 'hyprland_wl_socket=%s\n' "$HYPRLAND_WL_SOCKET"
   printf 'wayland_display=%s\n' "$WAYLAND_DISPLAY_VALUE"
   printf 'xdg_runtime_dir=%s\n' "$XDG_RUNTIME_DIR_VALUE"
-  printf 'xdg_runtime_dir_source=%s\n' "${found_runtime:+resolved}"
+  printf 'xdg_runtime_dir_source=%s\n' "$XDG_RUNTIME_DIR_SOURCE"
   printf 'xdg_current_desktop=%s\n' "$XDG_CURRENT_DESKTOP_VALUE"
   printf 'xdg_current_desktop_source=%s\n' "$XDG_CURRENT_DESKTOP_SOURCE"
   printf 'xdg_session_type=%s\n' "$XDG_SESSION_TYPE_VALUE"
