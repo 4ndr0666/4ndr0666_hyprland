@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EVIDENCE_DIR="$ROOT/oma-evidence"
+OMA2_EVIDENCE_DIR="$EVIDENCE_DIR"
 LIB_DIR="$ROOT/tests/oma/lib"
 MODE="${1:---safe}"
 
