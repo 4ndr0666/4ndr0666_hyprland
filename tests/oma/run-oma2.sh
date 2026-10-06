@@ -78,9 +78,15 @@ if (( failures == 0 )); then
   oma2_recovery || failures=$((failures + 1))
 
   if [[ "$MODE" == '--destructive' ]]; then
-    : "${OMA2_DESTRUCTIVE:?--destructive requires OMA2_DESTRUCTIVE=1 on a disposable certification host}"
-    oma2_emit 'destructive_gate=OPEN'
-    oma2_lifecycle_destructive || failures=$((failures + 1))
+    if [[ "${OMA2_DESTRUCTIVE:-}" == 1 ]]; then
+      oma2_emit 'destructive_gate=OPEN'
+      oma2_lifecycle_destructive || failures=$((failures + 1))
+    else
+      oma2_emit 'destructive_gate=REJECTED'
+      oma2_emit 'destructive_tests=NOT_RUN'
+      oma2_emit 'destructive_reason=OMA2_DESTRUCTIVE=1 is required on a disposable certification host'
+      failures=$((failures + 1))
+    fi
   else
     oma2_emit 'destructive_gate=CLOSED'
     oma2_emit 'destructive_tests=NOT_RUN'
