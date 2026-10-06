@@ -72,7 +72,7 @@ oma2_probe gup_suite bash "$ROOT/tests/unit/run-golden-units.sh" || failures=$((
 oma2_probe oma1_baseline bash "$ROOT/tests/oma/run-oma1.sh" || failures=$((failures + 1))
 
 if (( failures == 0 )); then
-  oma2_lifecycle_safe || failures=$((failures + 1)
+  oma2_lifecycle_safe || failures=$((failures + 1))
   oma2_concurrency || failures=$((failures + 1))
   oma2_interruption || failures=$((failures + 1))
   oma2_recovery || failures=$((failures + 1))
