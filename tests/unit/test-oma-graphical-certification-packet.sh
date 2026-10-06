@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PACKET="$ROOT/tests/oma/run-graphical-certification-packet.sh"
+DOC="$ROOT/docs/OMA-GRAPHICAL-CERTIFICATION-PACKET.md"
+
+[[ -x "$PACKET" ]] || {
+  printf '[FAIL] Graphical certification packet is not executable: %s\n' "$PACKET" >&2
+  exit 1
+}
+
+bash -n "$PACKET"
+[[ -r "$DOC" ]] || {
+  printf '[FAIL] Graphical certification packet documentation is missing: %s\n' "$DOC" >&2
+  exit 1
+}
+
+grep -Fq 'tests/oma/run-oma1.sh' "$PACKET"
+grep -Fq 'tests/oma/run-oma2.sh" --safe' "$PACKET"
+grep -Fq 'run-golden-units.sh' "$PACKET"
+grep -Fq 'summary=BLOCKED' "$PACKET"
+grep -Fq 'oma2=NOT_RUN' "$PACKET"
+grep -Fq 'oma2_destructive=NOT_RUN' "$PACKET"
+grep -Fq 'system_mutation=NONE_BY_THIS_PACKET' "$PACKET"
+grep -Fq 'packet_exit()' "$PACKET"
+grep -Fq 'sha256sum "$PACKET_EVIDENCE" > "$PACKET_EVIDENCE.sha256"' "$PACKET"
+
+grep -Fq 'bash tests/oma/run-graphical-certification-packet.sh' "$DOC"
+grep -Fq 'O.M.A.-1 = PASS' "$DOC"
+grep -Fq 'O.M.A.-2 --safe = PASS' "$DOC"
+grep -Fq 'O.M.A.-2 --destructive = NOT RUN' "$DOC"
+
+printf '%s\n' 'PASS: graphical O.M.A. certification packet contract'
