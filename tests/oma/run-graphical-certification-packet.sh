@@ -154,6 +154,7 @@ fi
 if (( found_wayland )) && [[ "$PROCESS_WAYLAND_DISPLAY_VALUE" != "$WAYLAND_DISPLAY_VALUE" ]]; then
   fail "Hyprland process WAYLAND_DISPLAY does not match Hyprland instance wl socket: process=$PROCESS_WAYLAND_DISPLAY_VALUE instance=$WAYLAND_DISPLAY_VALUE."
 fi
+printf 'wayland_display=%s\\n' "$WAYLAND_DISPLAY_VALUE" >> "$PACKET_EVIDENCE"
 [[ "$XDG_CURRENT_DESKTOP_VALUE" == *Hyprland* || "$XDG_CURRENT_DESKTOP_VALUE" == *hyprland* ]] ||
   fail "Hyprland desktop marker is not present: ${XDG_CURRENT_DESKTOP_VALUE:-unset}."
 [[ "$XDG_SESSION_TYPE_VALUE" == wayland ]] ||
