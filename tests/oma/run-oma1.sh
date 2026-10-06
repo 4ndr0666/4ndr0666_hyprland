@@ -75,7 +75,6 @@ load_session_environment() {
     esac
   done < "$HYPRLAND_ENV"
 
-  (( found_wayland )) || error 'Hyprland environment does not contain WAYLAND_DISPLAY.'
   (( found_runtime )) || error 'Hyprland environment does not contain XDG_RUNTIME_DIR.'
   (( found_desktop )) || error 'Hyprland environment does not contain XDG_CURRENT_DESKTOP.'
   [[ -d "$XDG_RUNTIME_DIR" ]] || error "Hyprland XDG_RUNTIME_DIR is unavailable: $XDG_RUNTIME_DIR"
@@ -83,6 +82,34 @@ load_session_environment() {
     error "Hyprland desktop session is not identified: $XDG_CURRENT_DESKTOP"
   [[ "$XDG_SESSION_TYPE" == "wayland" ]] ||
     error "Hyprland session type is not Wayland: ${XDG_SESSION_TYPE:-unset}"
+
+  local process_wayland_display="${WAYLAND_DISPLAY:-}"
+  local hyprland_wl_socket
+  hyprland_wl_socket="$(
+    hyprctl instances 2>/dev/null |
+      awk -v target="$HYPRLAND_PID" '
+        /^instance / { matched=0 }
+        /^[[:space:]]*pid:/ { matched=($2 == target) }
+        matched && /^[[:space:]]*wl socket:/ { print $3; exit }
+      '
+  )"
+  [[ -n "$hyprland_wl_socket" ]] ||
+    error "Hyprland instance record does not expose wl socket for PID $HYPRLAND_PID."
+
+  local wayland_socket_path
+  if [[ "$hyprland_wl_socket" == /* ]]; then
+    wayland_socket_path="$hyprland_wl_socket"
+    export WAYLAND_DISPLAY="$hyprland_wl_socket"
+  else
+    wayland_socket_path="$XDG_RUNTIME_DIR/$hyprland_wl_socket"
+    export WAYLAND_DISPLAY="$hyprland_wl_socket"
+  fi
+
+  [[ -S "$wayland_socket_path" ]] ||
+    error "Hyprland Wayland socket is unavailable: $wayland_socket_path."
+  if (( found_wayland )) && [[ "$process_wayland_display" != "$WAYLAND_DISPLAY" ]]; then
+    error "Hyprland process WAYLAND_DISPLAY does not match Hyprland instance wl socket: process=$process_wayland_display instance=$WAYLAND_DISPLAY"
+  fi
 }
 
 load_session_environment
@@ -90,6 +117,7 @@ load_session_environment
 {
   printf '\n[session]\n'
   printf 'wayland_display=%s\n' "$WAYLAND_DISPLAY"
+  printf 'wayland_display_source=hyprctl_instances\n'
   printf 'xdg_current_desktop=%s\n' "$XDG_CURRENT_DESKTOP"
   printf 'xdg_session_type=%s\n' "${XDG_SESSION_TYPE:-unset}"
   printf 'runtime_dir=%s\n' "$XDG_RUNTIME_DIR"
