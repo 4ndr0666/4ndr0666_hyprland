@@ -34,7 +34,7 @@ grep -Fq 'O.M.A.-2 --destructive = NOT RUN' "$DOC"
 printf '%s\n' 'PASS: graphical O.M.A. certification packet contract'
 
 # /proc/<pid>/environ is NUL-delimited; parse it directly with Bash's NUL-aware reader.
-grep -Fq 'while IFS= read -r -d '\'' '\''entry' "$PACKET"
+grep -Fq "while IFS= read -r -d '' entry; do" "$PACKET"
 grep -Fq 'done < "$HYPRLAND_ENV"' "$PACKET"
 grep -Fq 'HYPRLAND_ENV' "$PACKET"
 grep -Fq 'SESSION_ENV' "$PACKET"
@@ -44,6 +44,6 @@ grep -Fq 'XDG_CURRENT_DESKTOP' "$PACKET"
 grep -Fq 'XDG_SESSION_TYPE' "$PACKET"
 grep -Fq 'DBUS_SESSION_BUS_ADDRESS' "$PACKET"
 grep -Fq "Hyprland environment does not contain WAYLAND_DISPLAY." "$PACKET"
-! grep -Fq 'tr '\''\\u0000' '\''\\n'\''' "$PACKET"
+! grep -Fq "tr '\\u0000' '\\n'" "$PACKET"
 
 printf '%s\n' 'PASS: graphical O.M.A. certification packet contract'
