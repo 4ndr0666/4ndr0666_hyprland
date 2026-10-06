@@ -150,8 +150,11 @@ load_session_environment
   printf 'wayland_display=%s\n' "$WAYLAND_DISPLAY"
   printf 'wayland_display_source=hyprctl_instances\n'
   printf 'xdg_current_desktop=%s\n' "$XDG_CURRENT_DESKTOP"
+  printf 'xdg_current_desktop_source=%s\n' "$XDG_CURRENT_DESKTOP_SOURCE"
   printf 'xdg_session_type=%s\n' "${XDG_SESSION_TYPE:-unset}"
+  printf 'xdg_session_type_source=%s\n' "$XDG_SESSION_TYPE_SOURCE"
   printf 'runtime_dir=%s\n' "$XDG_RUNTIME_DIR"
+  printf 'xdg_runtime_dir_source=%s\n' "$XDG_RUNTIME_DIR_SOURCE"
   printf '\n[probes]\n'
 } >> "$EVIDENCE"
 
