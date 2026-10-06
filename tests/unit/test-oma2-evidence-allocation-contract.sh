@@ -10,4 +10,4 @@ grep -Fq 'OMA2_EVIDENCE="$(mktemp "$OMA2_EVIDENCE_DIR/oma2-$OMA2_TIMESTAMP-XXXXX
 grep -Fq 'OMA2_TMP="$(mktemp)"' "$LIB"
 
 printf '%s
-' 'PASS: O.M.A.-2 evidence allocation contract'
+printf '%s\n' 'PASS: O.M.A.-2 evidence allocation contract'
