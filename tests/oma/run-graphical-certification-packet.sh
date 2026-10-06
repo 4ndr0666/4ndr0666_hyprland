@@ -19,7 +19,7 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "Required command unavailable: $1"
 }
 
-for cmd in bash date git grep awk sed sha256sum pgrep id uname tr; do
+for cmd in bash date git sed sha256sum pgrep id uname; do
   require_command "$cmd"
 done
 
