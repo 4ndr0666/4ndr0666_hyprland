@@ -91,7 +91,8 @@ load_session_environment() {
   local wayland_socket_path derived_runtime_dir
   if [[ "$hyprland_wl_socket" == /* ]]; then
     wayland_socket_path="$hyprland_wl_socket"
-    derived_runtime_dir="$(dirname -- "$hyprland_wl_socket")"
+    derived_runtime_dir="${hyprland_wl_socket%/*}"
+    [[ -n "$derived_runtime_dir" ]] || derived_runtime_dir="/"
     export WAYLAND_DISPLAY="$hyprland_wl_socket"
   else
     [[ -n "${XDG_RUNTIME_DIR:-}" ]] || XDG_RUNTIME_DIR="/run/user/$(id -u)"
