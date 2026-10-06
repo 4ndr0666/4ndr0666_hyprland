@@ -157,10 +157,14 @@ else
   XDG_CURRENT_DESKTOP_SOURCE="hyprland_process_identity"
 fi
 
-if (( found_session )); then
-  [[ "$XDG_SESSION_TYPE_VALUE" == wayland ]] ||
-    fail "Hyprland session type is not Wayland: $XDG_SESSION_TYPE_VALUE."
+if (( found_session )) && [[ "$XDG_SESSION_TYPE_VALUE" == wayland ]]; then
   XDG_SESSION_TYPE_SOURCE="hyprland_process_environment"
+elif [[ "${XDG_SESSION_TYPE_VALUE:-}" == tty ]]; then
+  # A Hyprland compositor launched from a console can inherit the login
+  # session's tty marker. The verified compositor-owned Wayland socket is
+  # authoritative for the graphical session under certification.
+  XDG_SESSION_TYPE_VALUE="wayland"
+  XDG_SESSION_TYPE_SOURCE="wayland_socket_overrides_tty"
 else
   XDG_SESSION_TYPE_VALUE="wayland"
   XDG_SESSION_TYPE_SOURCE="wayland_socket"

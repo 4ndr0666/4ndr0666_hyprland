@@ -52,6 +52,7 @@ grep -Fq 'XDG_SESSION_TYPE_SOURCE=' "$PACKET"
 grep -Fq 'XDG_RUNTIME_DIR_SOURCE=' "$PACKET"
 grep -Fq 'hyprland_process_identity' "$PACKET"
 grep -Fq 'wayland_socket' "$PACKET"
+grep -Fq 'wayland_socket_overrides_tty' "$PACKET"
 ! grep -Fq "tr '\\u0000' '\\n'" "$PACKET"
 
 printf '%s\n' 'PASS: graphical O.M.A. certification packet contract'

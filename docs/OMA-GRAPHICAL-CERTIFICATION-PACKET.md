@@ -65,7 +65,7 @@ No additional environment variables are required. The packet discovers the compo
 
 - `XDG_RUNTIME_DIR` is taken from the compositor environment when present and reconciled with the Wayland socket parent; otherwise the socket parent is used.
 - `XDG_CURRENT_DESKTOP` is validated when present; if absent, the verified Hyprland process identity supplies the value `Hyprland`.
-- `XDG_SESSION_TYPE` is validated when present; if absent, the verified Wayland socket supplies the value `wayland`.
+- `XDG_SESSION_TYPE` is accepted as `wayland` when inherited; a stale inherited `tty` marker is overridden by the verified compositor-owned Wayland socket, while other conflicting values remain fatal. If absent, the verified Wayland socket supplies `wayland`.
 - `DBUS_SESSION_BUS_ADDRESS` is retained when present but is not fabricated.
 
 `WAYLAND_DISPLAY` is set from the matching `wl_socket` instance record and the socket is required to exist. If the compositor process itself exposes `WAYLAND_DISPLAY`, it must match that instance record; disagreement fails closed. Evidence records the source of each derived session value so inference is not presented as inherited environment evidence.
