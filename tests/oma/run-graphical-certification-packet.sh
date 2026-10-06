@@ -61,7 +61,7 @@ packet_exit() {
 
 trap packet_exit EXIT
 
-HYPRLAND_PID="$(pgrep -u "$(id -u)" -x Hyprland 2>/dev/null | awk 'NR==1{print; exit}' || true)"
+HYPRLAND_PID="$(pgrep -u "$(id -u)" -x Hyprland 2>/dev/null | while IFS= read -r pid; do printf '%s' "$pid"; break; done || true)"
 if [[ -z "$HYPRLAND_PID" ]]; then
   printf 'hyprland_process=FAIL\n' >> "$PACKET_EVIDENCE"
   printf 'reason=Active Hyprland compositor process was not found for the current user.\n' >> "$PACKET_EVIDENCE"
