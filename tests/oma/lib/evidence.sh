@@ -41,7 +41,7 @@ oma2_evidence_init() {
   : "${OMA2_EVIDENCE_DIR:?OMA2_EVIDENCE_DIR must be set}"
   mkdir -p "$OMA2_EVIDENCE_DIR"
   OMA2_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-  OMA2_EVIDENCE="$OMA2_EVIDENCE_DIR/oma2-$OMA2_TIMESTAMP.txt"
+  OMA2_EVIDENCE="$(mktemp "$OMA2_EVIDENCE_DIR/oma2-$OMA2_TIMESTAMP-XXXXXX.txt")"
   OMA2_TMP="$(mktemp)"
   OMA2_EVIDENCE_FINALIZED=0
   trap 'oma2_evidence_exit "$?"' EXIT
