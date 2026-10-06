@@ -16,7 +16,7 @@ case "$MODE" in
     ;;
 esac
 
-for cmd in bash awk date mktemp rm sha256sum flock systemctl busctl pidof uname id tr; do
+for cmd in bash awk cat cp date grep mkdir mktemp mv rm sed sha256sum sleep flock systemctl busctl pidof uname id tr wc; do
   command -v "$cmd" >/dev/null 2>&1 || {
     printf '[ERROR] Required O.M.A.-2 command unavailable: %s\n' "$cmd" >&2
     exit 1

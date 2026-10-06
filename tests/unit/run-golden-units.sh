@@ -85,6 +85,7 @@ TESTS=(
   tests/unit/test-oma-harness-contract.sh
   tests/unit/test-oma1-runtime-contract.sh
   tests/unit/test-oma2-evidence-contract.sh
+  tests/unit/test-oma2-dependency-contract.sh
   tests/unit/test-oma2-temp-cleanup-contract.sh
 )
 
