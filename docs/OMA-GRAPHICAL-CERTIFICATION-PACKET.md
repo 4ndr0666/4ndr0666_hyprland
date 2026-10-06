@@ -8,7 +8,7 @@ It is deliberately fail-closed:
 
 1. Verify the repository is executing from the pulled revision.
 2. Verify an actual Hyprland compositor process exists for the current user.
-3. Import the compositor's Wayland/session environment.
+3. Reconcile compositor session context with the Hyprland instance record and its authoritative Wayland socket.
 4. Run the Golden Unit gate.
 5. Run O.M.A.-1.
 6. Only if O.M.A.-1 passes, run O.M.A.-2 in `--safe` mode.
@@ -61,15 +61,14 @@ cd /home/alarm/gup/4ndr0666_hyprland
 bash tests/oma/run-graphical-certification-packet.sh
 ```
 
-No additional environment variables are required. The packet discovers the compositor PID and imports:
+No additional environment variables are required. The packet discovers the compositor PID and obtains the authoritative Wayland socket from `hyprctl instances`, matching the record by compositor PID. It imports session context from `/proc/<pid>/environ`:
 
-- `WAYLAND_DISPLAY`
 - `XDG_RUNTIME_DIR`
 - `XDG_CURRENT_DESKTOP`
 - `XDG_SESSION_TYPE`
 - `DBUS_SESSION_BUS_ADDRESS`
 
-from the running Hyprland process rather than trusting the terminal's environment.
+from the running Hyprland process rather than trusting the terminal's environment. `WAYLAND_DISPLAY` is then set from the matching `wl_socket` instance record and the socket is required to exist. If the compositor process itself exposes `WAYLAND_DISPLAY`, it must match that instance record; disagreement fails closed.
 
 ## Expected successful result
 
