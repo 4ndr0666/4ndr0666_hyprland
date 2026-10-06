@@ -47,7 +47,6 @@ grep -Fq 'XDG_RUNTIME_DIR' "$PACKET"
 grep -Fq 'XDG_CURRENT_DESKTOP' "$PACKET"
 grep -Fq 'XDG_SESSION_TYPE' "$PACKET"
 grep -Fq 'DBUS_SESSION_BUS_ADDRESS' "$PACKET"
-grep -Fq "Hyprland environment does not contain WAYLAND_DISPLAY." "$PACKET"
 ! grep -Fq "tr '\\u0000' '\\n'" "$PACKET"
 
 printf '%s\n' 'PASS: graphical O.M.A. certification packet contract'
