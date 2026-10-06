@@ -75,14 +75,6 @@ load_session_environment() {
     esac
   done < "$HYPRLAND_ENV"
 
-  (( found_runtime )) || error 'Hyprland environment does not contain XDG_RUNTIME_DIR.'
-  (( found_desktop )) || error 'Hyprland environment does not contain XDG_CURRENT_DESKTOP.'
-  [[ -d "$XDG_RUNTIME_DIR" ]] || error "Hyprland XDG_RUNTIME_DIR is unavailable: $XDG_RUNTIME_DIR"
-  [[ "$XDG_CURRENT_DESKTOP" == *Hyprland* || "$XDG_CURRENT_DESKTOP" == *hyprland* ]] ||
-    error "Hyprland desktop session is not identified: $XDG_CURRENT_DESKTOP"
-  [[ "$XDG_SESSION_TYPE" == "wayland" ]] ||
-    error "Hyprland session type is not Wayland: ${XDG_SESSION_TYPE:-unset}"
-
   local process_wayland_display="${WAYLAND_DISPLAY:-}"
   local hyprland_wl_socket
   hyprland_wl_socket="$(
@@ -96,17 +88,56 @@ load_session_environment() {
   [[ -n "$hyprland_wl_socket" ]] ||
     error "Hyprland instance record does not expose wl socket for PID $HYPRLAND_PID."
 
-  local wayland_socket_path
+  local wayland_socket_path derived_runtime_dir
   if [[ "$hyprland_wl_socket" == /* ]]; then
     wayland_socket_path="$hyprland_wl_socket"
+    derived_runtime_dir="$(dirname -- "$hyprland_wl_socket")"
     export WAYLAND_DISPLAY="$hyprland_wl_socket"
   else
+    [[ -n "${XDG_RUNTIME_DIR:-}" ]] || XDG_RUNTIME_DIR="/run/user/$(id -u)"
     wayland_socket_path="$XDG_RUNTIME_DIR/$hyprland_wl_socket"
+    derived_runtime_dir="$XDG_RUNTIME_DIR"
     export WAYLAND_DISPLAY="$hyprland_wl_socket"
   fi
 
   [[ -S "$wayland_socket_path" ]] ||
     error "Hyprland Wayland socket is unavailable: $wayland_socket_path."
+
+  if (( found_runtime )); then
+    [[ -d "$XDG_RUNTIME_DIR" ]] ||
+      error "Hyprland XDG_RUNTIME_DIR is unavailable: $XDG_RUNTIME_DIR"
+    [[ "$XDG_RUNTIME_DIR" == "$derived_runtime_dir" ]] ||
+      error "Hyprland XDG_RUNTIME_DIR does not match Wayland socket parent: environment=$XDG_RUNTIME_DIR socket_parent=$derived_runtime_dir"
+    XDG_RUNTIME_DIR_SOURCE="hyprland_process_environment"
+  else
+    XDG_RUNTIME_DIR="$derived_runtime_dir"
+    export XDG_RUNTIME_DIR
+    XDG_RUNTIME_DIR_SOURCE="wayland_socket_parent"
+  fi
+
+  if (( found_desktop )); then
+    [[ "$XDG_CURRENT_DESKTOP" == *Hyprland* || "$XDG_CURRENT_DESKTOP" == *hyprland* ]] ||
+      error "Hyprland desktop session is not identified: $XDG_CURRENT_DESKTOP"
+    XDG_CURRENT_DESKTOP_SOURCE="hyprland_process_environment"
+  else
+    XDG_CURRENT_DESKTOP="Hyprland"
+    export XDG_CURRENT_DESKTOP
+    XDG_CURRENT_DESKTOP_SOURCE="hyprland_process_identity"
+  fi
+
+  if (( found_session )); then
+    [[ "$XDG_SESSION_TYPE" == "wayland" ]] ||
+      error "Hyprland session type is not Wayland: ${XDG_SESSION_TYPE:-unset}"
+    XDG_SESSION_TYPE_SOURCE="hyprland_process_environment"
+  else
+    XDG_SESSION_TYPE="wayland"
+    export XDG_SESSION_TYPE
+    XDG_SESSION_TYPE_SOURCE="wayland_socket"
+  fi
+
+  [[ -d "$XDG_RUNTIME_DIR" ]] ||
+    error "Resolved XDG_RUNTIME_DIR is unavailable: $XDG_RUNTIME_DIR"
+
   if (( found_wayland )) && [[ "$process_wayland_display" != "$WAYLAND_DISPLAY" ]]; then
     error "Hyprland process WAYLAND_DISPLAY does not match Hyprland instance wl socket: process=$process_wayland_display instance=$WAYLAND_DISPLAY"
   fi
