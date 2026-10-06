@@ -61,14 +61,14 @@ cd /home/alarm/gup/4ndr0666_hyprland
 bash tests/oma/run-graphical-certification-packet.sh
 ```
 
-No additional environment variables are required. The packet discovers the compositor PID and obtains the authoritative Wayland socket from `hyprctl instances`, matching the record by compositor PID. It imports session context from `/proc/<pid>/environ`:
+No additional environment variables are required. The packet discovers the compositor PID and obtains the authoritative Wayland socket from `hyprctl instances`, matching the record by compositor PID. It parses the NUL-delimited `/proc/<pid>/environ` when session variables are present, but does not treat absence of inherited session markers as proof that the graphical session is invalid:
 
-- `XDG_RUNTIME_DIR`
-- `XDG_CURRENT_DESKTOP`
-- `XDG_SESSION_TYPE`
-- `DBUS_SESSION_BUS_ADDRESS`
+- `XDG_RUNTIME_DIR` is taken from the compositor environment when present and reconciled with the Wayland socket parent; otherwise the socket parent is used.
+- `XDG_CURRENT_DESKTOP` is validated when present; if absent, the verified Hyprland process identity supplies the value `Hyprland`.
+- `XDG_SESSION_TYPE` is validated when present; if absent, the verified Wayland socket supplies the value `wayland`.
+- `DBUS_SESSION_BUS_ADDRESS` is retained when present but is not fabricated.
 
-from the running Hyprland process rather than trusting the terminal's environment. `WAYLAND_DISPLAY` is then set from the matching `wl_socket` instance record and the socket is required to exist. If the compositor process itself exposes `WAYLAND_DISPLAY`, it must match that instance record; disagreement fails closed.
+`WAYLAND_DISPLAY` is set from the matching `wl_socket` instance record and the socket is required to exist. If the compositor process itself exposes `WAYLAND_DISPLAY`, it must match that instance record; disagreement fails closed. Evidence records the source of each derived session value so inference is not presented as inherited environment evidence.
 
 ## Expected successful result
 
