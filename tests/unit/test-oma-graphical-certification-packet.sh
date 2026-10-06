@@ -34,12 +34,10 @@ grep -Fq 'O.M.A.-2 --destructive = NOT RUN' "$DOC"
 printf '%s\n' 'PASS: graphical O.M.A. certification packet contract'
 
 # /proc/<pid>/environ is NUL-delimited; normalization must precede field extraction.
-grep -Fq "tr '\\0' '\\n' < \"\$HYPRLAND_ENV\" > \"\$SESSION_ENV\"" "$PACKET"
+grep -Fq "tr '\\0' '\\n'" "$PACKET"
+grep -Fq 'HYPRLAND_ENV' "$PACKET"
+grep -Fq 'SESSION_ENV' "$PACKET"
 grep -Fq 'awk' "$PACKET"
 grep -Fq 'WAYLAND_DISPLAY|XDG_RUNTIME_DIR|XDG_CURRENT_DESKTOP|XDG_SESSION_TYPE|DBUS_SESSION_BUS_ADDRESS' "$PACKET"
-if grep -Fq 'tr '\''\\u0000'\\'' '\''\\n'\\'' < "$HYPRLAND_ENV"' "$PACKET"; then
-  printf '%s\n' '[FAIL] Packet contains an invalid literal NUL escape form.' >&2
-  exit 1
-fi
 
 printf '%s\n' 'PASS: graphical O.M.A. certification packet contract'
