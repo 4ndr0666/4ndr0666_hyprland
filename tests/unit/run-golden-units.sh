@@ -88,6 +88,7 @@ TESTS=(
   tests/unit/test-oma2-dependency-contract.sh
   tests/unit/test-oma2-destructive-gate-contract.sh
   tests/unit/test-oma2-evidence-finalization-contract.sh
+  tests/unit/test-oma2-evidence-allocation-contract.sh
   tests/unit/test-oma2-temp-cleanup-contract.sh
 )
 
