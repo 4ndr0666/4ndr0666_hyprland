@@ -19,7 +19,7 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "Required command unavailable: $1"
 }
 
-for cmd in bash date git sed sha256sum pgrep id uname; do
+for cmd in bash date git sed sha256sum pgrep id uname hyprctl awk; do
   require_command "$cmd"
 done
 
@@ -111,7 +111,6 @@ while IFS= read -r -d '' entry; do
   esac
 done < "$HYPRLAND_ENV"
 
-(( found_wayland )) || fail 'Hyprland environment does not contain WAYLAND_DISPLAY.'
 (( found_runtime )) || fail 'Hyprland environment does not contain XDG_RUNTIME_DIR.'
 (( found_desktop )) || fail 'Hyprland environment does not contain XDG_CURRENT_DESKTOP.'
 (( found_session )) || fail 'Hyprland environment does not contain XDG_SESSION_TYPE.'
@@ -120,6 +119,8 @@ done < "$HYPRLAND_ENV"
   printf 'hyprland_process=PASS\n'
   printf 'hyprland_pid=%s\n' "$HYPRLAND_PID"
   printf 'environment_source=%s\n' "$HYPRLAND_ENV"
+  printf 'wayland_display_source=hyprctl_instances\n'
+  printf 'hyprland_wl_socket=%s\n' "$HYPRLAND_WL_SOCKET"
   printf 'wayland_display=%s\n' "${WAYLAND_DISPLAY_VALUE:-unset}"
   printf 'xdg_runtime_dir=%s\n' "${XDG_RUNTIME_DIR_VALUE:-unset}"
   printf 'xdg_current_desktop=%s\n' "${XDG_CURRENT_DESKTOP_VALUE:-unset}"
@@ -129,6 +130,30 @@ done < "$HYPRLAND_ENV"
 
 [[ -n "$WAYLAND_DISPLAY_VALUE" ]] || fail "Hyprland process has no WAYLAND_DISPLAY."
 [[ -d "$XDG_RUNTIME_DIR_VALUE" ]] || fail "Hyprland XDG_RUNTIME_DIR is unavailable: ${XDG_RUNTIME_DIR_VALUE:-unset}."
+
+PROCESS_WAYLAND_DISPLAY_VALUE="${WAYLAND_DISPLAY_VALUE:-}"
+HYPRLAND_WL_SOCKET="$(
+  hyprctl instances 2>/dev/null |
+    awk -v target="$HYPRLAND_PID" '
+      /^instance / { matched=0 }
+      /^[[:space:]]*pid:/ { matched=($2 == target) }
+      matched && /^[[:space:]]*wl socket:/ { print $3; exit }
+    '
+)"
+[[ -n "$HYPRLAND_WL_SOCKET" ]] || fail "Hyprland instance record does not expose wl socket for PID $HYPRLAND_PID."
+
+if [[ "$HYPRLAND_WL_SOCKET" == /* ]]; then
+  WAYLAND_SOCKET_PATH="$HYPRLAND_WL_SOCKET"
+  WAYLAND_DISPLAY_VALUE="$HYPRLAND_WL_SOCKET"
+else
+  WAYLAND_SOCKET_PATH="$XDG_RUNTIME_DIR_VALUE/$HYPRLAND_WL_SOCKET"
+  WAYLAND_DISPLAY_VALUE="$HYPRLAND_WL_SOCKET"
+fi
+
+[[ -S "$WAYLAND_SOCKET_PATH" ]] || fail "Hyprland Wayland socket is unavailable: $WAYLAND_SOCKET_PATH."
+if (( found_wayland )) && [[ "$PROCESS_WAYLAND_DISPLAY_VALUE" != "$WAYLAND_DISPLAY_VALUE" ]]; then
+  fail "Hyprland process WAYLAND_DISPLAY does not match Hyprland instance wl socket: process=$PROCESS_WAYLAND_DISPLAY_VALUE instance=$WAYLAND_DISPLAY_VALUE."
+fi
 [[ "$XDG_CURRENT_DESKTOP_VALUE" == *Hyprland* || "$XDG_CURRENT_DESKTOP_VALUE" == *hyprland* ]] ||
   fail "Hyprland desktop marker is not present: ${XDG_CURRENT_DESKTOP_VALUE:-unset}."
 [[ "$XDG_SESSION_TYPE_VALUE" == wayland ]] ||
