@@ -15,5 +15,4 @@ grep -Fq 'sha256sum "$OMA2_EVIDENCE" > "$hash_tmp"' "$LIB"
 grep -Fq 'mv -- "$hash_tmp" "$OMA2_EVIDENCE.sha256"' "$LIB"
 grep -Fq 'oma2_evidence_finalize "$failures"' "$LIB"
 
-printf '%s
-' 'PASS: O.M.A.-2 evidence finalization contract'
+printf '%s\\n' 'PASS: O.M.A.-2 evidence finalization contract'
