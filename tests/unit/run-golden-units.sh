@@ -90,6 +90,7 @@ TESTS=(
   tests/unit/test-oma2-evidence-finalization-contract.sh
   tests/unit/test-oma2-evidence-allocation-contract.sh
   tests/unit/test-oma2-temp-cleanup-contract.sh
+  tests/unit/test-oma-graphical-certification-packet.sh
 )
 
 failures=()
