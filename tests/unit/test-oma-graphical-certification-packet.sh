@@ -34,7 +34,8 @@ grep -Fq 'O.M.A.-2 --destructive = NOT RUN' "$DOC"
 printf '%s\n' 'PASS: graphical O.M.A. certification packet contract'
 
 # /proc/<pid>/environ is NUL-delimited; normalization must precede field extraction.
-grep -Fq "tr '\\0' '\\n'" "$PACKET"
+grep -Fq "tr '\\0' '\\n' < \"\$HYPRLAND_ENV\"" "$PACKET"
+! grep -Fq "tr '\\u0000' '\\n'" "$PACKET"
 grep -Fq 'HYPRLAND_ENV' "$PACKET"
 grep -Fq 'SESSION_ENV' "$PACKET"
 grep -Fq 'awk' "$PACKET"
