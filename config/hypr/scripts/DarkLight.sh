@@ -129,7 +129,10 @@ set_custom_gtk_theme() {
   fi
 }
 
-awww query >/dev/null 2>&1 || awww-daemon --format xrgb
+awww query >/dev/null 2>&1 || {
+  printf '%s\n' '[ERROR] awww-daemon is not ready; refusing to start a second owner.' >&2
+  exit 1
+}
 wallpaper="$(select_random_wallpaper "$wallpaper_root")"
 [[ -n "$wallpaper" ]] || { printf '%s\n' '[ERROR] No suitable wallpaper found.' >&2; exit 1; }
 
