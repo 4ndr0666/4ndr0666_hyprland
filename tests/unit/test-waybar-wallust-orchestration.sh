@@ -13,6 +13,13 @@ for file in "$WALLUST_SCRIPT" "$INITIAL_BOOT" "$RANDOM_WALLPAPER" "$AUTO_CHANGE"
   [[ -f "$file" ]] || { printf '%s\n' "Missing Wallust orchestration file: $file" >&2; exit 1; }
 done
 
+# 4ndr0init.sh is the sole awww-daemon lifecycle owner; consumers may only use the ready daemon.
+for file in "$INITIAL_BOOT" "$RANDOM_WALLPAPER" "$DARK_LIGHT"; do
+  ! grep -Fq 'awww-daemon --format xrgb' "$file" || { printf '%s\n' "Duplicate awww lifecycle owner remains in $file" >&2; exit 1; }
+  grep -Fq 'awww query' "$file" || { printf '%s\n' "awww readiness contract missing from $file" >&2; exit 1; }
+done
+! grep -Fq 'awww-daemon --format xrgb' "$ROOT/config/hypr/UserScripts/WallpaperSelect.sh"
+
 # WallustAwww.sh is the sole palette-generation boundary.
 ! grep -Fq 'wallust run -s' "$INITIAL_BOOT"
 ! grep -Fq 'wallust run -s' "$RANDOM_WALLPAPER"
