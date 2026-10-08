@@ -138,7 +138,7 @@ start_process "xdg-desktop-portal" \
     /usr/lib/xdg-desktop-portal \
     /usr/libexec/xdg-desktop-portal
 
-start_process_command "awww-daemon" awww-daemon awww-daemon --format xrgb
+start_process_command "awww-daemon" awww-daemon --format xrgb
 
 for _ in {1..20}; do
     if awww query >/dev/null 2>&1; then
