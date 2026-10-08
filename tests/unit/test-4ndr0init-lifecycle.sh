@@ -40,4 +40,19 @@ fi
 grep -Fq 'hl.exec_cmd(UserScripts .. "/4ndr0init.sh")' "$STARTUP" || fail "Hyprland startup no longer invokes 4ndr0init.sh"
 grep -Fq 'hl.on("hyprland.start"' "$STARTUP" || fail "4ndr0init.sh is not bound to Hyprland startup"
 
-printf 'PASS: 4ndr0init owns D-Bus, environment, and portal startup with fail-closed transactional lifecycle semantics\n'
+# Graphical runtime daemons must have one owner: 4ndr0init publishes the environment before starting them.
+grep -Fq 'start_process_command "awww-daemon" awww-daemon --format xrgb' "$SCRIPT" || fail "awww daemon ownership is missing"
+grep -Fq 'awww query >/dev/null 2>&1 || {' "$SCRIPT" || fail "awww readiness assertion is missing"
+grep -Fq 'start_process_command "waybar" waybar' "$SCRIPT" || fail "Waybar ownership is missing"
+grep -Fq 'started_process_pids=()' "$SCRIPT" || fail "runtime startup ownership state is missing"
+grep -Fq 'cleanup_started_processes()' "$SCRIPT" || fail "runtime rollback boundary is missing"
+grep -Fq 'trap on_exit EXIT' "$SCRIPT" || fail "startup rollback is not unconditional"
+grep -Fq 'started_process_pids+=("$pid")' "$SCRIPT" || fail "started process is not tracked"
+grep -Fq 'kill "$pid"' "$SCRIPT" || fail "rollback does not terminate started processes"
+grep -Fq 'graphical runtime startup rollback failed' "$SCRIPT" || fail "rollback failure is not surfaced"
+grep -Fq 'return "$cleanup_failed"' "$SCRIPT" || fail "cleanup failures are not propagated"
+! grep -Fq 'kill_quietly waybar' "$SCRIPT" || fail "Waybar must not be killed after startup"
+! grep -Fq 'hl.exec_cmd("waybar")' "$STARTUP" || fail "Waybar must not have a competing startup owner"
+! grep -Fq 'hl.exec_cmd("awww-daemon --format xrgb")' "$STARTUP" || fail "awww must not have a competing startup owner"
+
+printf 'PASS: 4ndr0init owns D-Bus, environment, portals, and graphical runtime startup with fail-closed transactional lifecycle semantics\n'
