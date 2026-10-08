@@ -9,7 +9,6 @@ local wallDIR = os.getenv("HOME") .. "/Wallpapers"
 hl.on("hyprland.start", function ()
     -- WallpaperAutoChange is an optional initial-install setup and remains disabled by default.
     -- hl.exec_cmd(UserScripts .. "/WallpaperAutoChange.sh " .. wallDIR)
-    hl.exec_cmd("awww-daemon --format xrgb")
     hl.exec_cmd(UserScripts .. "/4ndr0init.sh")
 
     -- Warm-spawn the dropdown terminal hidden in special:scratchpad
@@ -18,7 +17,6 @@ hl.on("hyprland.start", function ()
     -- System Applets
     hl.exec_cmd("nm-applet --indicator")
     hl.exec_cmd("nm-tray")
-    hl.exec_cmd("waybar")
     hl.exec_cmd("hypridle")
 
     -- Clipboard manager
