@@ -81,7 +81,7 @@ load_session_environment() {
   hyprland_instance_record="$(
     hyprctl instances 2>/dev/null |
       awk -v target="$HYPRLAND_PID" '
-        /^instance / { signature=$2; matched=0 }
+        /^instance / { signature=$2; sub(/:$/, "", signature); matched=0 }
         /^[[:space:]]*pid:/ { matched=($2 == target) }
         matched && /^[[:space:]]*wl socket:/ { print signature "\t" $3; exit }
       '
