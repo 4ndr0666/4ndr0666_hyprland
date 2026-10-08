@@ -26,9 +26,10 @@ if [[ ! -f "$HOME/.config/hypr/.initial_startup_done" ]]; then
 
     # Initialize the wallpaper daemon and generate the palette exactly once.
     if [[ -f "$wallpaper" ]]; then
-        if ! awww query >/dev/null 2>&1; then
-            awww-daemon --format xrgb
-        fi
+        awww query >/dev/null 2>&1 || {
+            printf '%s\n' '[ERROR] awww-daemon is not ready; refusing to start a second owner.' >&2
+            exit 1
+        }
         "${awww_cmd[@]}" "$wallpaper" "${effect[@]}"
         "$scriptsDir/WallustAwww.sh" "$wallpaper"
     fi
