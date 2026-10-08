@@ -103,10 +103,10 @@ apply_image_wallpaper() {
 
   kill_wallpaper_for_image
 
-  if ! pgrep -x "awww-daemon" >/dev/null; then
-    echo "Starting awww-daemon..."
-    awww-daemon --format xrgb &
-  fi
+  awww query >/dev/null 2>&1 || {
+    notify-send -i "$iDIR/error.png" "E-R-R-O-R" "awww-daemon is not ready; refusing to start a second owner"
+    return 1
+  }
 
   awww img -o "$focused_monitor" "$image_path" $AWWW_PARAMS
 
