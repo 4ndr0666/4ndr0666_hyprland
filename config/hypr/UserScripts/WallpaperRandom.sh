@@ -34,9 +34,10 @@ AWWW_PARAMS=(
     --transition-bezier .43,1.19,1,.4
 )
 
-if ! awww query >/dev/null 2>&1; then
-    awww-daemon --format xrgb
-fi
+awww query >/dev/null 2>&1 || {
+    printf '%s\n' '[ERROR] awww-daemon is not ready; refusing to start a second owner.' >&2
+    exit 1
+}
 
 awww img -o "$focused_monitor" "$RANDOMPICS" "${AWWW_PARAMS[@]}"
 
