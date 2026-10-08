@@ -62,7 +62,7 @@ HYPRLAND_ENV="/proc/$HYPRLAND_PID/environ"
 [[ -r "$HYPRLAND_ENV" ]] || error "Hyprland process environment is unavailable: $HYPRLAND_ENV"
 
 load_session_environment() {
-  local key value found_wayland=0 found_runtime=0 found_desktop=0 found_session=0
+  local key value found_wayland=0 found_runtime=0 found_desktop=0 found_session=0 found_signature=0
   while IFS= read -r -d '' entry; do
     key="${entry%%=*}"
     value="${entry#*=}"
@@ -72,22 +72,33 @@ load_session_environment() {
       XDG_CURRENT_DESKTOP) export XDG_CURRENT_DESKTOP="$value"; found_desktop=1 ;;
       XDG_SESSION_TYPE) export XDG_SESSION_TYPE="$value"; found_session=1 ;;
       DBUS_SESSION_BUS_ADDRESS) export DBUS_SESSION_BUS_ADDRESS="$value" ;;
+      HYPRLAND_INSTANCE_SIGNATURE) export HYPRLAND_INSTANCE_SIGNATURE="$value"; found_signature=1 ;;
     esac
   done < "$HYPRLAND_ENV"
 
   local process_wayland_display="${WAYLAND_DISPLAY:-}"
-  local hyprland_wl_socket
-  hyprland_wl_socket="$(
+  local hyprland_instance_record hyprland_wl_socket instance_signature
+  hyprland_instance_record="$(
     hyprctl instances 2>/dev/null |
       awk -v target="$HYPRLAND_PID" '
-        /^instance / { matched=0 }
+        /^instance / { signature=$2; matched=0 }
         /^[[:space:]]*pid:/ { matched=($2 == target) }
-        matched && /^[[:space:]]*wl socket:/ { print $3; exit }
+        matched && /^[[:space:]]*wl socket:/ { print signature "\t" $3; exit }
       '
   )"
-  [[ -n "$hyprland_wl_socket" ]] ||
-    error "Hyprland instance record does not expose wl socket for PID $HYPRLAND_PID."
+  IFS=$'\t' read -r instance_signature hyprland_wl_socket <<< "$hyprland_instance_record"
+  [[ -n "$instance_signature" && -n "$hyprland_wl_socket" ]] ||
+    error "Hyprland instance record does not expose signature and wl socket for PID $HYPRLAND_PID."
 
+  if (( found_signature )); then
+    [[ "$HYPRLAND_INSTANCE_SIGNATURE" == "$instance_signature" ]] ||
+      error "Hyprland process instance signature does not match hyprctl instance: process=$HYPRLAND_INSTANCE_SIGNATURE instance=$instance_signature"
+    HYPRLAND_INSTANCE_SIGNATURE_SOURCE="hyprland_process_environment"
+  else
+    HYPRLAND_INSTANCE_SIGNATURE="$instance_signature"
+    export HYPRLAND_INSTANCE_SIGNATURE
+    HYPRLAND_INSTANCE_SIGNATURE_SOURCE="hyprctl_instances"
+  fi
   local wayland_socket_path derived_runtime_dir
   if [[ "$hyprland_wl_socket" == /* ]]; then
     wayland_socket_path="$hyprland_wl_socket"
@@ -153,6 +164,8 @@ load_session_environment
 
 {
   printf '\n[session]\n'
+  printf 'hyprland_instance_signature=%s\n' "$HYPRLAND_INSTANCE_SIGNATURE"
+  printf 'hyprland_instance_signature_source=%s\n' "$HYPRLAND_INSTANCE_SIGNATURE_SOURCE"
   printf 'wayland_display=%s\n' "$WAYLAND_DISPLAY"
   printf 'wayland_display_source=hyprctl_instances\n'
   printf 'xdg_current_desktop=%s\n' "$XDG_CURRENT_DESKTOP"
