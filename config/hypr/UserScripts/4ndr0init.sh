@@ -34,7 +34,7 @@ cleanup_started_processes() {
         if kill -0 "$pid" 2>/dev/null; then
             if ! kill "$pid" 2>/dev/null; then
                 if kill -0 "$pid" 2>/dev/null; then
-                    printf 'ERROR: failed to stop portal process %s during rollback\n' "$pid" >&2
+                    printf 'ERROR: failed to stop process %s during rollback\n' "$pid" >&2
                     cleanup_failed=1
                     continue
                 fi
@@ -48,7 +48,7 @@ cleanup_started_processes() {
             case "$status" in
                 130|137|143) ;;
                 *)
-                    printf 'ERROR: portal process %s exited with status %s during rollback\n' "$pid" "$status" >&2
+                    printf 'ERROR: process %s exited with status %s during rollback\n' "$pid" "$status" >&2
                     cleanup_failed=1
                     ;;
             esac
@@ -98,6 +98,28 @@ start_process() {
     return 1
 }
 
+start_process_command() {
+    local description="$1"
+    shift
+    local pid status
+    "$@" &
+    pid=$!
+    started_process_pids+=("$pid")
+    sleep 0.2
+    if kill -0 "$pid" 2>/dev/null; then
+        return 0
+    fi
+
+    if wait "$pid"; then
+        printf 'ERROR: %s exited before becoming ready (pid %s)\n' "$description" "$pid" >&2
+        return 1
+    else
+        status=$?
+        printf 'ERROR: %s exited during startup with status %s (pid %s)\n' "$description" "$status" "$pid" >&2
+        return "$status"
+    fi
+}
+
 sleep 1
 kill_quietly xdg-desktop-portal-hyprland
 kill_quietly xdg-desktop-portal-wlr
@@ -116,9 +138,7 @@ start_process "xdg-desktop-portal" \
     /usr/lib/xdg-desktop-portal \
     /usr/libexec/xdg-desktop-portal
 
-started_process_pids=()
-
-start_process "awww-daemon" awww-daemon --format xrgb
+start_process_command "awww-daemon" awww-daemon awww-daemon --format xrgb
 
 for _ in {1..20}; do
     if awww query >/dev/null 2>&1; then
@@ -131,4 +151,4 @@ awww query >/dev/null 2>&1 || {
     exit 1
 }
 
-start_process "waybar" waybar
+start_process_command "waybar" waybar
