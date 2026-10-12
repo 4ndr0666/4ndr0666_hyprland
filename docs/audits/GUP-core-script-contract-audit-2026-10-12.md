@@ -69,3 +69,53 @@ The copy path has transactional and source-immutability tests, but those do not 
 ## Explicit non-claims
 
 This baseline inspection did not execute ShellCheck or the repository test suite against a checked-out worktree. No claim is made that all shell diagnostics or all core-script defects have been enumerated. The findings above are source-grounded defects already visible before that executable pass.
+
+## Remediation checkpoint — current branch head
+
+- Branch head: 195e67c80f4da6a30d6297841cff36447b0cb6ec
+- Golden Unit Protocol: PASS on this head.
+- GUP Core Shell Contracts: PASS on this head. The gate ran bash -n across the core shell set, ShellCheck at warning severity, and the complete Golden Unit suite.
+- O.M.A.-1 and O.M.A.-2 were not run by these CI jobs. The previously recorded runtime O.M.A.-1 failures remain unresolved on the host; O.M.A.-2 remains prohibited until O.M.A.-1 is green.
+- PR remains draft because the configuration superset issue below is not yet resolved.
+
+### Post-change source blob hashes
+
+These Git blob SHA-1 values identify the source blobs at the branch head above.
+
+| Atom | Path | Baseline blob | Current blob |
+|---|---|---|---|
+| BOOTSTRAP-ENTRY | Distro-Hyprland.sh | dcbaad8c9eb636af6ef9031b2a0f7973297ec077 | abdf3bc6c5a2d3345769c133b78053d15c1840e4 |
+| INSTALL-ENTRY | install.sh | 6814f738c960cc74a1acc50b0718799ddedec597 | 3f2dcae6cdce2d4ae263a21ef43911963266b996 |
+| UNINSTALL-ENTRY | uninstall.sh | 7692bd3893a954363cf0e62ed738597def783f7c | 4e1d324a3983408753a1864abdb15499829596ba |
+| COPY-ENTRY | copy.sh | a2d7486acdf410a906d08abeea71f0f4c18c2e58 | 6e977157bb854c612450da475c0d4eb3c1f0f1b1 |
+| COPY-BACKUP | scripts/lib_backup.sh | 800dcbba59c3c23a37a3c96cc2f304f19ba9c65d | 163100caf2ab3d7cec331083321759f08903d45a |
+| COPY-DETECT | scripts/lib_detect.sh | f94e9b8fc386bd15b38ec6b5d6961af855124924 | 7b786dbb0b22aba444a21324293315c2cfcfab31 |
+| COPY-PROMPTS | scripts/lib_prompts.sh | 81c4e04c6b00ab8ea0620d4d9abba6fdaa0b9844 | 0a7a6af42795e5d243837d8b796a8f97d1019d54 |
+| COPY-APPS | scripts/lib_apps.sh | 6a040843c0cfd361c6cd98df0c74651fadf5e871 | 9ce9b9597d56c3d60b4fbdf5117ba64646190a26 |
+| COPY-RESTORE | scripts/lib_copy.sh | 9a26d460b33fa8fcfe1ded1ef066edfc52a196c4 | 92f25f634e3e25658389c30de939671079127e99 |
+| COPY-RESOLUTION | scripts/lib_resolution.sh | f1fa5d87ecea1e3e0cc0e528c56b84b8435c4484 | 8dce2c0d546eea142111cbc666ab310b2663cdb7 |
+| COPY-WAYBAR | scripts/lib_waybar.sh | b501e37928f9debb547c687de593d6ebac40d6e5 | f5addf166dfe0a3f9b7efc60ae91ae11757ab520 |
+| LUA-MUTATIONS | scripts/lib_lua_config.sh | absent | 8d43fd56406d58ca6e1134adfbf6f95204e39d00 |
+| NVIDIA-INSTALLER | install-scripts/nvidia.sh | 931bce5c5061f61f6c024c462d427fbea7020c45 | f5adb773ee5678f4d85b9f36bdb58fe85c21c496 |
+| CORE-SHELL-GATE | .github/workflows/core-shell-contracts.yml | absent | 138dd13538afa6ecd77ba2d7fcc8deeafe0a4dd1 |
+| CORE-CONTRACT-UNIT | tests/unit/test-core-script-contracts.sh | absent | d9d8569a5684500c4660c91059eb1f577d2fde17 |
+| LEGACY-ARCHIVE-UNIT | tests/unit/test-legacy-userconfig-archive.sh | absent | f86ef0225a060760e96f0374db13a1ee76efb6cc |
+
+### Additional defects found and changes made
+
+- The installer dry-run previously omitted several core helper files and did not syntax-check every top-level installer module. It now checks the full top-level module set and all core helper modules.
+- Backup names used second-level timestamps and mv could collide with an existing backup path. Backup naming now includes nanoseconds and uses no-clobber moves with a postcondition check.
+- The NVIDIA installer previously truncated a fixed state manifest and reused deterministic backup filenames on every run. State and backup directories are now scoped to a per-run identifier; tracked temporary files are cleaned on exit; strict mode exposes pipeline failures.
+- Bootstrap/copy cleanup traps now exit on signals and propagate staging/partial-clone cleanup failures.
+- Keyboard/editor/hardware/VM/NixOS adjustments now target the loaded Lua modules and use shared atomic mutation helpers.
+- Legacy .conf user files are no longer copied into active Lua UserConfigs. They are preserved under UserConfigs/legacy-conf-backup/, with an explicit warning that they are inactive.
+
+### Remaining blocker: legacy configuration superset
+
+The archive behavior prevents silent loss and active-path contamination, but it does not translate old startup commands, environment settings, keybinds, monitor declarations, or window rules into their Lua equivalents. That means the old configuration's behavior is not yet a proven superset of the new deployment.
+
+There is also a legacy compose_overlay_from_backup function in scripts/lib_resolution.sh that parses old .conf syntax and is not called by copy.sh; its current unit tests exercise the helper in isolation, not the deployment path. It must either be replaced by a Lua-aware migration path with end-to-end tests or explicitly retired together with a documented capability decision. The PR is intentionally draft until this is resolved.
+
+### Validation boundary
+
+The green CI gates establish syntax, ShellCheck warning cleanliness for the declared core script set, and the current Golden Unit suite. They do not prove that every optional system-mutating installer module works on real hardware. NVIDIA and other privileged installers remain static/unit-contract validated only; no privileged mutation was run in CI.
