@@ -87,7 +87,10 @@ set_lua_assignment() (
   }
 
   tmp="$(mktemp --tmpdir="$(dirname -- "$file")" ".$(basename -- "$file").XXXXXX")" || return 1
-  trap 'if [[ -n "$tmp" ]]; then rm -f -- "$tmp"; fi' EXIT HUP INT TERM
+  trap 'if [[ -n "$tmp" ]]; then rm -f -- "$tmp"; fi' EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
   awk -v key="$key" -v value="$value" '
     $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
       sub(/=.*/, "= " value ",")
