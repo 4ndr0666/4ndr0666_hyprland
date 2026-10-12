@@ -28,42 +28,14 @@ print_color() {
 write_keyboard_layout() {
   local layout="$1"
   local file="config/hypr/configs/SystemSettings.lua"
-  local tmp
-  local matches
 
   layout="${layout//[[:space:]]/}"
   [[ "$layout" =~ ^[[:alnum:]_,+-]+$ ]] || {
-    printf '[ERROR] Invalid keyboard layout value: %s\n' "$layout" >&2
+    printf '[ERROR] Invalid keyboard layout value: %s\\n' "$layout" >&2
     return 2
   }
-  [[ -f "$file" ]] || {
-    printf '[ERROR] Required Lua settings module is missing: %s\n' "$file" >&2
-    return 1
-  }
-  matches="$(grep -Ec '^[[:space:]]*kb_layout[[:space:]]*=' "$file")" || return 1
-  [[ "$matches" -eq 1 ]] || {
-    printf '[ERROR] Expected one kb_layout setting in %s; found %s.\n' "$file" "$matches" >&2
-    return 1
-  }
-
-  tmp="$(mktemp --tmpdir="$(dirname -- "$file")" '.SystemSettings.lua.XXXXXX')" || return 1
-  if ! {
-    awk -v layout="$layout" '
-      /^[[:space:]]*kb_layout[[:space:]]*=/ {
-        sub(/=.*/, "= \"" layout "\",")
-        found++
-      }
-      { print }
-      END { if (found != 1) exit 1 }
-    ' "$file" >"$tmp" &&
-      chmod --reference="$file" "$tmp" &&
-      mv -- "$tmp" "$file"
-  }; then
-    rm -f -- "$tmp"
-    return 1
-  fi
+  set_lua_assignment "$file" "kb_layout" "\"$layout\""
 }
-
 # Detect keyboard layout via localectl or setxkbmap.
 prompt_detect_layout() {
   if command -v localectl >/dev/null 2>&1; then
@@ -100,7 +72,7 @@ You need to set it Manually
 
 Setting a wrong Keyboard Layout will cause Hyprland to crash
 If you are not sure, just type ${YELLOW}us${RESET}
-${SKYBLUE}You can change later in ~/.config/hypr/UserConfigs/UserSettings.conf${RESET}
+${SKYBLUE}You can change later in ~/.config/hypr/UserConfigs/UserSettings.lua${RESET}
 
 ${MAGENTA} NOTE:${RESET}
 •  You can also set more than 2 keyboard layouts
