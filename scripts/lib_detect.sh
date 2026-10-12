@@ -17,12 +17,13 @@ detect_nvidia_adjust() {
 
   if grep -A 2 -E '(VGA|3D)' <<<"$hardware_info" | grep -iq nvidia; then
     printf '%s\n' "${INFO:-[INFO]} Nvidia GPU detected. Setting up proper env's and configs" | tee -a "$log"
-    sed -i '/env = LIBVA_DRIVER_NAME,nvidia/s/^#//' config/hypr/configs/ENVariables.conf
-    sed -i '/env = __GLX_VENDOR_LIBRARY_NAME,nvidia/s/^#//' config/hypr/configs/ENVariables.conf
-    sed -i '/env = NVD_BACKEND,direct/s/^#//' config/hypr/configs/ENVariables.conf
-    sed -i '/env = GSK_RENDERER,ngl/s/^#//' config/hypr/configs/ENVariables.conf
-    sed -i 's/^\([[:space:]]*no_hardware_cursors[[:space:]]*=[[:space:]]*\)2/\1 1/' config/hypr/configs/SystemSettings.conf
+    append_lua_env "LIBVA_DRIVER_NAME" "nvidia"
+    append_lua_env "__GLX_VENDOR_LIBRARY_NAME" "nvidia"
+    append_lua_env "NVD_BACKEND" "direct"
+    append_lua_env "GSK_RENDERER" "ngl"
+    set_lua_assignment "config/hypr/configs/SystemSettings.lua" "no_hardware_cursors" "1"
   fi
+}  fi
 }
 
 # VM tweaks: enable software renderer envs and virtual monitor defaults.
@@ -40,10 +41,14 @@ detect_vm_adjust() {
 
   if grep -q 'Chassis: vm' <<<"$host_info"; then
     printf '%s\n' "${INFO:-[INFO]} System is running in a virtual machine. Setting up proper env's and configs" | tee -a "$log"
-    sed -i 's/^\([[:space:]]*no_hardware_cursors[[:space:]]*=[[:space:]]*\)2/\1 1/' config/hypr/configs/SystemSettings.conf
-    sed -i '/env = WLR_RENDERER_ALLOW_SOFTWARE,1/s/^#//' config/hypr/configs/ENVariables.conf
-    sed -i '/monitor = Virtual-1, 1920x1080@60,auto,1/s/^#//' config/hypr/monitors.conf
+    set_lua_assignment "config/hypr/configs/SystemSettings.lua" "no_hardware_cursors" "1"
+    append_lua_env "WLR_RENDERER_ALLOW_SOFTWARE" "1"
+    append_lua_module_line \
+      "config/hypr/monitors.lua" \
+      'output = "Virtual-1"' \
+      $'hl.monitor({\n    output = "Virtual-1",\n    mode = "1920x1080@60.0",\n    position = "0x0",\n    scale = 1.0\n})'
   fi
+}  fi
 }
 
 # NixOS tweaks: ensure polkit overlay is enabled and default disabled.
@@ -61,13 +66,15 @@ detect_nixos_adjust() {
 
   if grep -q 'Operating System: NixOS' <<<"$host_info"; then
     printf '%s\n' "${INFO:-[INFO]} NixOS Distro Detected. Setting up proper env's and configs." | tee -a "$log"
-    local OVERLAY_SA="config/hypr/configs/Startup_Apps.conf"
-    local DISABLE_SA="config/hypr/configs/Startup_Apps.disable"
-    mkdir -p "$(dirname "$OVERLAY_SA")"
-    touch "$OVERLAY_SA" "$DISABLE_SA"
-    grep -qx 'exec-once = $scriptsDir/Polkit-NixOS.sh' "$OVERLAY_SA" || echo 'exec-once = $scriptsDir/Polkit-NixOS.sh' >>"$OVERLAY_SA"
-    grep -qx '\$scriptsDir/Polkit.sh' "$DISABLE_SA" || echo '$scriptsDir/Polkit.sh' >>"$DISABLE_SA"
+    [[ -f "config/hypr/scripts/Polkit-NixOS.sh" ]] || {
+      printf '%s\\n' '[ERROR] NixOS Polkit helper is missing from the staged configuration.' >&2
+      return 1
+    }
+    append_startup_expression \
+      "Polkit-NixOS.sh" \
+      'os.getenv("HOME") .. "/.config/hypr/scripts/Polkit-NixOS.sh"'
   fi
+}  fi
 }
 
 # Decide waybar config/style based on chassis type. Echoes chosen config path.
