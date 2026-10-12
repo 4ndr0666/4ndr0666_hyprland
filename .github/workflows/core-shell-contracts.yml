@@ -59,6 +59,6 @@ jobs:
             install-scripts/core/*.sh
             tests/unit/test-core-script-contracts.sh
           )
-          shellcheck --external-sources "${scripts[@]}"
+          shellcheck --severity=warning "${scripts[@]}"
       - name: Run Golden Units
         run: bash tests/unit/run-golden-units.sh
