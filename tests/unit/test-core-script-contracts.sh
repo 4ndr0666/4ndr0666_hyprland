@@ -109,7 +109,7 @@ append_lua_module_line \
   $'hl.monitor({\n    output = "Virtual-1",\n    mode = "1920x1080@60.0",\n    position = "0x0",\n    scale = 1.0\n})'
 [[ "$(grep -Fc 'output = "Virtual-1"' config/hypr/monitors.lua)" -eq 1 ]] ||
   fail "monitor Lua append is not idempotent"
-if find "$TMP_ROOT/config" -type f -name '.*.XXXXXX' -print -quit | grep -q .; then
+if find "$TMP_ROOT/config" -type f -name '.*.lua.*' -print -quit | grep -q .; then
   fail "Lua mutation left temporary files behind"
 fi
 
