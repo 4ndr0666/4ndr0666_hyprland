@@ -2,45 +2,76 @@
 # === 4ndr0666 === #
 # App enablement and editor selection helpers.
 
+append_startup_command() {
+  local command="$1"
+  local startup="config/hypr/configs/Startup_Apps.lua"
+  local tmp
+
+  [[ -f "$startup" ]] || {
+    printf '[ERROR] Required Lua startup module is missing: %s\n' "$startup" >&2
+    return 1
+  }
+  grep -Fq -- "hl.exec_cmd(\"$command\")" "$startup" && return 0
+
+  tmp="$(mktemp --tmpdir="$(dirname -- "$startup")" '.Startup_Apps.lua.XXXXXX')" || return 1
+  if ! {
+    cat -- "$startup" >"$tmp" &&
+      printf '\n-- Added by the copy workflow; retained in the authoritative Lua startup module.\nhl.on("hyprland.start", function()\n    hl.exec_cmd("%s")\nend)\n' "$command" >>"$tmp" &&
+      chmod --reference="$startup" "$tmp" &&
+      mv -- "$tmp" "$startup"
+  }; then
+    rm -f -- "$tmp"
+    return 1
+  fi
+}
+
+
 enable_asusctl() {
   local log="$1"
   if command -v asusctl >/dev/null 2>&1; then
-    local OVERLAY_SA="config/hypr/configs/Startup_Apps.conf"
-    mkdir -p "$(dirname "$OVERLAY_SA")"
-    touch "$OVERLAY_SA"
-    grep -qx 'exec-once = rog-control-center' "$OVERLAY_SA" || echo 'exec-once = rog-control-center' >>"$OVERLAY_SA"
+    append_startup_command "rog-control-center"
+    printf '%s\n' '[INFO] Added ROG Control Center to Lua startup.' | tee -a "$log"
   fi
 }
 
 enable_blueman() {
   local log="$1"
   if command -v blueman-applet >/dev/null 2>&1; then
-    local OVERLAY_SA="config/hypr/configs/Startup_Apps.conf"
-    mkdir -p "$(dirname "$OVERLAY_SA")"
-    touch "$OVERLAY_SA"
-    grep -qx 'exec-once = blueman-applet' "$OVERLAY_SA" || echo 'exec-once = blueman-applet' >>"$OVERLAY_SA"
+    append_startup_command "blueman-applet"
+    printf '%s\n' '[INFO] Added Blueman applet to Lua startup.' | tee -a "$log"
   fi
 }
 
 enable_quickshell() {
   local log="$1"
   if command -v qs >/dev/null 2>&1; then
-    echo "${INFO:-[INFO]} Quickshell detected - enabling in startup" | tee -a "$log"
-    local OVERLAY_SA="config/hypr/configs/Startup_Apps.conf"
-    mkdir -p "$(dirname "$OVERLAY_SA")"
-    touch "$OVERLAY_SA"
-    grep -qx 'exec-once = qs' "$OVERLAY_SA" || echo 'exec-once = qs' >>"$OVERLAY_SA"
+    append_startup_command "qs"
+    printf '%s\n' "${INFO:-[INFO]} Quickshell detected - enabling in startup" | tee -a "$log"
   fi
 }
 
 ensure_keybinds_init() {
   local log="$1"
-  local OVERLAY_SA="config/hypr/configs/Startup_Apps.conf"
-  mkdir -p "$(dirname "$OVERLAY_SA")"
-  if ! grep -qx 'exec-once = \$scriptsDir/KeybindsLayoutInit.sh' "$OVERLAY_SA"; then
-    echo 'exec-once = $scriptsDir/KeybindsLayoutInit.sh' >>"$OVERLAY_SA"
-    echo "${INFO:-[INFO]} Added KeybindsLayoutInit.sh to user Startup_Apps overlay" 2>&1 | tee -a "$log"
+  local startup="config/hypr/configs/Startup_Apps.lua"
+  local tmp
+
+  [[ -f "$startup" ]] || {
+    printf '[ERROR] Required Lua startup module is missing: %s\n' "$startup" >&2
+    return 1
+  }
+  grep -Fq 'KeybindsLayoutInit.sh' "$startup" && return 0
+
+  tmp="$(mktemp --tmpdir="$(dirname -- "$startup")" '.Startup_Apps.lua.XXXXXX')" || return 1
+  if ! {
+    cat -- "$startup" >"$tmp" &&
+      printf '\nhl.on("hyprland.start", function()\n    hl.exec_cmd(os.getenv("HOME") .. "/.config/hypr/scripts/KeybindsLayoutInit.sh")\nend)\n' >>"$tmp" &&
+      chmod --reference="$startup" "$tmp" &&
+      mv -- "$tmp" "$startup"
+  }; then
+    rm -f -- "$tmp"
+    return 1
   fi
+  printf '%s\n' "${INFO:-[INFO]} Added KeybindsLayoutInit.sh to Lua startup module." | tee -a "$log"
 }
 
 install_terminal_configs() {
@@ -77,9 +108,35 @@ choose_default_editor() {
   local log="$1"
   local editor_set=0
   update_editor() {
-    local editor=$1
-    sed -i "s/#env = EDITOR,.*/env = EDITOR,$editor #default editor/" config/hypr/UserConfigs/01-UserDefaults.conf
-    echo "${OK:-[OK]} Default editor set to ${MAGENTA:-}$editor${RESET:-}." 2>&1 | tee -a "$log"
+    local editor="$1"
+    local defaults="config/hypr/UserConfigs/01-UserDefaults.lua"
+    local tmp
+    local matches
+
+    [[ "$editor" == nvim || "$editor" == vim ]] || {
+      printf '[ERROR] Unsupported editor value: %s\n' "$editor" >&2
+      return 2
+    }
+    [[ -f "$defaults" ]] || {
+      printf '[ERROR] Required Lua defaults module is missing: %s\n' "$defaults" >&2
+      return 1
+    }
+    matches="$(grep -Ec '^[[:space:]]*hl\.env\("EDITOR", "[^"]+"\)' "$defaults")" || return 1
+    [[ "$matches" -eq 1 ]] || {
+      printf '[ERROR] Expected exactly one EDITOR declaration in %s; found %s.\n' "$defaults" "$matches" >&2
+      return 1
+    }
+
+    tmp="$(mktemp --tmpdir="$(dirname -- "$defaults")" '.01-UserDefaults.lua.XXXXXX')" || return 1
+    if ! {
+      sed -E 's/hl\.env\("EDITOR", "[^"]+"\)/hl.env("EDITOR", "'"$editor"'")/' "$defaults" >"$tmp" &&
+        chmod --reference="$defaults" "$tmp" &&
+        mv -- "$tmp" "$defaults"
+    }; then
+      rm -f -- "$tmp"
+      return 1
+    fi
+    printf '%s\n' "${OK:-[OK]} Default editor set to ${MAGENTA:-}$editor${RESET:-}." | tee -a "$log"
   }
   if command -v nvim &>/dev/null; then
     printf "${INFO:-[INFO]} ${MAGENTA:-}neovim${RESET:-} is detected as installed\n"
