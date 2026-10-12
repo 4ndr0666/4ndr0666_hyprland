@@ -80,6 +80,7 @@ TESTS=(
   tests/unit/test-clock-12h-mandatory.sh
   tests/unit/test-gtk-theme-installer.sh
   tests/unit/test-installer-dry-run.sh
+  tests/unit/test-nvidia-installer-contract.sh
   tests/unit/test-canonical-package-manifest.sh
   tests/unit/test-arch-family-detection.sh
   tests/unit/test-notification-daemon-supersession.sh
