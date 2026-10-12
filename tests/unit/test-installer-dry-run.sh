@@ -12,6 +12,10 @@ out="$(bash "$INSTALLER" --dry-run)"
 grep -Fq '[DRY-RUN] PASS: installer graph is present and syntactically valid.' <<< "$out"
 grep -Fq '[DRY-RUN] OK 00-base.sh' <<< "$out"
 grep -Fq '[DRY-RUN] OK 02-Final-Check.sh' <<< "$out"
+for core_module in platform.sh package-manifest.sh packages.sh ui.sh systemd.sh aur-bootstrap.sh dotfiles.sh files.sh; do
+  grep -Fq "[DRY-RUN] OK core/$core_module" <<< "$out" ||
+    { printf '[FAIL] Missing dry-run validation for core/%s\\n' "$core_module" >&2; exit 1; }
+done
 
 if [[ -n "$before" ]]; then
   test -d "$before"
