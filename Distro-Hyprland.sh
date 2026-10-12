@@ -22,7 +22,10 @@ cleanup() {
     fi
     return "$rc"
 }
-trap cleanup EXIT INT TERM HUP
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 if [[ -z "$INSTALL_REF" ]]; then
     if [[ ! -r "$DEFAULT_REF_FILE" ]]; then
