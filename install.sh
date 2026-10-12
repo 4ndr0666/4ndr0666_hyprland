@@ -10,17 +10,34 @@ if [[ "${1:-}" == --dry-run ]]; then
   printf '[DRY-RUN] Required bootstrap modules: 00-base.sh pacman.sh yay.sh 01-hypr-pkgs.sh pipewire.sh fonts.sh hyprland.sh\n'
   printf '[DRY-RUN] Optional modules are selected interactively during a normal installation.\n'
   printf '[DRY-RUN] Validate module presence and shell syntax below.\n'
-  for module in 00-base.sh pacman.sh yay.sh 01-hypr-pkgs.sh pipewire.sh fonts.sh hyprland.sh sddm.sh nvidia.sh nvidia_nouveau.sh gtk_themes.sh InputGroup.sh quickshell.sh xdph.sh bluetooth.sh thunar.sh thunar_default.sh sddm_theme.sh zsh.sh zsh_pokemon.sh rog.sh dotfiles-main.sh 02-Final-Check.sh; do
+  required_modules=(
+    00-base.sh pacman.sh yay.sh 01-hypr-pkgs.sh pipewire.sh fonts.sh hyprland.sh
+    sddm.sh nvidia.sh nvidia_nouveau.sh gtk_themes.sh InputGroup.sh quickshell.sh
+    xdph.sh bluetooth.sh thunar.sh thunar_default.sh sddm_theme.sh zsh.sh
+    zsh_pokemon.sh rog.sh dotfiles-main.sh 02-Final-Check.sh
+  )
+  for module in "${required_modules[@]}"; do
     path="$SCRIPT_DIR/$module"
     [[ -f "$path" ]] || { printf '[ERROR] Missing installer module: %s\n' "$path" >&2; exit 1; }
     bash -n "$path" || { printf '[ERROR] Shell syntax failure: %s\n' "$path" >&2; exit 1; }
     printf '[DRY-RUN] OK %s\n' "$module"
   done
+
+  for path in "$SCRIPT_DIR"/*.sh; do
+    bash -n "$path" || { printf '[ERROR] Shell syntax failure: %s\n' "$path" >&2; exit 1; }
+  done
+
+  core_modules=(
+    platform.sh package-manifest.sh packages.sh ui.sh systemd.sh
+    aur-bootstrap.sh dotfiles.sh files.sh
+  )
+  for module in "${core_modules[@]}"; do
+    path="$SCRIPT_DIR/core/$module"
+    [[ -f "$path" ]] || { printf '[ERROR] Missing installer core module: %s\n' "$path" >&2; exit 1; }
+    bash -n "$path" || { printf '[ERROR] Shell syntax failure: %s\n' "$path" >&2; exit 1; }
+    printf '[DRY-RUN] OK core/%s\n' "$module"
+  done
   bash -n "$0"
-  bash -n "$SCRIPT_DIR/core/platform.sh"
-  bash -n "$SCRIPT_DIR/core/package-manifest.sh"
-  printf '[DRY-RUN] OK core/platform.sh\n'
-  printf '[DRY-RUN] OK core/package-manifest.sh\n'
   printf '[DRY-RUN] PASS: installer graph is present and syntactically valid.\n'
   exit 0
 fi
