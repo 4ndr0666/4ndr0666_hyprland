@@ -23,17 +23,17 @@ source "$SCRIPT_DIR/core/packages.sh"
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_temp-monitor.log"
 
 # Temperature Monitor
-printf "${NOTE} Installing ${SKY_BLUE}Temperature Monitor${RESET} Packages...\n"
+printf '%s\n' "${NOTE} Installing ${SKY_BLUE}Temperature Monitor${RESET} Packages..."
 for TEMP in "${temp[@]}"; do
   package_install "$TEMP"
 done
 
 # Detect sensors
-printf "${NOTE} Detecting ${YELLOW}hardware sensors${RESET}...\n"
+printf '%s\n' "${NOTE} Detecting ${YELLOW}hardware sensors${RESET}..."
 sudo sensors-detect --auto 2>&1 | tee -a "$LOG"
 
 # Create temperature monitoring script
-printf "${NOTE} Creating ${YELLOW}temperature monitoring${RESET} script...\n"
+printf '%s\n' "${NOTE} Creating ${YELLOW}temperature monitoring${RESET} script..."
 
 TEMP_SCRIPT="$HOME/.config/hypr/scripts/temp-monitor.sh"
 mkdir -p "$HOME/.config/hypr/scripts"
@@ -116,10 +116,10 @@ EOF
 
 chmod +x "$TEMP_SCRIPT"
 
-printf "${OK} Temperature monitoring script created at ${YELLOW}$TEMP_SCRIPT${RESET}\n"
+printf '%s\n' "${OK} Temperature monitoring script created at ${YELLOW}$TEMP_SCRIPT${RESET}"
 
 # Create systemd user service
-printf "${NOTE} Creating ${YELLOW}systemd user service${RESET} for temperature monitoring...\n"
+printf '%s\n' "${NOTE} Creating ${YELLOW}systemd user service${RESET} for temperature monitoring..."
 
 SYSTEMD_DIR="$HOME/.config/systemd/user"
 mkdir -p "$SYSTEMD_DIR"
@@ -139,16 +139,16 @@ RestartSec=10
 WantedBy=default.target
 EOF
 
-printf "${OK} Systemd service created\n"
+printf '%s\n' "${OK} Systemd service created"
 
 # Enable and start the service
-printf "${NOTE} Enabling and starting ${YELLOW}temp-monitor${RESET} service...\n"
+printf '%s\n' "${NOTE} Enabling and starting ${YELLOW}temp-monitor${RESET} service..."
 systemctl --user daemon-reload
 systemctl --user enable temp-monitor.service 2>&1 | tee -a "$LOG"
 systemctl --user start temp-monitor.service 2>&1 | tee -a "$LOG"
 
-printf "${OK} Temperature monitor service is now running!\n"
-printf "${INFO} You can check status with: ${YELLOW}systemctl --user status temp-monitor${RESET}\n"
-printf "${INFO} View temperatures: ${YELLOW}sensors${RESET}\n"
+printf '%s\n' "${OK} Temperature monitor service is now running!"
+printf '%s\n' "${INFO} You can check status with: ${YELLOW}systemctl --user status temp-monitor${RESET}"
+printf '%s\n' "${INFO} View temperatures: ${YELLOW}sensors${RESET}"
 
 printf "\n%.0s" {1..2}
