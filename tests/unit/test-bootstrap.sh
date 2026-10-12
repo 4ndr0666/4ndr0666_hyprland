@@ -42,23 +42,7 @@ assert_bootstrap_transaction_invariants() {
   grep -q '^set -Eeuo pipefail$' "$SCRIPT"
   grep -q '^GIT_COMMAND_TIMEOUT=' "$SCRIPT"
   grep -q '^INSTALL_DIR_CREATED=0$' "$SCRIPT"
-  grep -q '^trap cleanup EXIT
-  grep -Fq 'timeout --signal=TERM --kill-after=30s' "$SCRIPT"
-  grep -Fq 'git clone --no-checkout "$REPOSITORY_URL" "$INSTALL_DIR"' "$SCRIPT"
-  grep -Fq 'git fetch --depth=1 origin "$INSTALL_REF"' "$SCRIPT"
-  grep -Fq 'git checkout --detach --force "$INSTALL_REF"' "$SCRIPT"
-  grep -Fq 'INSTALL_DIR_CREATED=1' "$SCRIPT"
-  awk '/INSTALL_DIR_CREATED=1/ { owned=NR } /git clone --no-checkout/ { clone=NR } END { exit !(owned > 0 && clone > owned) }' "$SCRIPT"
-  grep -Fq 'INSTALL_DIR_CREATED=0' "$SCRIPT"
-  ! grep -Fq 'git clone --no-checkout "$REPOSITORY_URL" "$INSTALL_DIR" || true' "$SCRIPT"
-  bash -n "$SCRIPT"
-}
-
-assert_missing_release_ref_refused
-assert_invalid_ref_refused
-assert_bootstrap_transaction_invariants
-printf '%s\n' 'bootstrap: PASS'
- "$SCRIPT"
+  grep -Fq 'trap cleanup EXIT' "$SCRIPT"
   grep -Fq "trap 'exit 129' HUP" "$SCRIPT"
   grep -Fq "trap 'exit 130' INT" "$SCRIPT"
   grep -Fq "trap 'exit 143' TERM" "$SCRIPT"
@@ -66,7 +50,7 @@ printf '%s\n' 'bootstrap: PASS'
   grep -Fq 'git clone --no-checkout "$REPOSITORY_URL" "$INSTALL_DIR"' "$SCRIPT"
   grep -Fq 'git fetch --depth=1 origin "$INSTALL_REF"' "$SCRIPT"
   grep -Fq 'git checkout --detach --force "$INSTALL_REF"' "$SCRIPT"
-  grep -Fq 'INSTALL_DIR_CREATED=1' "$SCRIPT"
+  awk '/INSTALL_DIR_CREATED=1/ { owned=NR } /git clone --no-checkout/ { clone=NR } END { exit !(owned > 0 && clone > owned) }' "$SCRIPT"
   grep -Fq 'INSTALL_DIR_CREATED=0' "$SCRIPT"
   ! grep -Fq 'git clone --no-checkout "$REPOSITORY_URL" "$INSTALL_DIR" || true' "$SCRIPT"
   bash -n "$SCRIPT"
