@@ -22,13 +22,13 @@ source "$SCRIPT_DIR/core/packages.sh"
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_disk-monitor.log"
 
 # Disk Monitor
-printf "${NOTE} Installing ${SKY_BLUE}Disk Monitor${RESET} Packages...\n"
+printf '%s\n' "${NOTE} Installing ${SKY_BLUE}Disk Monitor${RESET} Packages..."
 for DISK in "${disk[@]}"; do
   package_install "$DISK"
 done
 
 # Create disk monitoring script
-printf "${NOTE} Creating ${YELLOW}disk space monitoring${RESET} script...\n"
+printf '%s\n' "${NOTE} Creating ${YELLOW}disk space monitoring${RESET} script..."
 
 DISK_SCRIPT="$HOME/.config/hypr/scripts/disk-monitor.sh"
 mkdir -p "$HOME/.config/hypr/scripts"
@@ -86,10 +86,10 @@ EOF
 
 chmod +x "$DISK_SCRIPT"
 
-printf "${OK} Disk monitoring script created at ${YELLOW}$DISK_SCRIPT${RESET}\n"
+printf '%s\n' "${OK} Disk monitoring script created at ${YELLOW}$DISK_SCRIPT${RESET}"
 
 # Create systemd user service
-printf "${NOTE} Creating ${YELLOW}systemd user service${RESET} for disk monitoring...\n"
+printf '%s\n' "${NOTE} Creating ${YELLOW}systemd user service${RESET} for disk monitoring..."
 
 SYSTEMD_DIR="$HOME/.config/systemd/user"
 mkdir -p "$SYSTEMD_DIR"
@@ -109,16 +109,16 @@ RestartSec=10
 WantedBy=default.target
 EOF
 
-printf "${OK} Systemd service created\n"
+printf '%s\n' "${OK} Systemd service created"
 
 # Enable and start the service
-printf "${NOTE} Enabling and starting ${YELLOW}disk-monitor${RESET} service...\n"
+printf '%s\n' "${NOTE} Enabling and starting ${YELLOW}disk-monitor${RESET} service..."
 systemctl --user daemon-reload
 systemctl --user enable disk-monitor.service 2>&1 | tee -a "$LOG"
 systemctl --user start disk-monitor.service 2>&1 | tee -a "$LOG"
 
-printf "${OK} Disk monitor service is now running!\n"
-printf "${INFO} You can check status with: ${YELLOW}systemctl --user status disk-monitor${RESET}\n"
-printf "${INFO} View disk usage: ${YELLOW}df -h${RESET}\n"
+printf '%s\n' "${OK} Disk monitor service is now running!"
+printf '%s\n' "${INFO} You can check status with: ${YELLOW}systemctl --user status disk-monitor${RESET}"
+printf '%s\n' "${INFO} View disk usage: ${YELLOW}df -h${RESET}"
 
 printf "\n%.0s" {1..2}
