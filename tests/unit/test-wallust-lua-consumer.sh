@@ -6,13 +6,16 @@ FILE="$ROOT/config/hypr/UserConfigs/UserDecorations.lua"
 
 [[ -f "$FILE" ]] || { printf '[FAIL] Wallust Lua consumer is missing.\n' >&2; exit 1; }
 
-grep -Fq 'assert(io.open(color_file_path, "r"), "Wallust color provider is unavailable:' "$FILE"
-grep -Fq 'local required_colors = { "color0", "color10", "color12", "color15" }' "$FILE"
-grep -Fq 'assert(wallust_colors[key], "Wallust color provider is incomplete: missing " .. key)' "$FILE"
+# The active Wallust target is configured in wallust.toml as .conf, not .lua.
+grep -Fq 'local color_file_path = home .. "/.config/hypr/wallust/wallust-hyprland.conf"' "$FILE"
+grep -Fq 'if key and val and not val:match("{") then' "$FILE"
+grep -Fq 'local c12 = wallust_colors["color12"] or "rgba(33ccffee)"' "$FILE"
+grep -Fq 'local c10 = wallust_colors["color10"] or "rgba(595959aa)"' "$FILE"
+grep -Fq 'local c15 = wallust_colors["color15"] or "rgba(ffffffee)"' "$FILE"
+grep -Fq 'local c0  = wallust_colors["color0"]  or "rgba(000000aa)"' "$FILE"
 
-! grep -Fq 'or "rgba(33ccffee)"' "$FILE"
-! grep -Fq 'or "rgba(595959aa)"' "$FILE"
-! grep -Fq 'or "rgba(ffffffee)"' "$FILE"
-! grep -Fq 'or "rgba(000000aa)"' "$FILE"
+# Preserve the active decoration contract and reject the stale Lua target.
+grep -Fq 'hl.config({' "$FILE"
+! grep -Fq 'wallust-hyprland.lua' "$FILE"
 
-printf '%s\n' 'Wallust Lua consumer fail-closed boundary: PASS'
+printf '%s\n' 'Wallust Lua consumer path/template/fallback contract: PASS'
