@@ -23,13 +23,13 @@ source "$SCRIPT_DIR/core/packages.sh"
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_battery-monitor.log"
 
 # Battery Monitor
-printf "${NOTE} Installing ${SKY_BLUE}Battery Monitor${RESET} Packages...\n"
+printf '%s\n' "${NOTE} Installing ${SKY_BLUE}Battery Monitor${RESET} Packages..."
 for BAT in "${battery[@]}"; do
   package_install "$BAT"
 done
 
 # Create battery monitoring script
-printf "${NOTE} Creating ${YELLOW}battery monitoring${RESET} script...\n"
+printf '%s\n' "${NOTE} Creating ${YELLOW}battery monitoring${RESET} script..."
 
 BATTERY_SCRIPT="$HOME/.config/hypr/scripts/battery-monitor.sh"
 mkdir -p "$HOME/.config/hypr/scripts"
@@ -75,10 +75,10 @@ EOF
 
 chmod +x "$BATTERY_SCRIPT"
 
-printf "${OK} Battery monitoring script created at ${YELLOW}$BATTERY_SCRIPT${RESET}\n"
+printf '%s\n' "${OK} Battery monitoring script created at ${YELLOW}$BATTERY_SCRIPT${RESET}"
 
 # Create systemd user service
-printf "${NOTE} Creating ${YELLOW}systemd user service${RESET} for battery monitoring...\n"
+printf '%s\n' "${NOTE} Creating ${YELLOW}systemd user service${RESET} for battery monitoring..."
 
 SYSTEMD_DIR="$HOME/.config/systemd/user"
 mkdir -p "$SYSTEMD_DIR"
@@ -98,17 +98,17 @@ RestartSec=10
 WantedBy=default.target
 EOF
 
-printf "${OK} Systemd service created\n"
+printf '%s\n' "${OK} Systemd service created"
 
 # Enable and start the service
-printf "${NOTE} Enabling and starting ${YELLOW}battery-monitor${RESET} service...\n"
+printf '%s\n' "${NOTE} Enabling and starting ${YELLOW}battery-monitor${RESET} service..."
 systemctl --user daemon-reload
 systemctl --user enable battery-monitor.service 2>&1 | tee -a "$LOG"
 systemctl --user start battery-monitor.service 2>&1 | tee -a "$LOG"
 
-printf "${OK} Battery monitor service is now running!\n"
-printf "${INFO} You can check status with: ${YELLOW}systemctl --user status battery-monitor${RESET}\n"
-printf "${INFO} To stop: ${YELLOW}systemctl --user stop battery-monitor${RESET}\n"
-printf "${INFO} To disable: ${YELLOW}systemctl --user disable battery-monitor${RESET}\n"
+printf '%s\n' "${OK} Battery monitor service is now running!"
+printf '%s\n' "${INFO} You can check status with: ${YELLOW}systemctl --user status battery-monitor${RESET}"
+printf '%s\n' "${INFO} To stop: ${YELLOW}systemctl --user stop battery-monitor${RESET}"
+printf '%s\n' "${INFO} To disable: ${YELLOW}systemctl --user disable battery-monitor${RESET}"
 
 printf "\n%.0s" {1..2}
