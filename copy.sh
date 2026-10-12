@@ -26,7 +26,10 @@ DEPLOY_STAGE_DIR=""
 cleanup() {
   local rc=$?
   if [[ -n "$DEPLOY_STAGE_DIR" && -d "$DEPLOY_STAGE_DIR" ]]; then
-    rm -rf -- "$DEPLOY_STAGE_DIR"
+    if ! rm -rf -- "$DEPLOY_STAGE_DIR"; then
+      printf '%s\\n' '[ERROR] Failed to remove the deployment staging directory.' >&2
+      [[ "$rc" -ne 0 ]] || rc=1
+    fi
   fi
   return "$rc"
 }
