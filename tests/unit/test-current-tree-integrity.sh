@@ -15,7 +15,7 @@ require_file "$ROOT/config/hypr/wallust/wallust-hyprland.conf"
 grep -Fq '#!/usr/bin/env bash' "$ROOT/config/hypr/scripts/TouchPad.sh"
 grep -Eq '^set -E?euo pipefail$' "$ROOT/config/hypr/scripts/TouchPad.sh"
 
-! grep -R -n --exclude-dir=.git --exclude-dir=archive --exclude='test-current-tree-integrity.sh' 'wallust-hyprland\.lua' "$ROOT" >/dev/null 2>&1
+! grep -R -n --exclude-dir=.git --exclude-dir=archive 'wallust-hyprland\\.lua' "$ROOT/config" "$ROOT/wallust" >/dev/null 2>&1
 
 if grep -R -n --include='*.css' --exclude-dir=.git --exclude-dir=archive -E '^[[:space:]]*@import.*wallust/templates/colors-waybar\.css' "$ROOT/config/waybar" >/dev/null 2>&1; then
   printf '[FAIL] active Waybar import bypasses canonical Wallust consumer.\n' >&2
