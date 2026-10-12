@@ -100,7 +100,7 @@ choose_default_editor() {
     printf '%s\n' "${OK:-[OK]} Default editor set to ${MAGENTA:-}$editor${RESET:-}." | tee -a "$log"
   }
   if command -v nvim &>/dev/null; then
-    printf "${INFO:-[INFO]} ${MAGENTA:-}neovim${RESET:-} is detected as installed\n"
+    printf '%s\n' "${INFO:-[INFO]} ${MAGENTA:-}neovim${RESET:-} is detected as installed"
     if ! read -r -p "${CAT:-[ACTION]} Do you want to make ${MAGENTA:-}neovim${RESET:-} the default editor? (y/N): " EDITOR_CHOICE </dev/tty; then
       :
     elif [[ "$EDITOR_CHOICE" == "y" || "$EDITOR_CHOICE" == "Y" ]]; then
@@ -110,7 +110,7 @@ choose_default_editor() {
   fi
   printf "\n"
   if [[ "$editor_set" -eq 0 ]] && command -v vim &>/dev/null; then
-    printf "${INFO:-[INFO]} ${MAGENTA:-}vim${RESET:-} is detected as installed\n"
+    printf '%s\n' "${INFO:-[INFO]} ${MAGENTA:-}vim${RESET:-} is detected as installed"
     if read -r -p "${CAT:-[ACTION]} Do you want to make ${MAGENTA:-}vim${RESET:-} the default editor? (y/N): " EDITOR_CHOICE </dev/tty; then
       if [[ "$EDITOR_CHOICE" == "y" || "$EDITOR_CHOICE" == "Y" ]]; then
         update_editor "vim"
