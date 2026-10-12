@@ -43,16 +43,16 @@ prompt_detect_layout() {
   if command -v localectl >/dev/null 2>&1 &&
     layout="$(localectl status --no-pager | awk '/X11 Layout/ {print $3}')" &&
     [[ -n "$layout" ]]; then
-    printf '%s\\n' "$layout"
+    printf '%s\n' "$layout"
     return 0
   fi
   if command -v setxkbmap >/dev/null 2>&1 &&
     layout="$(setxkbmap -query | awk '/layout/ {print $2}')" &&
     [[ -n "$layout" ]]; then
-    printf '%s\\n' "$layout"
+    printf '%s\n' "$layout"
     return 0
   fi
-  printf '%s\\n' '(unset)'
+  printf '%s\n' '(unset)'
 }
 
 # Confirm or set keyboard layout; writes to the authoritative SystemSettings.lua module.
