@@ -94,7 +94,7 @@ cleanup_temporary_files() {
   for path in "$MKINITCPIO_TMP" "$GRUB_TMP" "$ENTRY_TMP"; do
     [[ -n "$path" ]] || continue
     if ! rm -f -- "$path"; then
-      printf '%s\\n' "[ERROR] Failed to remove temporary file: $path" >&2
+      printf '%s\n' "[ERROR] Failed to remove temporary file: $path" >&2
       [[ "$rc" -ne 0 ]] || rc=1
     fi
   done
@@ -172,10 +172,10 @@ if sudo test -f /boot/loader/loader.conf; then
           next
         }
         { print }
-      ' > "$tmp"
+      ' > "$ENTRY_TMP"
 
-      grep -Eq '^options .*nvidia-drm\.modeset=1.*nvidia_drm\.fbdev=1' "$tmp" || {
-        rm -f -- "$tmp"
+      grep -Eq '^options .*nvidia-drm\.modeset=1.*nvidia_drm\.fbdev=1' "$ENTRY_TMP" || {
+
         log "[ERROR] Failed to prepare systemd-boot entry: $entry"
         exit 1
       }
