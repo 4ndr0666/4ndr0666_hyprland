@@ -16,7 +16,10 @@ append_lua_module_line() (
   grep -Fq -- "$marker" "$file" && return 0
 
   tmp="$(mktemp --tmpdir="$(dirname -- "$file")" ".$(basename -- "$file").XXXXXX")" || return 1
-  trap 'if [[ -n "$tmp" ]]; then rm -f -- "$tmp"; fi' EXIT HUP INT TERM
+  trap 'if [[ -n "$tmp" ]]; then rm -f -- "$tmp"; fi' EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
   cat -- "$file" >"$tmp" || return 1
   printf '\n%s\n' "$line" >>"$tmp" || return 1
   chmod --reference="$file" "$tmp" || return 1
