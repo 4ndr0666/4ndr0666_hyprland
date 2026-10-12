@@ -23,7 +23,6 @@ detect_nvidia_adjust() {
     append_lua_env "GSK_RENDERER" "ngl"
     set_lua_assignment "config/hypr/configs/SystemSettings.lua" "no_hardware_cursors" "1"
   fi
-}  fi
 }
 
 # VM tweaks: enable software renderer envs and virtual monitor defaults.
@@ -48,7 +47,6 @@ detect_vm_adjust() {
       'output = "Virtual-1"' \
       $'hl.monitor({\n    output = "Virtual-1",\n    mode = "1920x1080@60.0",\n    position = "0x0",\n    scale = 1.0\n})'
   fi
-}  fi
 }
 
 # NixOS tweaks: ensure polkit overlay is enabled and default disabled.
@@ -67,14 +65,13 @@ detect_nixos_adjust() {
   if grep -q 'Operating System: NixOS' <<<"$host_info"; then
     printf '%s\n' "${INFO:-[INFO]} NixOS Distro Detected. Setting up proper env's and configs." | tee -a "$log"
     [[ -f "config/hypr/scripts/Polkit-NixOS.sh" ]] || {
-      printf '%s\\n' '[ERROR] NixOS Polkit helper is missing from the staged configuration.' >&2
+      printf '%s\n' '[ERROR] NixOS Polkit helper is missing from the staged configuration.' >&2
       return 1
     }
     append_startup_expression \
       "Polkit-NixOS.sh" \
       'os.getenv("HOME") .. "/.config/hypr/scripts/Polkit-NixOS.sh"'
   fi
-}  fi
 }
 
 # Decide waybar config/style based on chassis type. Echoes chosen config path.
