@@ -2,7 +2,11 @@
 # 💫 https://github.com/4ndr0666 💫 #
 # KooL Arch-Hyprland uninstall script #
 
-clear
+set -Eeuo pipefail
+
+if [[ -t 1 ]] && command -v clear >/dev/null 2>&1; then
+  clear
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CORE="$SCRIPT_DIR/install-scripts/core/packages.sh"
