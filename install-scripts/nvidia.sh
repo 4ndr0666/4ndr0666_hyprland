@@ -76,6 +76,7 @@ restore_file() {
 
 rollback() {
   local rc=$?
+  trap - ERR
   local pair target backup existed
   log '[ERROR] NVIDIA configuration failed; restoring captured configuration.'
   for pair in "${BACKUPS[@]}"; do
