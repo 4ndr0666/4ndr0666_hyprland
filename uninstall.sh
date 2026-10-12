@@ -12,6 +12,7 @@ if [[ ! -r "$CORE" ]]; then
   exit 1
 fi
 
+# shellcheck disable=SC1090 # CORE is resolved from this repository and validated before sourcing.
 source "$CORE"
 
 LOG="$SCRIPT_DIR/Install-Logs/uninstall-$(date +%d-%H%M%S).log"
