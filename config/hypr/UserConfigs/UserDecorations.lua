@@ -3,27 +3,29 @@
 -- Decoration Settings
 
 local home = os.getenv("HOME")
-local color_file_path = home .. "/.config/hypr/wallust/wallust-hyprland.conf"
-local color_file = assert(io.open(color_file_path, "r"), "Wallust color provider is unavailable: " .. color_file_path)
-
 local wallust_colors = {}
-for line in color_file:lines() do
-    local key, val = line:match("%$(%w+)%s*=%s*(.+)")
-    if key and val then
-        wallust_colors[key] = val
+-- wallust.toml generates this .conf file; do not consume the stale .lua copy.
+local color_file_path = home .. "/.config/hypr/wallust/wallust-hyprland.conf"
+
+local color_file = io.open(color_file_path, "r")
+
+if color_file then
+    for line in color_file:lines() do
+        local key, val = line:match("%$(%w+)%s*=%s*(.+)")
+        -- Only accept rendered values; skip unrendered Wallust template markers.
+        if key and val and not val:match("{") then
+            wallust_colors[key] = val
+        end
     end
-end
-color_file:close()
-
-local required_colors = { "color0", "color10", "color12", "color15" }
-for _, key in ipairs(required_colors) do
-    assert(wallust_colors[key], "Wallust color provider is incomplete: missing " .. key)
+    color_file:close()
 end
 
-local c12 = wallust_colors["color12"]
-local c10 = wallust_colors["color10"]
-local c15 = wallust_colors["color15"]
-local c0  = wallust_colors["color0"]
+-- Preserve the machine baseline's fallbacks when Wallust output is unavailable
+-- or incomplete, while using the active generated .conf path above.
+local c12 = wallust_colors["color12"] or "rgba(33ccffee)"
+local c10 = wallust_colors["color10"] or "rgba(595959aa)"
+local c15 = wallust_colors["color15"] or "rgba(ffffffee)"
+local c0  = wallust_colors["color0"]  or "rgba(000000aa)"
 
 hl.config({
     general = {
