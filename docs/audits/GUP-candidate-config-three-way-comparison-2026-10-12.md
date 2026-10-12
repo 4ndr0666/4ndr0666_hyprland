@@ -42,7 +42,7 @@ The remote variant therefore removes Dorkmaster and changes the package/path con
 
 The machine candidate preserves the same decoration values as the remote version and adds two resilience behaviors: it ignores values that still contain an unrendered template marker and supplies fallback colors when color keys are missing. The remote version fails loudly if the provider file is absent or any of four required colors are missing.
 
-However, the machine candidate reads `~/.config/hypr/wallust/wallust-hyprland.lua`, while the uploaded `wallust/wallust.toml` explicitly generates `~/.config/hypr/wallust/wallust-hyprland.conf`. The archive also contains a Lua-named color file, but it is not the configured Wallust target. Blindly adopting the local file unchanged would preserve fallback behavior while risking stale colors. Recommended reconciliation: retain the machine candidate's template filtering and fallback semantics, but read the configured `.conf` target; add a test proving generated `rgb(...)` values are parsed and template placeholders are ignored.
+The machine candidate originally read `~/.config/hypr/wallust/wallust-hyprland.lua`, while the uploaded `wallust/wallust.toml` explicitly generates `~/.config/hypr/wallust/wallust-hyprland.conf`. The archive also contains a Lua-named color file, but it is not the configured Wallust target. The remediation branch now carries the machine candidate's template filtering and fallback semantics while reading the configured `.conf` target. Its source-contract test now asserts the configured path, template filter, and fallback values; this is static contract coverage, not a dynamic Lua execution test.
 
 ### 3. WorkSpaceRules.lua — do not promote hardware identifiers to universal defaults
 
