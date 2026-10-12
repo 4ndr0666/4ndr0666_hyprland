@@ -28,6 +28,7 @@ TESTS=(
   tests/unit/test-sddm-rollback.sh
   tests/unit/test-sddm-theme-transaction.sh
   tests/unit/test-copy-orchestration-boundary.sh
+  tests/unit/test-core-script-contracts.sh
   tests/unit/test-copy-phase1-atomicity.sh
   tests/unit/test-copy-transaction-runtime.sh
   tests/unit/test-copy-source-immutability.sh
