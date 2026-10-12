@@ -3,6 +3,67 @@
 # User interaction helpers extracted from copy.sh. Each helper echoes state or sets
 # globals deliberately to minimize side effects.
 
+# Keep this library safe under nounset even when tested outside copy.sh.
+: "${WARNING:=[WARNING]}"
+: "${YELLOW:=[YELLOW]}"
+: "${RESET:=[RESET]}"
+: "${SKYBLUE:=[SKYBLUE]}"
+: "${MAGENTA:=[MAGENTA]}"
+: "${CAT:=[ACTION]}"
+: "${NOTE:=[NOTE]}"
+: "${INFO:=[INFO]}"
+: "${ERROR:=[ERROR]}"
+: "${OK:=[OK]}"
+: "${WARN:=[WARN]}"
+: "${EXPRESS_MODE:=0}"
+: "${UPGRADE_MODE:=0}"
+: "${MIN_EXPRESS_VERSION:=unknown}"
+
+print_color() {
+  local color="${1:-}"
+  shift || return 2
+  printf '%s%s%s\n' "$color" "$*" "$RESET"
+}
+
+write_keyboard_layout() {
+  local layout="$1"
+  local file="config/hypr/configs/SystemSettings.lua"
+  local tmp
+  local matches
+
+  layout="${layout//[[:space:]]/}"
+  [[ "$layout" =~ ^[[:alnum:]_,+-]+$ ]] || {
+    printf '[ERROR] Invalid keyboard layout value: %s\n' "$layout" >&2
+    return 2
+  }
+  [[ -f "$file" ]] || {
+    printf '[ERROR] Required Lua settings module is missing: %s\n' "$file" >&2
+    return 1
+  }
+  matches="$(grep -Ec '^[[:space:]]*kb_layout[[:space:]]*=' "$file")" || return 1
+  [[ "$matches" -eq 1 ]] || {
+    printf '[ERROR] Expected one kb_layout setting in %s; found %s.\n' "$file" "$matches" >&2
+    return 1
+  }
+
+  tmp="$(mktemp --tmpdir="$(dirname -- "$file")" '.SystemSettings.lua.XXXXXX')" || return 1
+  if ! {
+    awk -v layout="$layout" '
+      /^[[:space:]]*kb_layout[[:space:]]*=/ {
+        sub(/=.*/, "= \"" layout "\",")
+        found++
+      }
+      { print }
+      END { if (found != 1) exit 1 }
+    ' "$file" >"$tmp" &&
+      chmod --reference="$file" "$tmp" &&
+      mv -- "$tmp" "$file"
+  }; then
+    rm -f -- "$tmp"
+    return 1
+  fi
+}
+
 # Detect keyboard layout via localectl or setxkbmap.
 prompt_detect_layout() {
   if command -v localectl >/dev/null 2>&1; then
@@ -18,7 +79,7 @@ prompt_detect_layout() {
   echo "(unset)"
 }
 
-# Confirm or set keyboard layout; writes to SystemSettings.conf.
+# Confirm or set keyboard layout; writes to the authoritative SystemSettings.lua module.
 prompt_keyboard_layout() {
   local layout="$1"
   local log="$2"
@@ -48,7 +109,7 @@ ${MAGENTA} NOTE:${RESET}
       printf "\n%.0s" {1..1}
 
       echo -n "${CAT} - Please enter the correct keyboard layout: "
-      read new_layout
+      read -r new_layout
 
       if [ -n "$new_layout" ]; then
         layout="$new_layout"
@@ -63,11 +124,10 @@ ${MAGENTA} NOTE:${RESET}
   while true; do
     printf "${INFO} Current keyboard layout is ${MAGENTA}$layout${RESET}\n"
     echo -n "${CAT} Is this correct? [y/n] "
-    read keyboard_layout
+    read -r keyboard_layout
     case $keyboard_layout in
       [yY])
-        awk -v layout="$layout" '/kb_layout/ {$0 = "  kb_layout = " layout} 1' config/hypr/configs/SystemSettings.conf >temp.conf
-        mv temp.conf config/hypr/configs/SystemSettings.conf
+        write_keyboard_layout "$layout"
         echo "${NOTE} kb_layout ${MAGENTA}$layout${RESET} configured in settings." 2>&1 | tee -a "$log"
         break
         ;;
@@ -95,9 +155,12 @@ ${MAGENTA} NOTE:${RESET}
 "
         printf "\n%.0s" {1..1}
         echo -n "${CAT} - Please enter the correct keyboard layout: "
-        read new_layout
-        awk -v new_layout="$new_layout" '/kb_layout/ {$0 = "  kb_layout = " new_layout} 1' config/hypr/configs/SystemSettings.conf >temp.conf
-        mv temp.conf config/hypr/configs/SystemSettings.conf
+        read -r -p "${CAT} Enter the correct keyboard layout (for example us or us,kr): " new_layout
+        [[ -n "$new_layout" ]] || {
+          echo "${ERROR} Keyboard layout cannot be empty."
+          return 2
+        }
+        write_keyboard_layout "$new_layout"
         echo "${OK} kb_layout $new_layout configured in settings." 2>&1 | tee -a "$log"
         break
         ;;
