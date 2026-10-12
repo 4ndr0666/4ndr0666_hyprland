@@ -227,13 +227,17 @@ archive_legacy_conf_files() {
   local source_root="$1"
   local archive_root="$2"
   local log="$3"
+  local remove_source="${4:-0}"
   local source relative
 
   [[ -d "$source_root" ]] || return 0
   while IFS= read -r -d '' source; do
     relative="${source#"$source_root"/}"
     archive_legacy_conf "$source" "$archive_root" "$relative" "$log"
-  done < <(find "$source_root" -path "$archive_root" -prune -o \\( -type f -o -type l \\) -name '*.conf' -print0 | sort -z)
+    if [[ "$remove_source" == 1 ]]; then
+      rm -f -- "$source"
+    fi
+  done < <(find "$source_root" -path "$source_root/legacy-conf-backup" -prune -o \\( -type f -o -type l \\) -name '*.conf' -print0 | sort -z)
 }
 
 cleanup_duplicate_userconfigs() {
@@ -243,12 +247,11 @@ cleanup_duplicate_userconfigs() {
 
   [[ -n "$current_version" ]] || return 0
   if version_gte "$current_version" "2.3.20"; then
-    printf '%s\n' "[INFO] Skipping legacy UserConfigs cleanup for v$current_version (>= 2.3.20)." | tee -a "$log"
-    return 0
+    printf '%s\n' "[INFO] Reconciling UserConfigs for Lua runtime on v$current_version." | tee -a "$log"
+  else
+    printf '%s\n' "[WARN] Legacy v$current_version UserConfigs use .conf syntax; archiving inactive files instead of editing them as live configuration." | tee -a "$log"
   fi
-
-  printf '%s\n' "[WARN] Legacy v$current_version UserConfigs use .conf syntax; archiving inactive files instead of editing them as live configuration." | tee -a "$log"
-  archive_legacy_conf_files "$user_dir" "$user_dir/legacy-conf-backup" "$log"
+  archive_legacy_conf_files "$user_dir" "$user_dir/legacy-conf-backup" "$log" 1
 }
 
 restore_user_configs() {
@@ -272,7 +275,7 @@ restore_user_configs() {
       if [[ "$restore_dir" != [Nn]* ]]; then
         mkdir -p -- "$dirpath/UserConfigs"
         archive_legacy_conf_files "$backup_dir_path" "$legacy_archive" "$log"
-        rsync -a --exclude='*.conf' -- "$backup_dir_path/" "$dirpath/UserConfigs/" 2>&1 | tee -a "$log"
+        rsync -a --exclude='*.conf' --exclude='legacy-conf-backup/' -- "$backup_dir_path/" "$dirpath/UserConfigs/" 2>&1 | tee -a "$log"
         printf '%s\n' "[OK] Restored Lua-compatible UserConfigs; legacy .conf files were preserved separately." | tee -a "$log"
       else
         printf '%s\n' "[NOTE] Skipped restoring UserConfigs." | tee -a "$log"
@@ -283,7 +286,7 @@ restore_user_configs() {
       local file_name backup_file
       while IFS= read -r -d '' file_name; do
         files+=("$file_name")
-      done < <(find "$backup_dir_path" \\( -type f -o -type l \\) -name '*.conf' -printf '%P\\0' | sort -z)
+      done < <(find "$backup_dir_path" -path "$backup_dir_path/legacy-conf-backup" -prune -o \\( -type f -o -type l \\) -name '*.conf' -printf '%P\\0' | sort -z)
 
       if (("${#files[@]}" == 0)); then
         printf '%s\n' "[INFO] No legacy .conf UserConfigs files were found." | tee -a "$log"
