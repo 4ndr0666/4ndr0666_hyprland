@@ -23,8 +23,18 @@ waybar_link_transaction() (
     config_remove=""
   fi
 
+  cleanup_waybar_transaction() {
+    local rc=$?
+    if [[ -n "$transaction_dir" && -d "$transaction_dir" ]]; then
+      if ! rm -rf -- "$transaction_dir"; then
+        printf '%s\n' '[ERROR] Failed to remove Waybar transaction snapshots.' >&2
+        [[ "$rc" -ne 0 ]] || rc=1
+      fi
+    fi
+    exit "$rc"
+  }
+  trap cleanup_waybar_transaction EXIT
   transaction_dir="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-waybar-links.XXXXXX")" || return 1
-  trap 'if [[ -n "${transaction_dir:-}" && -d "$transaction_dir" ]]; then rm -rf -- "$transaction_dir"; fi' EXIT
 
   local -a targets=(
     "$config_link"
