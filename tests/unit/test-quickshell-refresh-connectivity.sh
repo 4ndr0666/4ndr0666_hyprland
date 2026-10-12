@@ -9,7 +9,8 @@ NOWAYBAR="$ROOT/config/hypr/scripts/RefreshNoWaybar.sh"
 [[ -f "$APPS" && -f "$REFRESH" && -f "$NOWAYBAR" ]]
 
 grep -q '^enable_quickshell()' "$APPS"
-grep -q "grep -qx 'exec-once = qs'" "$APPS"
+grep -q 'append_startup_command "qs"' "$APPS"
+grep -q 'append_startup_command()' "$ROOT/scripts/lib_lua_config.sh"
 grep -q 'start_optional_component Quickshell qs' "$REFRESH"
 
 if grep -Fq 'config/hypr/scripts/RefreshNoWaybar.sh' "$APPS"; then
