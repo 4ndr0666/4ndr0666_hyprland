@@ -2,7 +2,7 @@
 # === 4ndr0666 === #
 # Detection and environment adjustment helpers shared by copy.sh.
 
-# Nvidia tweaks: uncomments envs and adjusts hardware cursor setting.
+# Apply NVIDIA, VM, and NixOS adjustments to loaded Lua modules.
 detect_nvidia_adjust() {
   local log="$1"
   local hardware_info
