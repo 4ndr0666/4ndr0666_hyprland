@@ -1,0 +1,64 @@
+name: GUP Core Shell Contracts
+
+on:
+  pull_request:
+    paths:
+      - 'Distro-Hyprland.sh'
+      - 'install.sh'
+      - 'uninstall.sh'
+      - 'copy.sh'
+      - 'scripts/**'
+      - 'install-scripts/**'
+      - 'tests/unit/**'
+      - '.github/workflows/core-shell-contracts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-shell-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+      - name: Validate core shell syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          shopt -s nullglob
+          scripts=(
+            Distro-Hyprland.sh
+            install.sh
+            uninstall.sh
+            copy.sh
+            scripts/*.sh
+            install-scripts/*.sh
+            install-scripts/core/*.sh
+            tests/unit/test-core-script-contracts.sh
+          )
+          for script in "${scripts[@]}"; do
+            [[ -f "$script" ]] || continue
+            bash -n "$script"
+          done
+      - name: Run ShellCheck on core scripts
+        run: |
+          set -Eeuo pipefail
+          shopt -s nullglob
+          scripts=(
+            Distro-Hyprland.sh
+            install.sh
+            uninstall.sh
+            copy.sh
+            scripts/*.sh
+            install-scripts/*.sh
+            install-scripts/core/*.sh
+            tests/unit/test-core-script-contracts.sh
+          )
+          shellcheck --external-sources "${scripts[@]}"
+      - name: Run Golden Units
+        run: bash tests/unit/run-golden-units.sh
