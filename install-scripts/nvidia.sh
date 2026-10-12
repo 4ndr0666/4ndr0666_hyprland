@@ -99,7 +99,7 @@ cleanup_temporary_files() {
       [[ "$rc" -ne 0 ]] || rc=1
     fi
   done
-  return "$rc"
+  exit "$rc"
 }
 trap cleanup_temporary_files EXIT
 trap 'exit 129' HUP
