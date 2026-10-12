@@ -40,6 +40,7 @@ jobs:
             install-scripts/*.sh
             install-scripts/core/*.sh
             tests/unit/test-core-script-contracts.sh
+            tests/unit/test-nvidia-installer-contract.sh
           )
           for script in "${scripts[@]}"; do
             [[ -f "$script" ]] || continue
