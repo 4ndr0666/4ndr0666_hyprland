@@ -145,7 +145,7 @@ if sudo test -f /boot/loader/loader.conf; then
       capture_file "$entry"
 
       tmp="$(mktemp)"
-      sudo awk '
+      sudo cat -- "$entry" | awk '
         /^options / {
           sub(/ nvidia-drm\.modeset=[^ ]*/, "")
           sub(/ nvidia_drm\.fbdev=[^ ]*/, "")
@@ -153,7 +153,7 @@ if sudo test -f /boot/loader/loader.conf; then
           next
         }
         { print }
-      ' "$entry" > "$tmp"
+      ' > "$tmp"
 
       grep -Eq '^options .*nvidia-drm\.modeset=1.*nvidia_drm\.fbdev=1' "$tmp" || {
         rm -f -- "$tmp"
