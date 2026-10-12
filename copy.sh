@@ -19,10 +19,6 @@ source "$SOURCE_ROOT/scripts/lib_waybar.sh"
 
 readonly MIN_EXPRESS_VERSION="2.3.18"
 readonly WALLPAPER_STATE="$HOME/.config/hypr/wallpaper_effects/.wallpaper_current"
-readonly WAYBAR_CONFIG="$HOME/.config/waybar/config"
-readonly WAYBAR_STYLE="$HOME/.config/waybar/style/[Extra] Neon Circuit.css"
-readonly WAYBAR_DESKTOP="$HOME/.config/waybar/configs/[TOP] Default"
-readonly WAYBAR_LAPTOP="$HOME/.config/waybar/configs/[TOP] Default Laptop"
 
 LOG=""
 DEPLOY_STAGE_DIR=""
