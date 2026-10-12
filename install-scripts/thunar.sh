@@ -13,7 +13,7 @@ thunar=(
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$SCRIPT_DIR/.."
-cd "$PARENT_DIR"
+cd -- "$PARENT_DIR" || exit 1
 
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_thunar.log"
 mkdir -p "$(dirname "$LOG")"
@@ -30,7 +30,12 @@ for DIR1 in gtk-3.0 Thunar xfce4; do
     echo "[NOTE] Config for $DIR1 found, no need to copy." 2>&1 | tee -a "$LOG"
   else
     echo "[NOTE] Config for $DIR1 not found, copying from assets." 2>&1 | tee -a "$LOG"
-    cp -r "assets/$DIR1" "$HOME/.config/" && echo "[OK] Copy $DIR1 completed!" || echo "[ERROR] Failed to copy $DIR1 config files." 2>&1 | tee -a "$LOG"
+    if cp -a -- "assets/$DIR1" "$HOME/.config/"; then
+      printf '[OK] Copy %s completed!\n' "$DIR1" | tee -a "$LOG"
+    else
+      printf '[ERROR] Failed to copy %s config files.\n' "$DIR1" | tee -a "$LOG" >&2
+      exit 1
+    fi
   fi
 done
 
