@@ -27,9 +27,6 @@ fi
 
 clear
 
-OK="$(tput setaf 2)[OK]$(tput sgr0)"
-ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
-INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
 LOG_DIR="$ROOT/Install-Logs"
 mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/01-Hyprland-Install-Scripts-$(date +%d-%H%M%S).log"
@@ -88,8 +85,6 @@ if ! whiptail --title 'Proceed with Installation?' --yesno 'Proceed with the ins
   exit 0
 fi
 
-gtk_themes=OFF bluetooth=OFF thunar=OFF quickshell=OFF sddm=OFF sddm_theme=OFF
-xdph=OFF zsh=OFF pokemon=OFF rog=OFF dots=OFF input_group=OFF nvidia=OFF nouveau=OFF
 if [[ "${1:-}" == --preset && -n "${2:-}" ]]; then
   [[ -f "$2" ]] || { printf '[ERROR] Preset not found: %s\n' "$2" >&2; exit 1; }
   # shellcheck disable=SC1090
