@@ -286,7 +286,7 @@ restore_user_configs() {
       local file_name backup_file
       while IFS= read -r -d '' file_name; do
         files+=("$file_name")
-      done < <(find "$backup_dir_path" -path "$backup_dir_path/legacy-conf-backup" -prune -o \( -type f -o -type l \) -name '*.conf' -printf '%P\\0' | sort -z)
+      done < <(find "$backup_dir_path" -path "$backup_dir_path/legacy-conf-backup" -prune -o \( -type f -o -type l \) -name '*.conf' -printf '%P\0' | sort -z)
 
       if (("${#files[@]}" == 0)); then
         printf '%s\n' "[INFO] No legacy .conf UserConfigs files were found." | tee -a "$log"
