@@ -91,7 +91,8 @@ copy_waybar() {
             if [[ -d "$backup_dir/configs" ]]; then
               for entry in "$backup_dir/configs"/*; do
                 [[ -e "$entry" ]] || continue
-                local target="$dir_path/configs/$(basename -- "$entry")"
+                local target
+                target="$dir_path/configs/$(basename -- "$entry")"
                 [[ -e "$target" ]] && continue
                 cp -a -- "$entry" "$dir_path/configs/"
               done
@@ -100,7 +101,8 @@ copy_waybar() {
             if [[ -d "$backup_dir/style" ]]; then
               for entry in "$backup_dir/style"/*; do
                 [[ -e "$entry" ]] || continue
-                local target="$dir_path/style/$(basename -- "$entry")"
+                local target
+                target="$dir_path/style/$(basename -- "$entry")"
                 [[ -e "$target" ]] && continue
                 cp -a -- "$entry" "$dir_path/style/"
               done
