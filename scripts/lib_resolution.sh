@@ -19,8 +19,26 @@ apply_resolution_profile() (
   local log="${LOG:-/dev/null}"
   local rollback_failed=0
 
+  cleanup_resolution_transaction() {
+    local rc=$?
+    local path
+    for path in "$kitty_temp" "$rofi_temp"; do
+      [[ -n "$path" ]] || continue
+      if ! rm -f -- "$path"; then
+        printf '%s\n' "[ERROR] Failed to remove resolution temporary file: $path" >&2
+        [[ "$rc" -ne 0 ]] || rc=1
+      fi
+    done
+    if [[ -n "$transaction_dir" && -d "$transaction_dir" ]]; then
+      if ! rm -rf -- "$transaction_dir"; then
+        printf '%s\n' '[ERROR] Failed to remove resolution transaction snapshots.' >&2
+        [[ "$rc" -ne 0 ]] || rc=1
+      fi
+    fi
+    exit "$rc"
+  }
+  trap cleanup_resolution_transaction EXIT
   transaction_dir="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-resolution.XXXXXX")" || return 1
-  trap 'rm -f -- "$kitty_temp" "$rofi_temp"; if [[ -n "${transaction_dir:-}" && -d "$transaction_dir" ]]; then rm -rf -- "$transaction_dir"; fi' EXIT
 
   local -a targets=("$kitty" "$lock" "$lock1080" "$lock2k" "$rofi")
   local target snapshot marker
