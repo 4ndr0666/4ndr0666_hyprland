@@ -4,7 +4,7 @@
 
 local home = os.getenv("HOME")
 local wallust_colors = {}
--- wallust.toml generates this .conf file; do not consume the stale .lua copy.
+-- wallust.toml generates this .conf file; consume that configured target.
 local color_file_path = home .. "/.config/hypr/wallust/wallust-hyprland.conf"
 
 local color_file = io.open(color_file_path, "r")
