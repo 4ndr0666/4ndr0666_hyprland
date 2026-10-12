@@ -80,6 +80,7 @@ FONT_PACKAGES=(
   noto-fonts
 )
 
+# shellcheck disable=SC2034 # Sourced contract consumers inspect the canonical package superset.
 CANONICAL_BASELINE_PACKAGES=(
   "${BASE_PACKAGES[@]}"
   "${INSTALLER_RUNTIME_PACKAGES[@]}"
@@ -89,6 +90,7 @@ CANONICAL_BASELINE_PACKAGES=(
   "${FONT_PACKAGES[@]}"
 )
 
+# shellcheck disable=SC2034 # Sourced contract consumers inspect the canonical AUR package superset.
 CANONICAL_BASELINE_AUR_PACKAGES=(
   "${AUR_PACKAGES[@]}"
 )
