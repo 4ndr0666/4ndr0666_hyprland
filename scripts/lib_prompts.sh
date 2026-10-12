@@ -31,7 +31,7 @@ write_keyboard_layout() {
 
   layout="${layout//[[:space:]]/}"
   [[ "$layout" =~ ^[[:alnum:]_,+-]+$ ]] || {
-    printf '[ERROR] Invalid keyboard layout value: %s\\n' "$layout" >&2
+    printf '[ERROR] Invalid keyboard layout value: %s\n' "$layout" >&2
     return 2
   }
   set_lua_assignment "$file" "kb_layout" "\"$layout\""
