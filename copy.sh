@@ -31,7 +31,7 @@ cleanup() {
       [[ "$rc" -ne 0 ]] || rc=1
     fi
   fi
-  return "$rc"
+  exit "$rc"
 }
 trap cleanup EXIT
 trap 'exit 129' HUP
