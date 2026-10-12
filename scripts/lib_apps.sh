@@ -33,7 +33,7 @@ ensure_keybinds_init() {
   append_startup_expression \
     "KeybindsLayoutInit.sh" \
     'os.getenv("HOME") .. "/.config/hypr/scripts/KeybindsLayoutInit.sh"'
-  printf '%s\\n' "${INFO:-[INFO]} Ensured KeybindsLayoutInit.sh is reachable from Lua startup." | tee -a "$log"
+  printf '%s\n' "${INFO:-[INFO]} Ensured KeybindsLayoutInit.sh is reachable from Lua startup." | tee -a "$log"
 }
 install_terminal_configs() {
   local log="$1"
