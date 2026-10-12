@@ -237,7 +237,7 @@ archive_legacy_conf_files() {
     if [[ "$remove_source" == 1 ]]; then
       rm -f -- "$source"
     fi
-  done < <(find "$source_root" -path "$source_root/legacy-conf-backup" -prune -o \\( -type f -o -type l \\) -name '*.conf' -print0 | sort -z)
+  done < <(find "$source_root" -path "$source_root/legacy-conf-backup" -prune -o \( -type f -o -type l \) -name '*.conf' -print0 | sort -z)
 }
 
 cleanup_duplicate_userconfigs() {
@@ -286,7 +286,7 @@ restore_user_configs() {
       local file_name backup_file
       while IFS= read -r -d '' file_name; do
         files+=("$file_name")
-      done < <(find "$backup_dir_path" -path "$backup_dir_path/legacy-conf-backup" -prune -o \\( -type f -o -type l \\) -name '*.conf' -printf '%P\\0' | sort -z)
+      done < <(find "$backup_dir_path" -path "$backup_dir_path/legacy-conf-backup" -prune -o \( -type f -o -type l \) -name '*.conf' -printf '%P\\0' | sort -z)
 
       if (("${#files[@]}" == 0)); then
         printf '%s\n' "[INFO] No legacy .conf UserConfigs files were found." | tee -a "$log"
