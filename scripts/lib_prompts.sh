@@ -8,6 +8,7 @@
 : "${YELLOW:=[YELLOW]}"
 : "${RESET:=[RESET]}"
 : "${SKYBLUE:=[SKYBLUE]}"
+: "${SKY_BLUE:=${SKYBLUE}}"
 : "${MAGENTA:=[MAGENTA]}"
 : "${CAT:=[ACTION]}"
 : "${NOTE:=[NOTE]}"
@@ -59,7 +60,7 @@ prompt_keyboard_layout() {
   if [ "$layout" = "(unset)" ]; then
     while true; do
       printf "\n%.0s" {1..1}
-      print_color $WARNING "\n    █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█
+      print_color "$WARNING" "\n    █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█
             STOP AND READ
     █▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█
 
@@ -92,9 +93,9 @@ ${MAGENTA} NOTE:${RESET}
     done
   fi
 
-  printf "${NOTE} Detecting keyboard layout to prepare proper Hyprland Settings\n"
+  printf '%s\n' "${NOTE} Detecting keyboard layout to prepare proper Hyprland Settings"
   while true; do
-    printf "${INFO} Current keyboard layout is ${MAGENTA}$layout${RESET}\n"
+    printf '%s\n' "${INFO} Current keyboard layout is ${MAGENTA}$layout${RESET}"
     echo -n "${CAT} Is this correct? [y/n] "
     read -r keyboard_layout
     case $keyboard_layout in
@@ -105,7 +106,7 @@ ${MAGENTA} NOTE:${RESET}
         ;;
       [nN])
         printf "\n%.0s" {1..2}
-        print_color $WARNING "
+        print_color "$WARNING" "
     █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█
             STOP AND READ
     █▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█
@@ -185,9 +186,13 @@ apply_clock_12h() {
     HYPRLOCK_FILE="config/hypr/hyprlock-1080p.conf"
   fi
   if [ -f "$HYPRLOCK_FILE" ]; then
+    # shellcheck disable=SC2016 # Preserve literal command substitution syntax in the hyprlock template.
     sed -i 's/^\s*text = cmd\[update:1000\] echo \"\$(date +\"%H\")\"/# &/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
+    # shellcheck disable=SC2016 # Preserve literal command substitution syntax in the hyprlock template.
     sed -i 's/^\(\s*\)# *text = cmd\[update:1000\] echo \"\$(date +\"%I\")\" #AM\/PM/\1    text = cmd\[update:1000\] echo \"\$(date +\"%I\")\" #AM\/PM/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
+    # shellcheck disable=SC2016 # Preserve literal command substitution syntax in the hyprlock template.
     sed -i 's/^\s*text = cmd\[update:1000\] echo \"\$(date +\"%S\")\"/# &/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
+    # shellcheck disable=SC2016 # Preserve literal command substitution syntax in the hyprlock template.
     sed -i 's/^\(\s*\)# *text = cmd\[update:1000\] echo \"\$(date +\"%S %p\")\" #AM\/PM/\1    text = cmd\[update:1000\] echo \"\$(date +\"%S %p\")\" #AM\/PM/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
   else
     echo "${WARN} hyprlock template not found; skipping 12H lock format edits" 2>&1 | tee -a "$log"
