@@ -39,17 +39,20 @@ write_keyboard_layout() {
 }
 # Detect keyboard layout via localectl or setxkbmap.
 prompt_detect_layout() {
-  if command -v localectl >/dev/null 2>&1; then
-    local layout
-    layout=$(localectl status --no-pager | awk '/X11 Layout/ {print $3}')
-    [ -n "$layout" ] && { echo "$layout"; return; }
+  local layout=""
+  if command -v localectl >/dev/null 2>&1 &&
+    layout="$(localectl status --no-pager | awk '/X11 Layout/ {print $3}')" &&
+    [[ -n "$layout" ]]; then
+    printf '%s\\n' "$layout"
+    return 0
   fi
-  if command -v setxkbmap >/dev/null 2>&1; then
-    local layout
-    layout=$(setxkbmap -query | awk '/layout/ {print $2}')
-    [ -n "$layout" ] && { echo "$layout"; return; }
+  if command -v setxkbmap >/dev/null 2>&1 &&
+    layout="$(setxkbmap -query | awk '/layout/ {print $2}')" &&
+    [[ -n "$layout" ]]; then
+    printf '%s\\n' "$layout"
+    return 0
   fi
-  echo "(unset)"
+  printf '%s\\n' '(unset)'
 }
 
 # Confirm or set keyboard layout; writes to the authoritative SystemSettings.lua module.
@@ -120,7 +123,7 @@ You need to set it Manually
 
 Setting a wrong Keyboard Layout will cause Hyprland to crash
 If you are not sure, just type ${YELLOW}us${RESET}
-${SKYBLUE}You can change later in ~/.config/hypr/UserConfigs/UserSettings.conf${RESET}
+${SKYBLUE}You can change later in ~/.config/hypr/UserConfigs/UserSettings.lua${RESET}
 
 ${MAGENTA} NOTE:${RESET}
 •  You can also set more than 2 keyboard layouts
