@@ -72,15 +72,15 @@ This baseline inspection did not execute ShellCheck or the repository test suite
 
 ## Remediation checkpoint — current branch head
 
-- Branch head: 195e67c80f4da6a30d6297841cff36447b0cb6ec
-- Golden Unit Protocol: PASS on this head.
-- GUP Core Shell Contracts: PASS on this head. The gate ran bash -n across the core shell set, ShellCheck at warning severity, and the complete Golden Unit suite.
+- Validated source revision: 195e67c80f4da6a30d6297841cff36447b0cb6ec (the subsequent commit changes only this audit document).
+- Golden Unit Protocol: PASS on the validated source revision.
+- GUP Core Shell Contracts: PASS on the validated source revision. The gate ran bash -n across the core shell set, ShellCheck at warning severity, and the complete Golden Unit suite.
 - O.M.A.-1 and O.M.A.-2 were not run by these CI jobs. The previously recorded runtime O.M.A.-1 failures remain unresolved on the host; O.M.A.-2 remains prohibited until O.M.A.-1 is green.
 - PR remains draft because the configuration superset issue below is not yet resolved.
 
 ### Post-change source blob hashes
 
-These Git blob SHA-1 values identify the source blobs at the branch head above.
+These Git blob SHA-1 values identify the source blobs in the current branch state; the listed source blobs are unchanged from the validated source revision.
 
 | Atom | Path | Baseline blob | Current blob |
 |---|---|---|---|
