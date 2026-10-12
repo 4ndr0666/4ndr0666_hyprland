@@ -2,28 +2,6 @@
 # === 4ndr0666 === #
 # App enablement and editor selection helpers.
 
-append_startup_command() {
-  local command="$1"
-  local startup="config/hypr/configs/Startup_Apps.lua"
-  local tmp
-
-  [[ -f "$startup" ]] || {
-    printf '[ERROR] Required Lua startup module is missing: %s\n' "$startup" >&2
-    return 1
-  }
-  grep -Fq -- "hl.exec_cmd(\"$command\")" "$startup" && return 0
-
-  tmp="$(mktemp --tmpdir="$(dirname -- "$startup")" '.Startup_Apps.lua.XXXXXX')" || return 1
-  if ! {
-    cat -- "$startup" >"$tmp" &&
-      printf '\n-- Added by the copy workflow; retained in the authoritative Lua startup module.\nhl.on("hyprland.start", function()\n    hl.exec_cmd("%s")\nend)\n' "$command" >>"$tmp" &&
-      chmod --reference="$startup" "$tmp" &&
-      mv -- "$tmp" "$startup"
-  }; then
-    rm -f -- "$tmp"
-    return 1
-  fi
-}
 
 
 enable_asusctl() {
@@ -52,28 +30,11 @@ enable_quickshell() {
 
 ensure_keybinds_init() {
   local log="$1"
-  local startup="config/hypr/configs/Startup_Apps.lua"
-  local tmp
-
-  [[ -f "$startup" ]] || {
-    printf '[ERROR] Required Lua startup module is missing: %s\n' "$startup" >&2
-    return 1
-  }
-  grep -Fq 'KeybindsLayoutInit.sh' "$startup" && return 0
-
-  tmp="$(mktemp --tmpdir="$(dirname -- "$startup")" '.Startup_Apps.lua.XXXXXX')" || return 1
-  if ! {
-    cat -- "$startup" >"$tmp" &&
-      printf '\nhl.on("hyprland.start", function()\n    hl.exec_cmd(os.getenv("HOME") .. "/.config/hypr/scripts/KeybindsLayoutInit.sh")\nend)\n' >>"$tmp" &&
-      chmod --reference="$startup" "$tmp" &&
-      mv -- "$tmp" "$startup"
-  }; then
-    rm -f -- "$tmp"
-    return 1
-  fi
-  printf '%s\n' "${INFO:-[INFO]} Added KeybindsLayoutInit.sh to Lua startup module." | tee -a "$log"
+  append_startup_expression \
+    "KeybindsLayoutInit.sh" \
+    'os.getenv("HOME") .. "/.config/hypr/scripts/KeybindsLayoutInit.sh"'
+  printf '%s\\n' "${INFO:-[INFO]} Ensured KeybindsLayoutInit.sh is reachable from Lua startup." | tee -a "$log"
 }
-
 install_terminal_configs() {
   local log="$1"
 
