@@ -21,8 +21,10 @@ grep -Fq 'detect_nvidia_adjust "$LOG"' "$COPY"
 grep -Fq 'detect_vm_adjust "$LOG"' "$COPY"
 grep -Fq 'detect_nixos_adjust "$LOG"' "$COPY"
 
-grep -Fq 'sed -i' "$DETECT"
-grep -Fq 'sed -i' "$APPS"
+grep -Fq 'append_lua_env "LIBVA_DRIVER_NAME" "nvidia"' "$DETECT"
+grep -Fq 'set_lua_assignment "config/hypr/configs/SystemSettings.lua"' "$DETECT"
+grep -Fq 'append_startup_command "qs"' "$APPS"
+grep -Fq '01-UserDefaults.lua' "$APPS"
 
 grep -Fq 'local log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/4ndr0666-hyprland"' "$COPY"
 ! grep -Fq 'mkdir -p "$SOURCE_ROOT/Copy-Logs"' "$COPY"
