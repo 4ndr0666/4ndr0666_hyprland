@@ -80,7 +80,7 @@ set_lua_assignment() (
     printf '[ERROR] Required Lua module is missing: %s\n' "$file" >&2
     return 1
   }
-  matches="$(grep -Ec "^[[:space:]]*$key[[:space:]]*=" "$file")" || return 1
+  matches="$(grep -Ec "^[[:space:]]*${key}[[:space:]]*=" "$file")" || return 1
   [[ "$matches" -eq 1 ]] || {
     printf '[ERROR] Expected exactly one %s assignment in %s; found %s.\n' "$key" "$file" "$matches" >&2
     return 1
