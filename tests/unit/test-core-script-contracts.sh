@@ -29,6 +29,11 @@ for script in \
 done
 
 [[ -f "$LUA_HELPERS" ]] || fail "shared Lua mutation helper is missing"
+for helper in copy_menu.sh lib_backup.sh lib_lua_config.sh lib_detect.sh lib_prompts.sh lib_apps.sh lib_copy.sh lib_resolution.sh lib_waybar.sh; do
+  [[ -f "$ROOT/scripts/$helper" ]] || fail "missing copy helper: $helper"
+  grep -Fq "source \"\$SOURCE_ROOT/scripts/$helper\"" "$COPY" ||
+    fail "copy.sh does not source required helper: $helper"
+done
 grep -Fq 'source "$SOURCE_ROOT/scripts/lib_lua_config.sh"' "$COPY" ||
   fail "copy.sh does not source the shared Lua mutation helper"
 grep -Fq 'command -v xdg-user-dirs-update' "$COPY" ||
