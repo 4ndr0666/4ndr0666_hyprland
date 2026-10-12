@@ -65,6 +65,7 @@ TESTS=(
   tests/unit/test-swaync-runtime-connectivity.sh
   tests/unit/test-terminal-config-connectivity.sh
   tests/unit/test-monitor-user-config-connectivity.sh
+  tests/unit/test-legacy-userconfig-archive.sh
   tests/unit/test-asset-deployment-connectivity.sh
   tests/unit/test-autodispatch-lifecycle.sh
   tests/unit/test-4ndr0init-lifecycle.sh
