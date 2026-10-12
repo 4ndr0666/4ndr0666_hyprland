@@ -30,7 +30,10 @@ cleanup() {
   fi
   return "$rc"
 }
-trap cleanup EXIT INT TERM HUP
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 usage() {
   cat <<'EOF'
