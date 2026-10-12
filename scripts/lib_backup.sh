@@ -15,7 +15,11 @@ backup_dir() {
   [[ -n "$dir" ]] || return 1
   [[ -d "$dir" ]] || return 1
   backup="${dir}-backup-$(get_backup_dirname)"
-  mv -- "$dir" "$backup" 2>&1 | tee -a "$log" || return 1
+  mv -T --no-clobber -- "$dir" "$backup" 2>&1 | tee -a "$log" || return 1
+  if [[ -e "$dir" || -L "$dir" ]]; then
+    printf '[ERROR] Backup destination already exists; source was left untouched: %s\\n' "$backup" >&2
+    return 1
+  fi
   printf '%s\n' "$backup"
 }
 
@@ -82,7 +86,11 @@ replace_dir_transaction() (
 
   if [[ -e "$destination" || -L "$destination" ]]; then
     backup="${destination}-backup-$(get_backup_dirname)"
-    if ! mv -- "$destination" "$backup" 2>&1 | tee -a "$log"; then
+    if ! mv -T --no-clobber -- "$destination" "$backup" 2>&1 | tee -a "$log"; then
+      return 1
+    fi
+    if [[ -e "$destination" || -L "$destination" ]]; then
+      printf '[ERROR] Backup destination already exists; source was left untouched: %s\\n' "$backup" >&2
       return 1
     fi
   fi
