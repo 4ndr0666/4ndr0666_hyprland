@@ -19,6 +19,7 @@ bash -n "$LIB_BACKUP"
 for helper in \
   scripts/copy_menu.sh \
   scripts/lib_backup.sh \
+  scripts/lib_lua_config.sh \
   scripts/lib_detect.sh \
   scripts/lib_prompts.sh \
   scripts/lib_apps.sh \
