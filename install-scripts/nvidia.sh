@@ -2,6 +2,7 @@
 # 💫 https://github.com/4ndr0666 💫 #
 # Nvidia Stuffs #
 
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$SCRIPT_DIR/.."
@@ -37,10 +38,13 @@ log '[ACTION] Installing NVIDIA packages and headers.'
 package_install "${NVIDIA_PACKAGES[@]}"
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/4ndr0666-hyprland/nvidia"
-BACKUP_DIR="$STATE_DIR/backups"
-STATE_FILE="$STATE_DIR/state.manifest"
+RUN_ID="$(date +%Y%m%dT%H%M%S%N)"
+BACKUP_DIR="$STATE_DIR/backups/$RUN_ID"
+STATE_FILE="$STATE_DIR/state-$RUN_ID.manifest"
+MKINITCPIO_TMP=""
+GRUB_TMP=""
+ENTRY_TMP=""
 mkdir -p -- "$BACKUP_DIR"
-: > "$STATE_FILE"
 
 BACKUPS=()
 record_backup() {
@@ -72,6 +76,7 @@ restore_file() {
 
 rollback() {
   local rc=$?
+  trap - ERR
   local pair target backup existed
   log '[ERROR] NVIDIA configuration failed; restoring captured configuration.'
   for pair in "${BACKUPS[@]}"; do
@@ -83,6 +88,23 @@ rollback() {
   done
   return "$rc"
 }
+
+cleanup_temporary_files() {
+  local rc=$?
+  local path
+  for path in "$MKINITCPIO_TMP" "$GRUB_TMP" "$ENTRY_TMP"; do
+    [[ -n "$path" ]] || continue
+    if ! rm -f -- "$path"; then
+      printf '%s\n' "[ERROR] Failed to remove temporary file: $path" >&2
+      [[ "$rc" -ne 0 ]] || rc=1
+    fi
+  done
+  exit "$rc"
+}
+trap cleanup_temporary_files EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 trap rollback ERR
 
 # Capture every mutable configuration and generated boot artifact before touching it.
@@ -96,8 +118,6 @@ for image in /boot/initramfs*.img; do
 done
 
 MKINITCPIO_TMP="$(mktemp)"
-GRUB_TMP=""
-trap 'rm -f -- "$MKINITCPIO_TMP" ${GRUB_TMP:+"$GRUB_TMP"}' EXIT
 sudo cp -- /etc/mkinitcpio.conf "$MKINITCPIO_TMP"
 
 if ! grep -Eq '^MODULES=.*nvidia.*nvidia_modeset.*nvidia_uvm.*nvidia_drm' "$MKINITCPIO_TMP"; then
@@ -144,8 +164,8 @@ if sudo test -f /boot/loader/loader.conf; then
     for entry in "${entries[@]}"; do
       capture_file "$entry"
 
-      tmp="$(mktemp)"
-      sudo awk '
+      ENTRY_TMP="$(mktemp)"
+      sudo cat -- "$entry" | awk '
         /^options / {
           sub(/ nvidia-drm\.modeset=[^ ]*/, "")
           sub(/ nvidia_drm\.fbdev=[^ ]*/, "")
@@ -153,15 +173,16 @@ if sudo test -f /boot/loader/loader.conf; then
           next
         }
         { print }
-      ' "$entry" > "$tmp"
+      ' > "$ENTRY_TMP"
 
-      grep -Eq '^options .*nvidia-drm\.modeset=1.*nvidia_drm\.fbdev=1' "$tmp" || {
-        rm -f -- "$tmp"
+      grep -Eq '^options .*nvidia-drm\.modeset=1.*nvidia_drm\.fbdev=1' "$ENTRY_TMP" || {
+
         log "[ERROR] Failed to prepare systemd-boot entry: $entry"
         exit 1
       }
-      sudo cp -- "$tmp" "$entry"
-      rm -f -- "$tmp"
+      sudo cp -- "$ENTRY_TMP" "$entry"
+      rm -f -- "$ENTRY_TMP"
+      ENTRY_TMP=""
     done
   fi
 fi

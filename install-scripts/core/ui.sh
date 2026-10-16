@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2034 # UI constants are consumed by installer modules that source this file.
 # Minimal installer UI primitives shared by non-package modules.
 
 RESET=$'\033[0m'

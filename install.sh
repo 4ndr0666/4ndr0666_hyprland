@@ -10,26 +10,40 @@ if [[ "${1:-}" == --dry-run ]]; then
   printf '[DRY-RUN] Required bootstrap modules: 00-base.sh pacman.sh yay.sh 01-hypr-pkgs.sh pipewire.sh fonts.sh hyprland.sh\n'
   printf '[DRY-RUN] Optional modules are selected interactively during a normal installation.\n'
   printf '[DRY-RUN] Validate module presence and shell syntax below.\n'
-  for module in 00-base.sh pacman.sh yay.sh 01-hypr-pkgs.sh pipewire.sh fonts.sh hyprland.sh sddm.sh nvidia.sh nvidia_nouveau.sh gtk_themes.sh InputGroup.sh quickshell.sh xdph.sh bluetooth.sh thunar.sh thunar_default.sh sddm_theme.sh zsh.sh zsh_pokemon.sh rog.sh dotfiles-main.sh 02-Final-Check.sh; do
+  required_modules=(
+    00-base.sh pacman.sh yay.sh 01-hypr-pkgs.sh pipewire.sh fonts.sh hyprland.sh
+    sddm.sh nvidia.sh nvidia_nouveau.sh gtk_themes.sh InputGroup.sh quickshell.sh
+    xdph.sh bluetooth.sh thunar.sh thunar_default.sh sddm_theme.sh zsh.sh
+    zsh_pokemon.sh rog.sh dotfiles-main.sh 02-Final-Check.sh
+  )
+  for module in "${required_modules[@]}"; do
     path="$SCRIPT_DIR/$module"
     [[ -f "$path" ]] || { printf '[ERROR] Missing installer module: %s\n' "$path" >&2; exit 1; }
     bash -n "$path" || { printf '[ERROR] Shell syntax failure: %s\n' "$path" >&2; exit 1; }
     printf '[DRY-RUN] OK %s\n' "$module"
   done
+
+  for path in "$SCRIPT_DIR"/*.sh; do
+    bash -n "$path" || { printf '[ERROR] Shell syntax failure: %s\n' "$path" >&2; exit 1; }
+  done
+
+  core_modules=(
+    platform.sh package-manifest.sh packages.sh ui.sh systemd.sh
+    aur-bootstrap.sh dotfiles.sh files.sh
+  )
+  for module in "${core_modules[@]}"; do
+    path="$SCRIPT_DIR/core/$module"
+    [[ -f "$path" ]] || { printf '[ERROR] Missing installer core module: %s\n' "$path" >&2; exit 1; }
+    bash -n "$path" || { printf '[ERROR] Shell syntax failure: %s\n' "$path" >&2; exit 1; }
+    printf '[DRY-RUN] OK core/%s\n' "$module"
+  done
   bash -n "$0"
-  bash -n "$SCRIPT_DIR/core/platform.sh"
-  bash -n "$SCRIPT_DIR/core/package-manifest.sh"
-  printf '[DRY-RUN] OK core/platform.sh\n'
-  printf '[DRY-RUN] OK core/package-manifest.sh\n'
   printf '[DRY-RUN] PASS: installer graph is present and syntactically valid.\n'
   exit 0
 fi
 
 clear
 
-OK="$(tput setaf 2)[OK]$(tput sgr0)"
-ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
-INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
 LOG_DIR="$ROOT/Install-Logs"
 mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/01-Hyprland-Install-Scripts-$(date +%d-%H%M%S).log"
@@ -88,8 +102,6 @@ if ! whiptail --title 'Proceed with Installation?' --yesno 'Proceed with the ins
   exit 0
 fi
 
-gtk_themes=OFF bluetooth=OFF thunar=OFF quickshell=OFF sddm=OFF sddm_theme=OFF
-xdph=OFF zsh=OFF pokemon=OFF rog=OFF dots=OFF input_group=OFF nvidia=OFF nouveau=OFF
 if [[ "${1:-}" == --preset && -n "${2:-}" ]]; then
   [[ -f "$2" ]] || { printf '[ERROR] Preset not found: %s\n' "$2" >&2; exit 1; }
   # shellcheck disable=SC1090

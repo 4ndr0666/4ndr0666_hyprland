@@ -18,11 +18,17 @@ INSTALL_DIR_CREATED=0
 cleanup() {
     local rc=$?
     if ((INSTALL_DIR_CREATED)) && [[ -e "$INSTALL_DIR" || -L "$INSTALL_DIR" ]]; then
-        rm -rf -- "$INSTALL_DIR"
+        if ! rm -rf -- "$INSTALL_DIR"; then
+            printf '%s\n' '[ERROR] Failed to remove the incomplete bootstrap checkout.' >&2
+            [[ "$rc" -ne 0 ]] || rc=1
+        fi
     fi
-    return "$rc"
+    exit "$rc"
 }
-trap cleanup EXIT INT TERM HUP
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 if [[ -z "$INSTALL_REF" ]]; then
     if [[ ! -r "$DEFAULT_REF_FILE" ]]; then
@@ -79,9 +85,9 @@ if [[ -e "$INSTALL_DIR" || -L "$INSTALL_DIR" ]]; then
 fi
 
 printf '%s Cloning repository at immutable revision %s.\n' "$INFO" "$INSTALL_REF"
+INSTALL_DIR_CREATED=1
 timeout --signal=TERM --kill-after=30s "${GIT_COMMAND_TIMEOUT}s" \
     git clone --no-checkout "$REPOSITORY_URL" "$INSTALL_DIR"
-INSTALL_DIR_CREATED=1
 cd "$INSTALL_DIR"
 timeout --signal=TERM --kill-after=30s "${GIT_COMMAND_TIMEOUT}s" \
     git fetch --depth=1 origin "$INSTALL_REF"

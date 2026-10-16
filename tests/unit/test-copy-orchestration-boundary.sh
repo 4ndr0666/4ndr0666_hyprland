@@ -19,10 +19,13 @@ bash -n "$LIB_BACKUP"
 for helper in \
   scripts/copy_menu.sh \
   scripts/lib_backup.sh \
+  scripts/lib_lua_config.sh \
   scripts/lib_detect.sh \
   scripts/lib_prompts.sh \
   scripts/lib_apps.sh \
-  scripts/lib_copy.sh; do
+  scripts/lib_copy.sh \
+  scripts/lib_resolution.sh \
+  scripts/lib_waybar.sh; do
   grep -Fq "$helper" "$COPY" || {
     printf '[FAIL] Missing established helper boundary: %s\n' "$helper" >&2
     exit 1
@@ -56,7 +59,10 @@ grep -Fq 'Failed to inspect the installed dotfiles version.' "$COPY"
 ! grep -Fq 'get_installed_dotfiles_version || true' "$COPY"
 ! grep -Fq '2>/dev/null \\' "$COPY"
 
-grep -q 'trap cleanup EXIT INT TERM HUP' "$COPY"
+grep -Fq 'trap cleanup EXIT' "$COPY"
+grep -Fq "trap 'exit 129' HUP" "$COPY"
+grep -Fq "trap 'exit 130' INT" "$COPY"
+grep -Fq "trap 'exit 143' TERM" "$COPY"
 grep -Fq 'replace_dir_transaction "config/waybar" "$dir_path" "$log"' "$LIB_COPY"
 grep -Fq 'replace_dir_transaction "$source" "$dir_path" "$log"' "$LIB_COPY"
 grep -Fq 'LAST_HYPR_BACKUP_PATH="$backup_dir"' "$LIB_COPY"

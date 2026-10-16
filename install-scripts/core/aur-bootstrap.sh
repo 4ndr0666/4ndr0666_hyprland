@@ -24,6 +24,7 @@ package_bootstrap_aur_helper() {
 
   # Load repository-owned provenance; do not permit an ambient environment
   # value to override the reviewed pin.
+  # shellcheck disable=SC1090 # Fixed repository-relative provenance file; its contents are validated below.
   source "$PROVENANCE_FILE"
   ref="${AUR_YAY_BIN_REF:-}"
 

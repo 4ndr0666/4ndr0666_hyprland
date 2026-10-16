@@ -28,6 +28,7 @@ TESTS=(
   tests/unit/test-sddm-rollback.sh
   tests/unit/test-sddm-theme-transaction.sh
   tests/unit/test-copy-orchestration-boundary.sh
+  tests/unit/test-core-script-contracts.sh
   tests/unit/test-copy-phase1-atomicity.sh
   tests/unit/test-copy-transaction-runtime.sh
   tests/unit/test-copy-source-immutability.sh
@@ -64,6 +65,7 @@ TESTS=(
   tests/unit/test-swaync-runtime-connectivity.sh
   tests/unit/test-terminal-config-connectivity.sh
   tests/unit/test-monitor-user-config-connectivity.sh
+  tests/unit/test-legacy-userconfig-archive.sh
   tests/unit/test-asset-deployment-connectivity.sh
   tests/unit/test-autodispatch-lifecycle.sh
   tests/unit/test-4ndr0init-lifecycle.sh
@@ -79,6 +81,7 @@ TESTS=(
   tests/unit/test-clock-12h-mandatory.sh
   tests/unit/test-gtk-theme-installer.sh
   tests/unit/test-installer-dry-run.sh
+  tests/unit/test-nvidia-installer-contract.sh
   tests/unit/test-canonical-package-manifest.sh
   tests/unit/test-arch-family-detection.sh
   tests/unit/test-notification-daemon-supersession.sh

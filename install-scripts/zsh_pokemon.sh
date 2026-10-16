@@ -5,7 +5,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$SCRIPT_DIR/.."
-cd "$PARENT_DIR"
+cd -- "$PARENT_DIR" || exit 1
 
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_zsh_pokemon.log"
 mkdir -p "$(dirname "$LOG")"
@@ -16,6 +16,7 @@ printf '[INFO] Installing Pokemon Color Scripts\n'
 package_install_aur pokemon-colorscripts-git
 
 if [ -f "$HOME/.zshrc" ]; then
+  # shellcheck disable=SC2016 # Keep $HOME literal in the line written to .zshrc.
   sed -i 's|^#pokemon-colorscripts --no-title -s -r | fastfetch -c \$HOME/.config/fastfetch/config-pokemon.jsonc --logo-type file-raw --logo-height 10 --logo-width 5 --logo -|pokemon-colorscripts --no-title -s -r | fastfetch -c \$HOME/.config/fastfetch/config-pokemon.jsonc --logo-type file-raw --logo-height 10 --logo-width 5 --logo -|' "$HOME/.zshrc" >> "$LOG" 2>&1
   echo "[OK] pokemon-colorscripts added to .zshrc" >> "$LOG"
 else

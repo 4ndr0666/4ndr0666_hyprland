@@ -91,7 +91,8 @@ copy_waybar() {
             if [[ -d "$backup_dir/configs" ]]; then
               for entry in "$backup_dir/configs"/*; do
                 [[ -e "$entry" ]] || continue
-                local target="$dir_path/configs/$(basename -- "$entry")"
+                local target
+                target="$dir_path/configs/$(basename -- "$entry")"
                 [[ -e "$target" ]] && continue
                 cp -a -- "$entry" "$dir_path/configs/"
               done
@@ -100,7 +101,8 @@ copy_waybar() {
             if [[ -d "$backup_dir/style" ]]; then
               for entry in "$backup_dir/style"/*; do
                 [[ -e "$entry" ]] || continue
-                local target="$dir_path/style/$(basename -- "$entry")"
+                local target
+                target="$dir_path/style/$(basename -- "$entry")"
                 [[ -e "$target" ]] && continue
                 cp -a -- "$entry" "$dir_path/style/"
               done
@@ -198,79 +200,58 @@ restore_hypr_assets() {
   done
 }
 
+archive_legacy_conf() {
+  local source="$1"
+  local archive_root="$2"
+  local relative="$3"
+  local log="$4"
+  local destination="$archive_root/$relative"
+
+  [[ -f "$source" || -L "$source" ]] || {
+    printf '[ERROR] Legacy configuration source is missing: %s\n' "$source" >&2
+    return 1
+  }
+  mkdir -p -- "$(dirname -- "$destination")"
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    if cmp -s -- "$source" "$destination"; then
+      printf '%s\n' "[INFO] Legacy configuration already preserved: $destination" | tee -a "$log"
+      return 0
+    fi
+    destination="${destination}.preserved-$(date +%Y%m%dT%H%M%S%N)"
+  fi
+  cp -a -- "$source" "$destination"
+  printf '%s\n' "[WARN] Preserved inactive legacy .conf at $destination; the Lua runtime does not load it automatically." | tee -a "$log"
+}
+
+archive_legacy_conf_files() {
+  local source_root="$1"
+  local archive_root="$2"
+  local log="$3"
+  local remove_source="${4:-0}"
+  local source relative
+
+  [[ -d "$source_root" ]] || return 0
+  while IFS= read -r -d '' source; do
+    relative="${source#"$source_root"/}"
+    archive_legacy_conf "$source" "$archive_root" "$relative" "$log"
+    if [[ "$remove_source" == 1 ]]; then
+      rm -f -- "$source"
+    fi
+  done < <(find "$source_root" -path "$source_root/legacy-conf-backup" -prune -o \( -type f -o -type l \) -name '*.conf' -print0 | sort -z)
+}
+
 cleanup_duplicate_userconfigs() {
   local current_version="$1"
   local log="$2"
+  local user_dir="$HOME/.config/hypr/UserConfigs"
 
   [[ -n "$current_version" ]] || return 0
   if version_gte "$current_version" "2.3.20"; then
-    printf '%s\n' "${INFO:-[INFO]} Skipping UserConfigs duplicate cleanup for detected version v$current_version (>= 2.3.20)." | tee -a "$log"
-    return 0
+    printf '%s\n' "[INFO] Reconciling UserConfigs for Lua runtime on v$current_version." | tee -a "$log"
+  else
+    printf '%s\n' "[WARN] Legacy v$current_version UserConfigs use .conf syntax; archiving inactive files instead of editing them as live configuration." | tee -a "$log"
   fi
-
-  printf '%s\n' "${INFO:-[INFO]} Running UserConfigs duplicate cleanup for detected version v$current_version (<= 2.3.19)." | tee -a "$log"
-
-  local hypr_dir="$HOME/.config/hypr"
-  local base_dir="$hypr_dir/configs"
-  local user_dir="$hypr_dir/UserConfigs"
-  local start_base="$base_dir/Startup_Apps.conf"
-  local start_user="$user_dir/Startup_Apps.conf"
-  local window_base="$base_dir/WindowRules.conf"
-  local window_user="$user_dir/WindowRules.conf"
-  local keybind_base="$base_dir/Keybinds.conf"
-  local keybind_user="$user_dir/UserKeybinds.conf"
-  local tmp backup
-
-  if [[ -f "$start_base" && -f "$start_user" ]]; then
-    tmp="$(mktemp)"
-    backup="$start_user.backup-dupfix-$(date +%Y%m%d-%H%M%S)"
-    awk '
-      function trim(s){ gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
-      FNR==NR { if ($0 ~ /^[ \t]*exec-once[ \t]*=/) base[trim($0)]=1; next }
-      { if ($0 ~ /^[ \t]*exec-once[ \t]*=/ && trim($0) in base) next; print }
-    ' "$start_base" "$start_user" >"$tmp"
-    if ! cmp -s "$start_user" "$tmp"; then
-      cp -f -- "$start_user" "$backup"
-      mv -- "$tmp" "$start_user"
-      printf '%s\n' "${NOTE:-[NOTE]} - Removed duplicate Startup_Apps entries matching base config." | tee -a "$log"
-    else
-      rm -f -- "$tmp"
-    fi
-  fi
-
-  if [[ -f "$window_base" && -f "$window_user" ]]; then
-    tmp="$(mktemp)"
-    backup="$window_user.backup-dupfix-$(date +%Y%m%d-%H%M%S)"
-    awk '
-      function trim(s){ gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
-      FNR==NR { if ($0 ~ /^[ \t]*(windowrule|layerrule)[ \t]*=/) base[trim($0)]=1; next }
-      { if ($0 ~ /^[ \t]*(windowrule|layerrule)[ \t]*=/ && trim($0) in base) next; print }
-    ' "$window_base" "$window_user" >"$tmp"
-    if ! cmp -s "$window_user" "$tmp"; then
-      cp -f -- "$window_user" "$backup"
-      mv -- "$tmp" "$window_user"
-      printf '%s\n' "${NOTE:-[NOTE]} - Removed duplicate WindowRules entries matching base config." | tee -a "$log"
-    else
-      rm -f -- "$tmp"
-    fi
-  fi
-
-  if [[ -f "$keybind_base" && -f "$keybind_user" ]]; then
-    tmp="$(mktemp)"
-    backup="$keybind_user.backup-dupfix-$(date +%Y%m%d-%H%M%S)"
-    awk '
-      function trim(s){ gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
-      FNR==NR { if ($0 ~ /^[ \t]*bind[a-z]*[ \t]*=/) base[trim($0)]=1; next }
-      { if ($0 ~ /^[ \t]*bind[a-z]*[ \t]*=/ && trim($0) in base) next; print }
-    ' "$keybind_base" "$keybind_user" >"$tmp"
-    if ! cmp -s "$keybind_user" "$tmp"; then
-      cp -f -- "$keybind_user" "$backup"
-      mv -- "$tmp" "$keybind_user"
-      printf '%s\n' "${NOTE:-[NOTE]} - Removed duplicate UserKeybinds entries matching base Keybinds.conf." | tee -a "$log"
-    else
-      rm -f -- "$tmp"
-    fi
-  fi
+  archive_legacy_conf_files "$user_dir" "$user_dir/legacy-conf-backup" "$log" 1
 }
 
 restore_user_configs() {
@@ -279,39 +260,45 @@ restore_user_configs() {
   local old_version="$3"
   local dirpath="$HOME/.config/hypr"
   local backup_dir_path="$LAST_HYPR_BACKUP_PATH/UserConfigs"
+  local legacy_archive="$dirpath/UserConfigs/legacy-conf-backup"
 
   [[ -n "$LAST_HYPR_BACKUP_PATH" && -d "$backup_dir_path" ]] || return 0
   if [[ "$express_mode" -eq 1 ]]; then
-    printf '%s\n' "${NOTE:-[NOTE]} Express mode: skipping UserConfigs restoration prompts." | tee -a "$log"
+    printf '%s\n' "[NOTE] Express mode: skipping UserConfigs restoration prompts." | tee -a "$log"
   else
     local current_version="${old_version:-999.9.9}"
     local target_version="2.3.19"
-    printf '%s\n' "${NOTE:-[NOTE]} Restoring previous User-Configs..." | tee -a "$log"
+    printf '%s\n' "[NOTE] Restoring previous User-Configs..." | tee -a "$log"
 
     if version_gte "$current_version" "$target_version"; then
-      read -r -p "${CAT:-[ACTION]} Do you want to restore your previous UserConfigs directory? (Y/n): " restore_dir
+      read -r -p "[ACTION] Do you want to restore your previous UserConfigs directory? (Y/n): " restore_dir
       if [[ "$restore_dir" != [Nn]* ]]; then
         mkdir -p -- "$dirpath/UserConfigs"
-        rsync -a -- "$backup_dir_path/" "$dirpath/UserConfigs/" 2>&1 | tee -a "$log"
-        printf '%s\n' "${OK:-[OK]} - UserConfigs directory restored." | tee -a "$log"
+        archive_legacy_conf_files "$backup_dir_path" "$legacy_archive" "$log"
+        rsync -a --exclude='*.conf' --exclude='legacy-conf-backup/' -- "$backup_dir_path/" "$dirpath/UserConfigs/" 2>&1 | tee -a "$log"
+        printf '%s\n' "[OK] Restored Lua-compatible UserConfigs; legacy .conf files were preserved separately." | tee -a "$log"
       else
-        printf '%s\n' "${NOTE:-[NOTE]} - Skipped restoring UserConfigs." | tee -a "$log"
+        printf '%s\n' "[NOTE] Skipped restoring UserConfigs." | tee -a "$log"
       fi
     else
-      printf '%s\n' "${NOTE:-[NOTE]} Detected version v$current_version (older than v$target_version). Using legacy restoration mode." | tee -a "$log"
-      local -a files=(01-UserDefaults.conf ENVariables.conf LaptopDisplay.conf Laptops.conf Startup_Apps.conf UserDecorations.conf UserAnimations.conf UserKeybinds.conf UserSettings.conf WindowRules.conf)
+      printf '%s\n' "[NOTE] Detected version v$current_version (older than v$target_version). Using legacy preservation mode." | tee -a "$log"
+      local -a files=()
       local file_name backup_file
-      mkdir -p -- "$dirpath/UserConfigs"
+      while IFS= read -r -d '' file_name; do
+        files+=("$file_name")
+      done < <(find "$backup_dir_path" -path "$backup_dir_path/legacy-conf-backup" -prune -o \( -type f -o -type l \) -name '*.conf' -printf '%P\0' | sort -z)
+
+      if (("${#files[@]}" == 0)); then
+        printf '%s\n' "[INFO] No legacy .conf UserConfigs files were found." | tee -a "$log"
+      fi
       for file_name in "${files[@]}"; do
         backup_file="$backup_dir_path/$file_name"
-        [[ -f "$backup_file" ]] || continue
-        printf '\n%s Found %s in hypr backup...\n' "${INFO:-[INFO]}" "$file_name"
-        read -r -p "${CAT:-[ACTION]} Do you want to restore $file_name from backup? (Y/n): " restore_file
+        printf '\n%s Found legacy %s in the Hyprland backup.\n' "[INFO]" "$file_name"
+        read -r -p "[ACTION] Preserve inactive legacy $file_name in legacy-conf-backup? (Y/n): " restore_file
         if [[ "$restore_file" != [Nn]* ]]; then
-          cp -f -- "$backup_file" "$dirpath/UserConfigs/$file_name"
-          printf '%s\n' "${OK:-[OK]} - $file_name restored!" | tee -a "$log"
+          archive_legacy_conf "$backup_file" "$legacy_archive" "$file_name" "$log"
         else
-          printf '%s\n' "${NOTE:-[NOTE]} - Skipped restoring $file_name." | tee -a "$log"
+          printf '%s\n' "[NOTE] Skipped preserving $file_name by request." | tee -a "$log"
         fi
       done
     fi

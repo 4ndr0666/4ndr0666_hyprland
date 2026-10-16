@@ -2,6 +2,7 @@
 # 💫 https://github.com/4ndr0666 💫 #
 # SDDM Log-in Manager #
 
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$SCRIPT_DIR/.."
@@ -45,7 +46,7 @@ restore_on_failure() {
   fi
   if [[ -s "$SDDM_STATE_MANIFEST" ]] && grep -Fqx 'wayland_sessions_dir|created' "$SDDM_STATE_MANIFEST"; then
     if [[ -d "$wayland_sessions_dir" ]] && [[ -z "$(find "$wayland_sessions_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
-      if ! sudo rmdir -- "$wayland_sessions_dir" >>"$LOG" 2>&1; then
+      if ! sudo rmdir -- "$wayland_sessions_dir" 2>&1 | tee -a "$LOG"; then
         restore_failed=1
         printf '%s\n' '[ERROR] Failed to remove the wayland sessions directory created by the failed SDDM transition.' | tee -a "$LOG" >&2
       fi
@@ -77,18 +78,18 @@ for unit in "${LOGIN_MANAGER_UNITS[@]}"; do
       ;;
     *)
       printf '[INFO] Disabling %s.\n' "$unit" | tee -a "$LOG"
-      sudo systemctl disable -- "$unit" >>"$LOG" 2>&1
+      sudo systemctl disable -- "$unit" 2>&1 | tee -a "$LOG"
       ;;
   esac
 
   if [[ "$active" == active ]]; then
     printf '[INFO] Stopping active %s.\n' "$unit" | tee -a "$LOG"
-    sudo systemctl stop -- "$unit" >>"$LOG" 2>&1
+    sudo systemctl stop -- "$unit" 2>&1 | tee -a "$LOG"
   fi
 done
 
 printf '%s\n' '[ACTION] Enabling sddm.service.' | tee -a "$LOG"
-sudo systemctl enable -- sddm.service >>"$LOG" 2>&1
+sudo systemctl enable -- sddm.service 2>&1 | tee -a "$LOG"
 
 [[ "$(systemd_unit_enabled_state sddm.service)" == enabled ]] || {
   printf '%s\n' '[ERROR] sddm.service is not enabled after the transaction.' >&2
@@ -98,7 +99,7 @@ sudo systemctl enable -- sddm.service >>"$LOG" 2>&1
 : > "$SDDM_STATE_MANIFEST"
 if [[ ! -d "$wayland_sessions_dir" ]]; then
   printf '[ACTION] Creating %s.\n' "$wayland_sessions_dir" | tee -a "$LOG"
-  sudo mkdir -- "$wayland_sessions_dir" >>"$LOG" 2>&1
+  sudo mkdir -- "$wayland_sessions_dir" 2>&1 | tee -a "$LOG"
   printf '%s\n' 'wayland_sessions_dir|created' > "$SDDM_STATE_MANIFEST"
 else
   printf '%s\n' 'wayland_sessions_dir|preexisting' > "$SDDM_STATE_MANIFEST"

@@ -2,24 +2,11 @@
 # 💫 https://github.com/4ndr0666 💫 #
 # KooL Arch-Hyprland uninstall script #
 
-clear
+set -Eeuo pipefail
 
-# Set some colors for output messages
-OK="$(tput setaf 2)[OK]$(tput sgr0)"
-ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
-NOTE="$(tput setaf 3)[NOTE]$(tput sgr0)"
-INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
-WARN="$(tput setaf 1)[WARN]$(tput sgr0)"
-CAT="$(tput setaf 6)[ACTION]$(tput sgr0)"
-MAGENTA="$(tput setaf 5)"
-ORANGE="$(tput setaf 214)"
-WARNING="$(tput setaf 1)"
-YELLOW="$(tput setaf 3)"
-GREEN="$(tput setaf 2)"
-BLUE="$(tput setaf 4)"
-SKY_BLUE="$(tput setaf 6)"
-RESET="$(tput sgr0)"
-
+if [[ -t 1 ]] && command -v clear >/dev/null 2>&1; then
+  clear
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CORE="$SCRIPT_DIR/install-scripts/core/packages.sh"
@@ -29,6 +16,7 @@ if [[ ! -r "$CORE" ]]; then
   exit 1
 fi
 
+# shellcheck disable=SC1090 # CORE is resolved from this repository and validated before sourcing.
 source "$CORE"
 
 LOG="$SCRIPT_DIR/Install-Logs/uninstall-$(date +%d-%H%M%S).log"

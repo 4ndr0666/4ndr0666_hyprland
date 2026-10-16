@@ -12,7 +12,7 @@ rog=(
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$SCRIPT_DIR/.."
-cd "$PARENT_DIR"
+cd -- "$PARENT_DIR" || exit 1
 
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_rog.log"
 mkdir -p "$(dirname "$LOG")"

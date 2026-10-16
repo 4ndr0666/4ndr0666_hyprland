@@ -9,6 +9,7 @@ export COPY_TUI_BACKEND="${COPY_TUI_BACKEND:-basic}"
 
 source "$SOURCE_ROOT/scripts/copy_menu.sh"
 source "$SOURCE_ROOT/scripts/lib_backup.sh"
+source "$SOURCE_ROOT/scripts/lib_lua_config.sh"
 source "$SOURCE_ROOT/scripts/lib_detect.sh"
 source "$SOURCE_ROOT/scripts/lib_prompts.sh"
 source "$SOURCE_ROOT/scripts/lib_apps.sh"
@@ -18,10 +19,6 @@ source "$SOURCE_ROOT/scripts/lib_waybar.sh"
 
 readonly MIN_EXPRESS_VERSION="2.3.18"
 readonly WALLPAPER_STATE="$HOME/.config/hypr/wallpaper_effects/.wallpaper_current"
-readonly WAYBAR_CONFIG="$HOME/.config/waybar/config"
-readonly WAYBAR_STYLE="$HOME/.config/waybar/style/[Extra] Neon Circuit.css"
-readonly WAYBAR_DESKTOP="$HOME/.config/waybar/configs/[TOP] Default"
-readonly WAYBAR_LAPTOP="$HOME/.config/waybar/configs/[TOP] Default Laptop"
 
 LOG=""
 DEPLOY_STAGE_DIR=""
@@ -29,11 +26,17 @@ DEPLOY_STAGE_DIR=""
 cleanup() {
   local rc=$?
   if [[ -n "$DEPLOY_STAGE_DIR" && -d "$DEPLOY_STAGE_DIR" ]]; then
-    rm -rf -- "$DEPLOY_STAGE_DIR"
+    if ! rm -rf -- "$DEPLOY_STAGE_DIR"; then
+      printf '%s\\n' '[ERROR] Failed to remove the deployment staging directory.' >&2
+      [[ "$rc" -ne 0 ]] || rc=1
+    fi
   fi
-  return "$rc"
+  exit "$rc"
 }
-trap cleanup EXIT INT TERM HUP
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 usage() {
   cat <<'EOF'
@@ -167,7 +170,11 @@ if [[ "$EUID" -eq 0 ]]; then
 fi
 
 prepare_log
-xdg-user-dirs-update 2>&1 | tee -a "$LOG"
+if command -v xdg-user-dirs-update >/dev/null 2>&1; then
+  xdg-user-dirs-update 2>&1 | tee -a "$LOG"
+else
+  printf '%s\n' "[WARN] xdg-user-dirs-update is unavailable; using the Pictures fallback if needed." | tee -a "$LOG"
+fi
 printf '%s\n' "[INFO] Selected workflow: $RUN_MODE" | tee -a "$LOG"
 
 DEPLOY_STAGE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/4ndr0666-copy-stage.XXXXXX")"

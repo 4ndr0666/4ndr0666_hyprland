@@ -6,7 +6,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$SCRIPT_DIR/.."
-cd "$ROOT"
+cd -- "$ROOT" || exit 1
 
 LOG="${LOG:-Install-Logs/install-$(date +%d-%H%M%S)_yay.log}"
 mkdir -p "$(dirname "$LOG")"

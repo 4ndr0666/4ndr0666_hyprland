@@ -3,22 +3,59 @@
 # User interaction helpers extracted from copy.sh. Each helper echoes state or sets
 # globals deliberately to minimize side effects.
 
-# Detect keyboard layout via localectl or setxkbmap.
-prompt_detect_layout() {
-  if command -v localectl >/dev/null 2>&1; then
-    local layout
-    layout=$(localectl status --no-pager | awk '/X11 Layout/ {print $3}')
-    [ -n "$layout" ] && { echo "$layout"; return; }
-  fi
-  if command -v setxkbmap >/dev/null 2>&1; then
-    local layout
-    layout=$(setxkbmap -query | awk '/layout/ {print $2}')
-    [ -n "$layout" ] && { echo "$layout"; return; }
-  fi
-  echo "(unset)"
+# Keep this library safe under nounset even when tested outside copy.sh.
+: "${WARNING:=[WARNING]}"
+: "${YELLOW:=[YELLOW]}"
+: "${RESET:=[RESET]}"
+: "${SKYBLUE:=[SKYBLUE]}"
+: "${SKY_BLUE:=${SKYBLUE}}"
+: "${MAGENTA:=[MAGENTA]}"
+: "${CAT:=[ACTION]}"
+: "${NOTE:=[NOTE]}"
+: "${INFO:=[INFO]}"
+: "${ERROR:=[ERROR]}"
+: "${OK:=[OK]}"
+: "${WARN:=[WARN]}"
+: "${EXPRESS_MODE:=0}"
+: "${UPGRADE_MODE:=0}"
+: "${MIN_EXPRESS_VERSION:=unknown}"
+
+print_color() {
+  local color="${1:-}"
+  shift || return 2
+  printf '%s%s%s\n' "$color" "$*" "$RESET"
 }
 
-# Confirm or set keyboard layout; writes to SystemSettings.conf.
+write_keyboard_layout() {
+  local layout="$1"
+  local file="config/hypr/configs/SystemSettings.lua"
+
+  layout="${layout//[[:space:]]/}"
+  [[ "$layout" =~ ^[[:alnum:]_,+-]+$ ]] || {
+    printf '[ERROR] Invalid keyboard layout value: %s\n' "$layout" >&2
+    return 2
+  }
+  set_lua_assignment "$file" "kb_layout" "\"$layout\""
+}
+# Detect keyboard layout via localectl or setxkbmap.
+prompt_detect_layout() {
+  local layout=""
+  if command -v localectl >/dev/null 2>&1 &&
+    layout="$(localectl status --no-pager | awk '/X11 Layout/ {print $3}')" &&
+    [[ -n "$layout" ]]; then
+    printf '%s\n' "$layout"
+    return 0
+  fi
+  if command -v setxkbmap >/dev/null 2>&1 &&
+    layout="$(setxkbmap -query | awk '/layout/ {print $2}')" &&
+    [[ -n "$layout" ]]; then
+    printf '%s\n' "$layout"
+    return 0
+  fi
+  printf '%s\n' '(unset)'
+}
+
+# Confirm or set keyboard layout; writes to the authoritative SystemSettings.lua module.
 prompt_keyboard_layout() {
   local layout="$1"
   local log="$2"
@@ -26,7 +63,7 @@ prompt_keyboard_layout() {
   if [ "$layout" = "(unset)" ]; then
     while true; do
       printf "\n%.0s" {1..1}
-      print_color $WARNING "\n    █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█
+      print_color "$WARNING" "\n    █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█
             STOP AND READ
     █▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█
 
@@ -39,7 +76,7 @@ You need to set it Manually
 
 Setting a wrong Keyboard Layout will cause Hyprland to crash
 If you are not sure, just type ${YELLOW}us${RESET}
-${SKYBLUE}You can change later in ~/.config/hypr/UserConfigs/UserSettings.conf${RESET}
+${SKYBLUE}You can change later in ~/.config/hypr/UserConfigs/UserSettings.lua${RESET}
 
 ${MAGENTA} NOTE:${RESET}
 •  You can also set more than 2 keyboard layouts
@@ -48,7 +85,7 @@ ${MAGENTA} NOTE:${RESET}
       printf "\n%.0s" {1..1}
 
       echo -n "${CAT} - Please enter the correct keyboard layout: "
-      read new_layout
+      read -r new_layout
 
       if [ -n "$new_layout" ]; then
         layout="$new_layout"
@@ -59,21 +96,20 @@ ${MAGENTA} NOTE:${RESET}
     done
   fi
 
-  printf "${NOTE} Detecting keyboard layout to prepare proper Hyprland Settings\n"
+  printf '%s\n' "${NOTE} Detecting keyboard layout to prepare proper Hyprland Settings"
   while true; do
-    printf "${INFO} Current keyboard layout is ${MAGENTA}$layout${RESET}\n"
+    printf '%s\n' "${INFO} Current keyboard layout is ${MAGENTA}$layout${RESET}"
     echo -n "${CAT} Is this correct? [y/n] "
-    read keyboard_layout
+    read -r keyboard_layout
     case $keyboard_layout in
       [yY])
-        awk -v layout="$layout" '/kb_layout/ {$0 = "  kb_layout = " layout} 1' config/hypr/configs/SystemSettings.conf >temp.conf
-        mv temp.conf config/hypr/configs/SystemSettings.conf
+        write_keyboard_layout "$layout"
         echo "${NOTE} kb_layout ${MAGENTA}$layout${RESET} configured in settings." 2>&1 | tee -a "$log"
         break
         ;;
       [nN])
         printf "\n%.0s" {1..2}
-        print_color $WARNING "
+        print_color "$WARNING" "
     █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█
             STOP AND READ
     █▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█
@@ -87,7 +123,7 @@ You need to set it Manually
 
 Setting a wrong Keyboard Layout will cause Hyprland to crash
 If you are not sure, just type ${YELLOW}us${RESET}
-${SKYBLUE}You can change later in ~/.config/hypr/UserConfigs/UserSettings.conf${RESET}
+${SKYBLUE}You can change later in ~/.config/hypr/UserConfigs/UserSettings.lua${RESET}
 
 ${MAGENTA} NOTE:${RESET}
 •  You can also set more than 2 keyboard layouts
@@ -95,9 +131,12 @@ ${MAGENTA} NOTE:${RESET}
 "
         printf "\n%.0s" {1..1}
         echo -n "${CAT} - Please enter the correct keyboard layout: "
-        read new_layout
-        awk -v new_layout="$new_layout" '/kb_layout/ {$0 = "  kb_layout = " new_layout} 1' config/hypr/configs/SystemSettings.conf >temp.conf
-        mv temp.conf config/hypr/configs/SystemSettings.conf
+        read -r -p "${CAT} Enter the correct keyboard layout (for example us or us,kr): " new_layout
+        [[ -n "$new_layout" ]] || {
+          echo "${ERROR} Keyboard layout cannot be empty."
+          return 2
+        }
+        write_keyboard_layout "$new_layout"
         echo "${OK} kb_layout $new_layout configured in settings." 2>&1 | tee -a "$log"
         break
         ;;
@@ -150,9 +189,13 @@ apply_clock_12h() {
     HYPRLOCK_FILE="config/hypr/hyprlock-1080p.conf"
   fi
   if [ -f "$HYPRLOCK_FILE" ]; then
+    # shellcheck disable=SC2016 # Preserve literal command substitution syntax in the hyprlock template.
     sed -i 's/^\s*text = cmd\[update:1000\] echo \"\$(date +\"%H\")\"/# &/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
+    # shellcheck disable=SC2016 # Preserve literal command substitution syntax in the hyprlock template.
     sed -i 's/^\(\s*\)# *text = cmd\[update:1000\] echo \"\$(date +\"%I\")\" #AM\/PM/\1    text = cmd\[update:1000\] echo \"\$(date +\"%I\")\" #AM\/PM/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
+    # shellcheck disable=SC2016 # Preserve literal command substitution syntax in the hyprlock template.
     sed -i 's/^\s*text = cmd\[update:1000\] echo \"\$(date +\"%S\")\"/# &/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
+    # shellcheck disable=SC2016 # Preserve literal command substitution syntax in the hyprlock template.
     sed -i 's/^\(\s*\)# *text = cmd\[update:1000\] echo \"\$(date +\"%S %p\")\" #AM\/PM/\1    text = cmd\[update:1000\] echo \"\$(date +\"%S %p\")\" #AM\/PM/' "$HYPRLOCK_FILE" 2>&1 | tee -a "$log"
   else
     echo "${WARN} hyprlock template not found; skipping 12H lock format edits" 2>&1 | tee -a "$log"
