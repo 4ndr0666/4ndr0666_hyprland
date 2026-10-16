@@ -80,6 +80,23 @@ append_startup_command "qs"
 [[ "$(grep -Fc 'hl.exec_cmd("qs")' config/hypr/configs/Startup_Apps.lua)" -eq 1 ]] ||
   fail "startup command append is not idempotent"
 
+# A grep I/O error is not equivalent to an expected no-match result.
+before="$(sha256sum config/hypr/configs/Startup_Apps.lua)"
+if (
+  grep() { return 2; }
+  append_lua_module_line \
+    "config/hypr/configs/Startup_Apps.lua" \
+    "never-present-marker" \
+    'hl.exec_cmd("must-not-be-appended")'
+); then
+  fail "Lua append accepted a marker-inspection I/O error"
+else
+  status=$?
+  [[ "$status" -eq 2 ]] || fail "Lua append normalized grep I/O error to status $status"
+fi
+after="$(sha256sum config/hypr/configs/Startup_Apps.lua)"
+[[ "$before" == "$after" ]] || fail "failed marker inspection mutated the Lua target"
+
 append_startup_expression "KeybindsLayoutInit.sh" 'os.getenv("HOME") .. "/.config/hypr/scripts/KeybindsLayoutInit.sh"'
 append_startup_expression "KeybindsLayoutInit.sh" 'os.getenv("HOME") .. "/.config/hypr/scripts/KeybindsLayoutInit.sh"'
 [[ "$(grep -Fc 'KeybindsLayoutInit.sh' config/hypr/configs/Startup_Apps.lua)" -eq 1 ]] ||
