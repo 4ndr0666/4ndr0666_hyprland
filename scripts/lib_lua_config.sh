@@ -13,10 +13,28 @@ append_lua_module_line() (
     printf '[ERROR] Required Lua module is missing: %s\n' "$file" >&2
     return 1
   }
-  grep -Fq -- "$marker" "$file" && return 0
+
+  local grep_status
+  if grep -Fq -- "$marker" "$file"; then
+    return 0
+  else
+    grep_status=$?
+  fi
+  if ((grep_status != 1)); then
+    printf '[ERROR] Failed to inspect Lua module for marker: %s\n' "$file" >&2
+    return "$grep_status"
+  fi
 
   tmp="$(mktemp --tmpdir="$(dirname -- "$file")" ".$(basename -- "$file").XXXXXX")" || return 1
-  trap 'if [[ -n "$tmp" ]]; then rm -f -- "$tmp"; fi' EXIT
+  cleanup_lua_mutation_temp() {
+    local status=$?
+    if [[ -n "$tmp" ]] && ! rm -f -- "$tmp"; then
+      printf '[ERROR] Failed to remove Lua mutation temporary file: %s\n' "$tmp" >&2
+      [[ "$status" -ne 0 ]] || status=1
+    fi
+    exit "$status"
+  }
+  trap cleanup_lua_mutation_temp EXIT
   trap 'exit 129' HUP
   trap 'exit 130' INT
   trap 'exit 143' TERM
@@ -87,7 +105,15 @@ set_lua_assignment() (
   }
 
   tmp="$(mktemp --tmpdir="$(dirname -- "$file")" ".$(basename -- "$file").XXXXXX")" || return 1
-  trap 'if [[ -n "$tmp" ]]; then rm -f -- "$tmp"; fi' EXIT
+  cleanup_lua_assignment_temp() {
+    local status=$?
+    if [[ -n "$tmp" ]] && ! rm -f -- "$tmp"; then
+      printf '[ERROR] Failed to remove Lua assignment temporary file: %s\n' "$tmp" >&2
+      [[ "$status" -ne 0 ]] || status=1
+    fi
+    exit "$status"
+  }
+  trap cleanup_lua_assignment_temp EXIT
   trap 'exit 129' HUP
   trap 'exit 130' INT
   trap 'exit 143' TERM
