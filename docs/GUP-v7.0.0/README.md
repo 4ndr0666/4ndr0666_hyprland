@@ -1,16 +1,12 @@
 # GUP v7.0.0 — Core Protocol Documents
 
-This directory versions the normative GUP v7 project-start, Git provenance, evidence, review, and Markdown-only agent contracts.
+This directory versions the repository-owned GUP v7 protocol contracts for project identity, Git provenance, evidence, review, and release validation. Platform-specific actionable skill files are maintained as private deliverables and are intentionally excluded from this public repository.
 
 ## Document map
 
-- [SKILL.md](SKILL.md) — normative lifecycle and completion gate.
 - [GIT-SUBSTRATE.md](GIT-SUBSTRATE.md) — repository identity, idempotent bootstrap, inventories, history continuity, and candidate freeze.
 - [EVIDENCE-CONTRACT.md](EVIDENCE-CONTRACT.md) — evidence schema requirements, hashing, reconciliation, and invalidation.
 - [OPERATING-PROCEDURE.md](OPERATING-PROCEDURE.md) — operator sequence from preflight through post-merge verification.
-- [GEMINI-MARKDOWN-ONLY.md](GEMINI-MARKDOWN-ONLY.md) — overview of the Markdown-only agent variant.
-- [gemini/SKILL.md](gemini/SKILL.md) — standard skill entrypoint with YAML frontmatter for Gemini-compatible skill packaging.
-- [gemini/](gemini/README.md) — self-contained Markdown-only skill package and companion protocol, Git substrate, evidence, and review files.
 
 ## Relationship to existing assurance
 
@@ -20,8 +16,8 @@ GUP v7 defines repository-level correctness and evidence provenance. The reposit
 
 For changes in this repository, run the actual commands and preserve their output:
 
-- bash ./install.sh --dry-run
-- bash ./tests/unit/run-golden-units.sh
+- `bash ./install.sh --dry-run`
+- `bash ./tests/unit/run-golden-units.sh`
 
 These commands are not executed by reading this document. Record actual exit statuses and output hashes. Add O.M.A. machine gates when the claim or change touches the declared machine support envelope.
 
