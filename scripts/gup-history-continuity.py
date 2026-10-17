@@ -53,7 +53,8 @@ def archive_path(path: str) -> bool:
     parts = PurePosixPath(path).parts
     return any(
         part.lower() in ARCHIVE_PARTS
-        or part.lower().endswith((".bak", ".backup", "~"))
+        or part.lower().endswith((".bak", ".backup", "~", ".gup.tmp"))
+        or ".bak." in part.lower()
         for part in parts
     )
 
@@ -78,7 +79,7 @@ def read_dispositions(root: Path, manifest: str | None, scope: str,
         if not isinstance(entry, dict):
             raise ValueError("each authorized_subtrees entry must be an object")
         subtree = validate_repo_path(entry.get("path", ""), "subtree")
-        if not (subtree.startswith(scope + "/")):
+        if not subtree.startswith(scope + "/"):
             raise ValueError(f"authorized subtree must be strictly inside requested scope: {subtree!r}")
         if entry.get("status") != "authorized-retired" or entry.get("user_authorization") is not True:
             raise ValueError(f"subtree retirement for {subtree!r} requires status=authorized-retired and user_authorization=true")
