@@ -64,9 +64,9 @@ def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[d
     for line in raw.splitlines():
         if not line:
             continue
-        pieces = line.split("\\t")
+        pieces = line.split("\t")
         if len(pieces) >= 3 and len(pieces[0]) in (40, 64) and pieces[0].isalnum() and pieces[1].isdigit():
-            current = {"sha": pieces[0], "timestamp": int(pieces[1]), "subject": "\\t".join(pieces[2:])}
+            current = {"sha": pieces[0], "timestamp": int(pieces[1]), "subject": "\t".join(pieces[2:])}
             commits.append(current)
             continue
         if current is None or len(pieces) < 2:
@@ -77,7 +77,7 @@ def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[d
                 "commit": current["sha"],
                 "status": status,
                 "previous_path": pieces[1],
-                "path": "\\t".join(pieces[2:]),
+                "path": "\t".join(pieces[2:]),
             }
             if status.startswith("R"):
                 renames.append(event)
