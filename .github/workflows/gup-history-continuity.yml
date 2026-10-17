@@ -5,7 +5,9 @@ on:
     paths:
       - 'config/hypr/**'
       - 'scripts/gup-history-continuity.py'
+      - 'tests/unit/test-gup-history-continuity.sh'
       - 'docs/audits/GUP-history-continuity-inventory.md'
+      - 'docs/audits/gup-history-continuity-dispositions.json'
       - '.github/workflows/gup-history-continuity.yml'
   workflow_dispatch:
 
@@ -20,20 +22,26 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Build repository-derived continuity inventory
+      - name: Build repository-derived continuity inventory with reviewed dispositions
         run: |
-          python3 scripts/gup-history-continuity.py --output "$RUNNER_TEMP/gup-history-continuity.json"
+          python3 scripts/gup-history-continuity.py \
+            --dispositions docs/audits/gup-history-continuity-dispositions.json \
+            --output "$RUNNER_TEMP/gup-history-continuity.json"
           python3 - "$RUNNER_TEMP/gup-history-continuity.json" <<'PY'
           import json, os, sys
-          report = json.load(open(sys.argv[1], encoding="utf-8"))
+          with open(sys.argv[1], encoding="utf-8") as source:
+              report = json.load(source)
           summary = (
               "## GUP historical continuity inventory\n\n"
               f"- HEAD: `{report['head']}`\n"
+              f"- Worktree clean: {report['worktree_clean']}\n"
               f"- Historical file paths: {report['historical_path_count']}\n"
               f"- Current tracked paths: {report['current_path_count']}\n"
-              f"- Unresolved missing paths: {report['unresolved_missing_count']}\n\n"
-              "This is an inventory artifact, not a semantic-equivalence certification. "
-              "Strict gating remains disabled pending evidence-backed review.\n"
+              f"- Archive-classified paths (still visible): {report['archive_path_count']}\n"
+              f"- Explicitly authorized-retired historical paths: {report['authorized_retired_count']}\n"
+              f"- Unresolved active missing paths: {report['unresolved_missing_count']}\n\n"
+              "Path disposition does not certify semantic equivalence. Authorized retirement is limited "
+              "to the explicitly recorded subtree. Remaining unresolved paths require review.\n"
           )
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
               stream.write(summary)
