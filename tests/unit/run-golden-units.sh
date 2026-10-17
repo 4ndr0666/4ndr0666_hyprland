@@ -35,7 +35,8 @@ TESTS=(
   tests/unit/test-copy-cwd-portability.sh
   tests/unit/test-config-only-dot-repository.sh
   tests/unit/test-github-actions-pinned.sh
-  tests/unit/test-waybar-script-config-boundary.sh
+  tests/unit/test-waybar-script-config-boundary.sh,
+  tests/unit/test-waybar-hyprland-script-contract.sh
   tests/unit/test-waybar-symlink-restoration.sh
   tests/unit/test-rofi-search-config-boundary.sh
   tests/unit/test-wallpaper-effect-config-boundary.sh
