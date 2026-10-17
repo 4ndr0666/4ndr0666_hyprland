@@ -12,14 +12,16 @@ fail() { printf '[FAIL] %s\n' "$*" >&2; exit 1; }
 git -C "$TMP" init -q
 git -C "$TMP" config user.name "GUP Test"
 git -C "$TMP" config user.email "gup-test@example.invalid"
-mkdir -p "$TMP/config/hypr/UserConfigs" "$TMP/config/hypr/.bak" "$TMP/config/hypr/LEGACY_CODE/UserConfigs"
+mkdir -p "$TMP/config/hypr/UserConfigs" "$TMP/config/hypr/.bak" "$TMP/config/hypr/LEGACY_CODE/UserConfigs" "$TMP/config/hypr/UserScripts" "$TMP/config/hypr/scripts"
 printf 'identical legacy behavior\n' > "$TMP/config/hypr/UserConfigs/Legacy.conf"
 cp "$TMP/config/hypr/UserConfigs/Legacy.conf" "$TMP/config/hypr/UserConfigs/Duplicate.conf"
 printf 'archived behavior\n' > "$TMP/config/hypr/.bak/ignored.conf"
 printf 'authorized subtree candidate\n' > "$TMP/config/hypr/LEGACY_CODE/UserConfigs/old.conf"
+printf 'backup script\n' > "$TMP/config/hypr/UserScripts/RainbowBorders.bak.sh"
+printf 'generated temp file\n' > "$TMP/config/hypr/scripts/Refresh.sh.gup.tmp"
 git -C "$TMP" add .
 git -C "$TMP" commit -qm "historical baseline"
-rm "$TMP/config/hypr/UserConfigs/Legacy.conf" "$TMP/config/hypr/UserConfigs/Duplicate.conf" "$TMP/config/hypr/.bak/ignored.conf" "$TMP/config/hypr/LEGACY_CODE/UserConfigs/old.conf"
+rm "$TMP/config/hypr/UserConfigs/Legacy.conf" "$TMP/config/hypr/UserConfigs/Duplicate.conf" "$TMP/config/hypr/.bak/ignored.conf" "$TMP/config/hypr/LEGACY_CODE/UserConfigs/old.conf" "$TMP/config/hypr/UserScripts/RainbowBorders.bak.sh" "$TMP/config/hypr/scripts/Refresh.sh.gup.tmp"
 printf 'translated legacy behavior\n' > "$TMP/config/hypr/UserConfigs/Legacy.lua"
 printf 'translated duplicate behavior\n' > "$TMP/config/hypr/UserConfigs/Duplicate.lua"
 git -C "$TMP" add -A
@@ -35,15 +37,21 @@ legacy = "config/hypr/UserConfigs/Legacy.conf"
 duplicate = "config/hypr/UserConfigs/Duplicate.conf"
 archive = "config/hypr/.bak/ignored.conf"
 old = "config/hypr/LEGACY_CODE/UserConfigs/old.conf"
+backup_script = "config/hypr/UserScripts/RainbowBorders.bak.sh"
+generated_temp = "config/hypr/scripts/Refresh.sh.gup.tmp"
 assert legacy in paths, "deleted legacy path omitted"
 assert duplicate in paths, "same-blob historical path omitted"
 assert paths[legacy]["status"] == "unresolved-missing"
 assert paths[duplicate]["status"] == "unresolved-missing"
 assert paths[archive]["status"] == "archive-path-missing", "archive evidence must remain visible"
 assert paths[archive]["scope_class"] == "archive"
+assert paths[backup_script]["status"] == "archive-path-missing", "compound backup suffix must be visible as archive"
+assert paths[backup_script]["scope_class"] == "archive"
+assert paths[generated_temp]["status"] == "archive-path-missing", "generated temp file must be visible as archive"
+assert paths[generated_temp]["scope_class"] == "archive"
 assert paths[old]["status"] == "unresolved-missing"
 assert report["unresolved_missing_count"] == 3
-assert report["archive_path_count"] == 1
+assert report["archive_path_count"] == 3
 assert report["commit_count"] == 2
 assert len(report["commits"]) == 2
 assert "rename_events" in report
@@ -91,7 +99,7 @@ assert old["disposition"]["authorization_scope"] == "config/hypr/LEGACY_CODE"
 PY
 
 mkdir -p "$TMP/config/hypr/LEGACY_CODE/current"
-printf 'unexpected active path\\n' > "$TMP/config/hypr/LEGACY_CODE/current/current.lua"
+printf 'unexpected active path\n' > "$TMP/config/hypr/LEGACY_CODE/current/current.lua"
 git -C "$TMP" add .
 git -C "$TMP" commit -qm "add a current path beneath authorized retirement scope"
 if python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions dispositions.json > /dev/null 2>&1; then
@@ -131,4 +139,4 @@ if python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --scope ../ >
   fail "inventory accepted an unsafe path scope"
 fi
 
-printf '[PASS] complete path inventory, shared blob paths, visible archives, strict gate, explicit subtree authorization, and invalid-input rejection.\n'
+printf '[PASS] complete path inventory, shared blob paths, visible archives, strict gate, explicit subtree authorization, compound backup/temp classification, and invalid-input rejection.\n'
