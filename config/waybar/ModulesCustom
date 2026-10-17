@@ -72,7 +72,7 @@
 
 "custom/dot_update": {
 	"format": " 󰁈 ",
-	"on-click": "bash $HOME/.config/hypr/scripts/4ndr0666DotsUpdate.sh",
+	"on-click": "$HOME/.config/hypr/scripts/KooLsDotsUpdate.sh",
 	"tooltip": true,
 	"tooltip-format": "Check 4ndr0666 Dots update\nIf available",
 },
