@@ -9,8 +9,8 @@
 - Bidirectional declaration/observation and provider/consumer alignment.
 - Fail-closed evidence status vocabulary and release completion gate.
 - Atomicity/recovery, idempotency, clean-candidate, and post-merge verification requirements.
-- Markdown-only Gemini variant that prohibits fabricated command output and requires BLOCKED when execution is unavailable.
 - Explicit boundary between repository-level GUP and machine-level GUP-O.M.A.
+- Explicit separation between public repository documentation and private platform-specific actionable skill deliverables.
 
 ## Not included in this documentation change
 
