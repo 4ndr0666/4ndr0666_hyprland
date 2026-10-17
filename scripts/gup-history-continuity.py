@@ -88,7 +88,7 @@ def read_dispositions(root: Path, manifest: str | None, scope: str,
         matched = sorted(path for path in historical if path.startswith(subtree + "/"))
         if not matched:
             raise ValueError(f"authorized subtree has no historical paths: {subtree!r}")
-        present = [path for path in matched if path in current]
+        present = sorted(path for path in current if path.startswith(subtree + "/"))
         if present:
             raise ValueError(f"cannot retire subtree containing current tracked paths: {subtree!r}: {present[:5]}")
         for path in matched:
