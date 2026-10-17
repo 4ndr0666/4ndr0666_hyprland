@@ -8,7 +8,9 @@ This directory versions the normative GUP v7 project-start, Git provenance, evid
 - [GIT-SUBSTRATE.md](GIT-SUBSTRATE.md) — repository identity, idempotent bootstrap, inventories, history continuity, and candidate freeze.
 - [EVIDENCE-CONTRACT.md](EVIDENCE-CONTRACT.md) — evidence schema requirements, hashing, reconciliation, and invalidation.
 - [OPERATING-PROCEDURE.md](OPERATING-PROCEDURE.md) — operator sequence from preflight through post-merge verification.
-- [GEMINI-MARKDOWN-ONLY.md](GEMINI-MARKDOWN-ONLY.md) — Markdown-only agent variant with an explicit BLOCKED default when checks cannot be executed.
+- [GEMINI-MARKDOWN-ONLY.md](GEMINI-MARKDOWN-ONLY.md) — overview of the Markdown-only agent variant.
+- [gemini/SKILL.md](gemini/SKILL.md) — standard skill entrypoint with YAML frontmatter for Gemini-compatible skill packaging.
+- [gemini/](gemini/README.md) — self-contained Markdown-only skill package and companion protocol, Git substrate, evidence, and review files.
 
 ## Relationship to existing assurance
 
