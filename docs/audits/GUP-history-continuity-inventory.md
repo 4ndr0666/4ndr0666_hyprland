@@ -54,7 +54,7 @@ Use `--strict` to return status 1 if any active in-scope historical path remains
 
 - Scope defaults to `config/hypr`; pass `--scope` to inventory another subtree. Unsafe absolute paths and parent traversal are rejected.
 - All refs present in the clone are included. Fetch all relevant branches/tags before relying on the report.
-- Archive-like paths are retained in the report as `archive-path-present`, `archive-path-missing`, or `authorized-retired`. Archive classification does not prove their behavior is irrelevant or preserved.
+- Archive-like paths are retained in the report as `archive-path-present`, `archive-path-missing`, or `authorized-retired`. Classification covers archive directories, `.bak` and compound `.bak.` filenames (for example `RainbowBorders.bak.sh`), backup suffixes, and generated `.gup.tmp` files. Archive classification does not prove behavior is irrelevant or preserved.
 - Historical paths are reconstructed from commit tree snapshots, not from a de-duplicated object listing. This preserves distinct paths that happen to share the same blob ID.
 - The inventory is path/object evidence, not a semantic parser. Renames and translations must be reviewed with diffs and behavioral tests.
 - The report records current HEAD, ref tips, and worktree state. It does not claim that the clone contains refs not fetched into it.
