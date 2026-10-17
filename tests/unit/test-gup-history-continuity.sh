@@ -31,6 +31,9 @@ assert "config/hypr/UserConfigs/Legacy.conf" in paths
 assert paths["config/hypr/UserConfigs/Legacy.conf"]["status"] == "unresolved-missing"
 assert "config/hypr/.bak/ignored.conf" not in paths
 assert report["unresolved_missing_count"] == 1
+assert report["commit_count"] == 2
+assert len(report["commits"]) == 2
+assert "rename_events" in report
 PY
 if python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --strict > /dev/null 2>&1; then
   fail "strict mode accepted unresolved historical path"
