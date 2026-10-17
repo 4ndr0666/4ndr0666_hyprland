@@ -90,6 +90,14 @@ assert old["status"] == "authorized-retired"
 assert old["disposition"]["authorization_scope"] == "config/hypr/LEGACY_CODE"
 PY
 
+mkdir -p "$TMP/config/hypr/LEGACY_CODE/current"
+printf 'unexpected active path\\n' > "$TMP/config/hypr/LEGACY_CODE/current/current.lua"
+git -C "$TMP" add .
+git -C "$TMP" commit -qm "add a current path beneath authorized retirement scope"
+if python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions dispositions.json > /dev/null 2>&1; then
+  fail "inventory accepted subtree retirement while current tracked paths remain beneath it"
+fi
+
 cat > "$TMP/invalid-dispositions.json" <<'JSON'
 {
   "config/hypr/UserConfigs/Legacy.conf": {
