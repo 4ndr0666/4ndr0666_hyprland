@@ -1,0 +1,47 @@
+name: GUP History Continuity Inventory
+
+on:
+  pull_request:
+    paths:
+      - 'config/hypr/**'
+      - 'scripts/gup-history-continuity.py'
+      - 'docs/audits/GUP-history-continuity-inventory.md'
+      - '.github/workflows/gup-history-continuity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout complete Git history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Build repository-derived continuity inventory
+        run: |
+          python3 scripts/gup-history-continuity.py --output "$RUNNER_TEMP/gup-history-continuity.json"
+          python3 - "$RUNNER_TEMP/gup-history-continuity.json" <<'PY'
+          import json, os, sys
+          report = json.load(open(sys.argv[1], encoding="utf-8"))
+          summary = (
+              "## GUP historical continuity inventory\n\n"
+              f"- HEAD: `{report['head']}`\n"
+              f"- Historical file paths: {report['historical_path_count']}\n"
+              f"- Current tracked paths: {report['current_path_count']}\n"
+              f"- Unresolved missing paths: {report['unresolved_missing_count']}\n\n"
+              "This is an inventory artifact, not a semantic-equivalence certification. "
+              "Strict gating remains disabled pending evidence-backed review.\n"
+          )
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
+              stream.write(summary)
+          PY
+      - name: Preserve inventory evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gup-history-continuity
+          path: ${{ runner.temp }}/gup-history-continuity.json
+          if-no-files-found: error
+          retention-days: 30
