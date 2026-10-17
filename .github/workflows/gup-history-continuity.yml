@@ -1,0 +1,55 @@
+name: GUP History Continuity Inventory
+
+on:
+  pull_request:
+    paths:
+      - 'config/hypr/**'
+      - 'scripts/gup-history-continuity.py'
+      - 'tests/unit/test-gup-history-continuity.sh'
+      - 'docs/audits/GUP-history-continuity-inventory.md'
+      - 'docs/audits/gup-history-continuity-dispositions.json'
+      - '.github/workflows/gup-history-continuity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout complete Git history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Build repository-derived continuity inventory with reviewed dispositions
+        run: |
+          python3 scripts/gup-history-continuity.py \
+            --dispositions docs/audits/gup-history-continuity-dispositions.json \
+            --output "$RUNNER_TEMP/gup-history-continuity.json"
+          python3 - "$RUNNER_TEMP/gup-history-continuity.json" <<'PY'
+          import json, os, sys
+          with open(sys.argv[1], encoding="utf-8") as source:
+              report = json.load(source)
+          summary = (
+              "## GUP historical continuity inventory\n\n"
+              f"- HEAD: `{report['head']}`\n"
+              f"- Worktree clean: {report['worktree_clean']}\n"
+              f"- Historical file paths: {report['historical_path_count']}\n"
+              f"- Current tracked paths: {report['current_path_count']}\n"
+              f"- Archive-classified paths (still visible): {report['archive_path_count']}\n"
+              f"- Explicitly authorized-retired historical paths: {report['authorized_retired_count']}\n"
+              f"- Unresolved active missing paths: {report['unresolved_missing_count']}\n\n"
+              "Path disposition does not certify semantic equivalence. Authorized retirement is limited "
+              "to the explicitly recorded subtree. Remaining unresolved paths require review.\n"
+          )
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
+              stream.write(summary)
+          PY
+      - name: Preserve inventory evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gup-history-continuity
+          path: ${{ runner.temp }}/gup-history-continuity.json
+          if-no-files-found: error
+          retention-days: 30
