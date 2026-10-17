@@ -60,7 +60,12 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
     historical: dict[str, set[str]] = {}
     for line in objects.splitlines():
         pieces = line.split(" ", 1)
-        if len(pieces) == 2 and pieces[1].startswith(scope + "/"):
+        if len(pieces) != 2 or not pieces[1].startswith(scope + "/"):
+            continue
+        # rev-list --objects includes tree objects as well as blobs. Only file blobs
+        # participate in path continuity; directory tree paths are not file losses.
+        object_type = git(root, "cat-file", "-t", pieces[0]).decode().strip()
+        if object_type == "blob":
             historical.setdefault(pieces[1], set()).add(pieces[0])
 
     current_raw = git(root, "ls-files", "-z", "--", scope)
