@@ -1,41 +1,58 @@
 #!/usr/bin/env python3
-"""Reproducible inventory of historical Hyprland config paths and unresolved losses.
+"""Inventory historical paths from committed Git trees without inferring semantic equivalence.
 
-This tool never treats a filename match as proof of semantic equivalence. It inventories
-Git objects reachable from local refs and reports missing active-looking paths for review.
-Strict mode fails on every missing path without an explicit disposition record.
+Every historical path remains visible in the report. Archive-like paths are classified
+separately from active paths, never silently discarded. Strict mode fails on unresolved
+missing active paths only after the inventory has been reviewed.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
-from pathlib import Path
+import tempfile
+from pathlib import Path, PurePosixPath
 from typing import Any
 
-
-DEFAULT_ROOT = "config/hypr"
-EXCLUDED_PARTS = {".bak", "legacy-conf-backup", "backup", "backups", "archive"}
+DEFAULT_SCOPE = "config/hypr"
+ARCHIVE_PARTS = {".bak", "backup", "backups", "archive", "archives", "legacy-conf-backup"}
 
 
 def git(root: Path, *args: str) -> bytes:
-    return subprocess.run(
+    result = subprocess.run(
         ["git", "-C", str(root), *args],
-        check=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-    ).stdout
+        check=False,
+        timeout=180,
+    )
+    if result.returncode:
+        message = result.stderr.decode("utf-8", "replace").strip()
+        raise RuntimeError(message or f"git {' '.join(args)} failed with status {result.returncode}")
+    return result.stdout
 
 
-def active_path(path: str) -> bool:
-    parts = Path(path).parts
-    return not any(part in EXCLUDED_PARTS for part in parts) and not any(
-        part.endswith((".bak", ".backup", "~")) for part in parts
+def validate_scope(scope: str) -> str:
+    normalized = scope.strip("/")
+    path = PurePosixPath(normalized)
+    if not normalized or path.is_absolute() or any(part in {".", ".."} for part in path.parts):
+        raise ValueError("scope must be a non-empty repository-relative path without '.' or '..'")
+    return normalized
+
+
+def archive_path(path: str) -> bool:
+    parts = PurePosixPath(path).parts
+    return any(
+        part.lower() in ARCHIVE_PARTS
+        or part.lower().endswith((".bak", ".backup", "~"))
+        for part in parts
     )
 
 
-def disposition_map(root: Path, manifest: str | None) -> dict[str, dict[str, Any]]:
+def read_dispositions(root: Path, manifest: str | None, scope: str,
+                      historical: dict[str, set[str]], current: set[str]) -> dict[str, dict[str, Any]]:
     if manifest is None:
         return {}
     raw = json.loads((root / manifest).read_text(encoding="utf-8"))
@@ -43,19 +60,36 @@ def disposition_map(root: Path, manifest: str | None) -> dict[str, dict[str, Any
         raise ValueError("disposition manifest must be a JSON object keyed by repository path")
     allowed = {"preserved", "translated", "authorized-retired"}
     for path, entry in raw.items():
+        normalized = PurePosixPath(path)
+        if normalized.is_absolute() or any(part in {"", ".", ".."} for part in normalized.parts):
+            raise ValueError(f"invalid repository-relative disposition path: {path!r}")
+        if not (path == scope or path.startswith(scope + "/")):
+            raise ValueError(f"disposition path is outside requested scope: {path!r}")
+        if path not in historical:
+            raise ValueError(f"disposition path is not present in historical Git evidence: {path!r}")
+        if path in current:
+            raise ValueError(f"disposition is only valid for a missing current path: {path!r}")
         if not isinstance(entry, dict) or entry.get("status") not in allowed:
             raise ValueError(f"invalid disposition for {path!r}; status must be one of {sorted(allowed)}")
         if not isinstance(entry.get("evidence"), str) or not entry["evidence"].strip():
             raise ValueError(f"disposition for {path!r} requires non-empty evidence")
-        if entry["status"] == "translated" and not entry.get("target"):
-            raise ValueError(f"translated disposition for {path!r} requires target")
+        if entry["status"] in {"preserved", "translated"}:
+            target = entry.get("target")
+            if not isinstance(target, str) or not target.strip():
+                raise ValueError(f"{entry['status']} disposition for {path!r} requires a target path")
+            target_path = PurePosixPath(target)
+            if target_path.is_absolute() or any(part in {"", ".", ".."} for part in target_path.parts):
+                raise ValueError(f"invalid target path for {path!r}: {target!r}")
+            if target not in current:
+                raise ValueError(f"disposition target for {path!r} is not tracked in candidate HEAD: {target!r}")
+        if entry["status"] == "authorized-retired" and entry.get("user_authorization") is not True:
+            raise ValueError(f"retirement of {path!r} requires user_authorization=true")
     return raw
 
 
 def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     raw = git(
-        root,
-        "log", "--all", "--full-history", "--find-renames", "--name-status",
+        root, "log", "--all", "--full-history", "--find-renames", "--name-status",
         "--format=%H%x09%ct%x09%s", "--", scope,
     ).decode("utf-8", "replace")
     commits: list[dict[str, Any]] = []
@@ -72,64 +106,102 @@ def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[d
         if current is None or len(pieces) < 2:
             continue
         status = pieces[0]
-        if status.startswith(("R", "C")) and len(pieces) >= 3:
-            event = {
+        if status.startswith("R") and len(pieces) >= 3:
+            renames.append({
                 "commit": current["sha"],
-                "status": status,
+                "similarity": status[1:],
                 "previous_path": pieces[1],
                 "path": "\t".join(pieces[2:]),
-            }
-            if status.startswith("R"):
-                renames.append(event)
+            })
     return commits, renames
+
+
+def tree_entries(root: Path, commit: str, scope: str) -> list[tuple[str, str]]:
+    raw = git(root, "ls-tree", "-r", "-z", "--full-tree", commit, "--", scope)
+    entries: list[tuple[str, str]] = []
+    for item in raw.split(b"\0"):
+        if not item:
+            continue
+        try:
+            metadata, raw_path = item.split(b"\t", 1)
+            mode, kind, oid = metadata.decode("ascii").split()
+            path = raw_path.decode("utf-8", "surrogateescape")
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise RuntimeError(f"cannot parse Git tree entry from commit {commit}: {exc}") from exc
+        if kind == "blob":
+            entries.append((path, oid))
+    return entries
+
+
+def atomic_write(path: Path, data: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        dfd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(dfd)
+        finally:
+            os.close(dfd)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]:
     root = root.resolve()
-    # rev-list --objects walks Git object history across all refs; duplicate paths are
-    # collapsed while object IDs remain available as historical identity evidence.
-    objects = git(root, "rev-list", "--objects", "--all", "--", scope).decode("utf-8", "replace")
+    scope = validate_scope(scope)
+    head = git(root, "rev-parse", "--verify", "HEAD").decode("ascii").strip()
+    commits_raw = git(root, "log", "--all", "--full-history", "--format=%H", "--", scope)
+    commits_in_scope = list(dict.fromkeys(
+        line.decode("ascii") for line in commits_raw.splitlines() if line
+    ))
     historical: dict[str, set[str]] = {}
-    for line in objects.splitlines():
-        pieces = line.split(" ", 1)
-        if len(pieces) != 2 or not pieces[1].startswith(scope + "/"):
-            continue
-        # rev-list --objects includes tree objects as well as blobs. Only file blobs
-        # participate in path continuity; directory tree paths are not file losses.
-        object_type = git(root, "cat-file", "-t", pieces[0]).decode().strip()
-        if object_type == "blob":
-            historical.setdefault(pieces[1], set()).add(pieces[0])
+    for commit in commits_in_scope:
+        for path, oid in tree_entries(root, commit, scope):
+            historical.setdefault(path, set()).add(oid)
 
-    current_raw = git(root, "ls-files", "-z", "--", scope)
-    current = {p.decode("utf-8", "surrogateescape") for p in current_raw.split(b"\0") if p}
-    dispositions = disposition_map(root, manifest)
+    current = {path for path, _ in tree_entries(root, head, scope)}
+    dispositions = read_dispositions(root, manifest, scope, historical, current)
     commits, renames = history_events(root, scope)
-    records = []
+    records: list[dict[str, Any]] = []
     for path in sorted(set(historical) | current):
-        if not active_path(path):
-            continue
         present = path in current
-        if present:
+        archived = archive_path(path)
+        disposition = dispositions.get(path)
+        if archived:
+            status = "archive-path-present" if present else "archive-path-missing"
+        elif present:
             status = "present-path"
-        elif path in dispositions:
-            status = dispositions[path]["status"]
+        elif disposition:
+            status = disposition["status"]
         else:
             status = "unresolved-missing"
         records.append({
             "path": path,
+            "scope_class": "archive" if archived else "active",
             "status": status,
             "current": present,
             "historical_object_ids": sorted(historical.get(path, set())),
-            "disposition": dispositions.get(path),
+            "disposition": disposition,
         })
-    unresolved = [r for r in records if r["status"] == "unresolved-missing"]
+
+    unresolved = [r for r in records if r["scope_class"] == "active" and r["status"] == "unresolved-missing"]
+    status = git(root, "status", "--porcelain=v1", "--untracked-files=all").decode("utf-8", "replace").splitlines()
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "scope": scope,
-        "head": git(root, "rev-parse", "HEAD").decode().strip(),
-        "refs": git(root, "for-each-ref", "--format=%(refname):%(objectname)").decode().splitlines(),
+        "head": head,
+        "worktree_clean": not status,
+        "worktree_status": status,
+        "refs": git(root, "for-each-ref", "--format=%(refname):%(objectname)").decode("utf-8", "replace").splitlines(),
         "historical_path_count": len(historical),
         "current_path_count": len(current),
+        "archive_path_count": sum(1 for r in records if r["scope_class"] == "archive"),
         "commit_count": len(commits),
         "rename_event_count": len(renames),
         "record_count": len(records),
@@ -143,36 +215,27 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=".", help="Git working tree (default: current directory)")
-    parser.add_argument("--scope", default=DEFAULT_ROOT, help="Repository-relative path scope")
+    parser.add_argument("--scope", default=DEFAULT_SCOPE, help="Repository-relative path scope")
     parser.add_argument("--dispositions", help="JSON file of evidence-backed path dispositions")
-    parser.add_argument("--strict", action="store_true", help="fail if any in-scope historical path is unresolved")
-    parser.add_argument("--output", help="write JSON report to this path instead of stdout")
+    parser.add_argument("--strict", action="store_true", help="fail if active historical paths remain unresolved")
+    parser.add_argument("--output", help="write JSON report atomically instead of stdout")
     args = parser.parse_args()
     try:
-        root = Path(args.root)
-        report = build_report(root, args.scope.rstrip("/"), args.dispositions)
-        encoded = json.dumps(report, indent=2, sort_keys=True) + "\n"
+        report = build_report(Path(args.root), args.scope, args.dispositions)
+        encoded = (json.dumps(report, indent=2, sort_keys=True) + "\n").encode("utf-8")
         if args.output:
-            target = Path(args.output)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            temporary = target.with_name(target.name + ".tmp")
-            try:
-                temporary.write_text(encoded, encoding="utf-8")
-                temporary.replace(target)
-            except BaseException:
-                temporary.unlink(missing_ok=True)
-                raise
+            atomic_write(Path(args.output), encoded)
         else:
-            sys.stdout.write(encoded)
+            sys.stdout.buffer.write(encoded)
         if args.strict and report["unresolved_missing_count"]:
             print(
-                f"GUP continuity gate: {report['unresolved_missing_count']} unresolved historical paths",
+                f"GUP continuity gate: FAIL — {report['unresolved_missing_count']} unresolved active historical paths",
                 file=sys.stderr,
             )
             return 1
         return 0
-    except (OSError, ValueError, subprocess.CalledProcessError) as exc:
-        print(f"GUP continuity inventory failed: {exc}", file=sys.stderr)
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
+        print(f"GUP continuity inventory failed closed: {exc}", file=sys.stderr)
         return 2
 
 
