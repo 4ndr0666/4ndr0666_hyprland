@@ -4,7 +4,7 @@
     {
       "path": "config/hypr/LEGACY_CODE",
       "status": "authorized-retired",
-      "evidence": "Explicit user authorization on 2026-10-16: the user stated that LEGACY_CODE can be retired because the current hypr directory is fully aligned. This records authorized retirement of the entire historical subtree; it does not claim path-by-path semantic equivalence.",
+      "evidence": "Explicit user authorization on 2026-10-17: the user stated that LEGACY_CODE can be retired because the current hypr directory is fully aligned. The supplied hypr.zip snapshot (SHA-256 7c0b53b9e67ef20a0705b2f3e51ff818f9ffe61f118684df69b4f74774a3cbbe) contains no LEGACY_CODE paths. This records authorized retirement of the entire historical subtree; it does not claim path-by-path semantic equivalence.",
       "user_authorization": true
     }
   ]
