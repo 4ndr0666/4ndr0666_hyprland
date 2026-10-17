@@ -42,6 +42,13 @@ def validate_scope(scope: str) -> str:
     return normalized
 
 
+def validate_repo_path(path: str, label: str) -> str:
+    normalized = PurePosixPath(path)
+    if not path or normalized.is_absolute() or any(part in {"", ".", ".."} for part in normalized.parts):
+        raise ValueError(f"invalid repository-relative {label}: {path!r}")
+    return path
+
+
 def archive_path(path: str) -> bool:
     parts = PurePosixPath(path).parts
     return any(
@@ -57,12 +64,47 @@ def read_dispositions(root: Path, manifest: str | None, scope: str,
         return {}
     raw = json.loads((root / manifest).read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
-        raise ValueError("disposition manifest must be a JSON object keyed by repository path")
+        raise ValueError("disposition manifest must be a JSON object")
     allowed = {"preserved", "translated", "authorized-retired"}
+    dispositions: dict[str, dict[str, Any]] = {}
+
+    # Explicit subtree retirement is intentionally supported only with a manifest
+    # that records user authorization and non-empty evidence. Every affected historical
+    # path is expanded into an individual disposition in the resulting evidence report.
+    subtree_records = raw.get("authorized_subtrees", [])
+    if "authorized_subtrees" in raw and not isinstance(subtree_records, list):
+        raise ValueError("authorized_subtrees must be a JSON array")
+    for entry in subtree_records:
+        if not isinstance(entry, dict):
+            raise ValueError("each authorized_subtrees entry must be an object")
+        subtree = validate_repo_path(entry.get("path", ""), "subtree")
+        if not (subtree.startswith(scope + "/")):
+            raise ValueError(f"authorized subtree must be strictly inside requested scope: {subtree!r}")
+        if entry.get("status") != "authorized-retired" or entry.get("user_authorization") is not True:
+            raise ValueError(f"subtree retirement for {subtree!r} requires status=authorized-retired and user_authorization=true")
+        evidence = entry.get("evidence")
+        if not isinstance(evidence, str) or not evidence.strip():
+            raise ValueError(f"subtree retirement for {subtree!r} requires non-empty evidence")
+        matched = sorted(path for path in historical if path.startswith(subtree + "/"))
+        if not matched:
+            raise ValueError(f"authorized subtree has no historical paths: {subtree!r}")
+        present = [path for path in matched if path in current]
+        if present:
+            raise ValueError(f"cannot retire subtree containing current tracked paths: {subtree!r}: {present[:5]}")
+        for path in matched:
+            if path in dispositions:
+                raise ValueError(f"overlapping subtree retirement for path {path!r}")
+            dispositions[path] = {
+                "status": "authorized-retired",
+                "evidence": evidence,
+                "user_authorization": True,
+                "authorization_scope": subtree,
+            }
+
     for path, entry in raw.items():
-        normalized = PurePosixPath(path)
-        if normalized.is_absolute() or any(part in {"", ".", ".."} for part in normalized.parts):
-            raise ValueError(f"invalid repository-relative disposition path: {path!r}")
+        if path in {"schema_version", "authorized_subtrees"}:
+            continue
+        validate_repo_path(path, "disposition path")
         if not (path == scope or path.startswith(scope + "/")):
             raise ValueError(f"disposition path is outside requested scope: {path!r}")
         if path not in historical:
@@ -77,14 +119,15 @@ def read_dispositions(root: Path, manifest: str | None, scope: str,
             target = entry.get("target")
             if not isinstance(target, str) or not target.strip():
                 raise ValueError(f"{entry['status']} disposition for {path!r} requires a target path")
-            target_path = PurePosixPath(target)
-            if target_path.is_absolute() or any(part in {"", ".", ".."} for part in target_path.parts):
-                raise ValueError(f"invalid target path for {path!r}: {target!r}")
+            validate_repo_path(target, "target path")
             if target not in current:
                 raise ValueError(f"disposition target for {path!r} is not tracked in candidate HEAD: {target!r}")
         if entry["status"] == "authorized-retired" and entry.get("user_authorization") is not True:
             raise ValueError(f"retirement of {path!r} requires user_authorization=true")
-    return raw
+        if path in dispositions:
+            raise ValueError(f"path has overlapping subtree and individual dispositions: {path!r}")
+        dispositions[path] = entry
+    return dispositions
 
 
 def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -173,7 +216,9 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
         present = path in current
         archived = archive_path(path)
         disposition = dispositions.get(path)
-        if archived:
+        if disposition and disposition["status"] == "authorized-retired":
+            status = "authorized-retired"
+        elif archived:
             status = "archive-path-present" if present else "archive-path-missing"
         elif present:
             status = "present-path"
@@ -202,6 +247,7 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
         "historical_path_count": len(historical),
         "current_path_count": len(current),
         "archive_path_count": sum(1 for r in records if r["scope_class"] == "archive"),
+        "authorized_retired_count": sum(1 for r in records if r["status"] == "authorized-retired"),
         "commit_count": len(commits),
         "rename_event_count": len(renames),
         "record_count": len(records),
