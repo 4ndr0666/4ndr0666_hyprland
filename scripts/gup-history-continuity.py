@@ -52,6 +52,38 @@ def disposition_map(root: Path, manifest: str | None) -> dict[str, dict[str, Any
     return raw
 
 
+def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    raw = git(
+        root,
+        "log", "--all", "--full-history", "--find-renames", "--name-status",
+        "--format=%H%x09%ct%x09%s", "--", scope,
+    ).decode("utf-8", "replace")
+    commits: list[dict[str, Any]] = []
+    renames: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
+    for line in raw.splitlines():
+        if not line:
+            continue
+        pieces = line.split("\\t")
+        if len(pieces) >= 3 and len(pieces[0]) in (40, 64) and pieces[0].isalnum() and pieces[1].isdigit():
+            current = {"sha": pieces[0], "timestamp": int(pieces[1]), "subject": "\\t".join(pieces[2:])}
+            commits.append(current)
+            continue
+        if current is None or len(pieces) < 2:
+            continue
+        status = pieces[0]
+        if status.startswith(("R", "C")) and len(pieces) >= 3:
+            event = {
+                "commit": current["sha"],
+                "status": status,
+                "previous_path": pieces[1],
+                "path": "\\t".join(pieces[2:]),
+            }
+            if status.startswith("R"):
+                renames.append(event)
+    return commits, renames
+
+
 def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]:
     root = root.resolve()
     # rev-list --objects walks Git object history across all refs; duplicate paths are
@@ -71,6 +103,7 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
     current_raw = git(root, "ls-files", "-z", "--", scope)
     current = {p.decode("utf-8", "surrogateescape") for p in current_raw.split(b"\0") if p}
     dispositions = disposition_map(root, manifest)
+    commits, renames = history_events(root, scope)
     records = []
     for path in sorted(set(historical) | current):
         if not active_path(path):
@@ -97,8 +130,12 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
         "refs": git(root, "for-each-ref", "--format=%(refname):%(objectname)").decode().splitlines(),
         "historical_path_count": len(historical),
         "current_path_count": len(current),
+        "commit_count": len(commits),
+        "rename_event_count": len(renames),
         "record_count": len(records),
         "unresolved_missing_count": len(unresolved),
+        "commits": commits,
+        "rename_events": renames,
         "records": records,
     }
 
