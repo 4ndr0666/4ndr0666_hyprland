@@ -10,7 +10,7 @@ Run from a complete clone:
 python3 scripts/gup-history-continuity.py --output /tmp/gup-history-continuity.json
 ```
 
-The report intentionally distinguishes **path continuity** from **behavioral equivalence**. A current file at the same path is only marked `present-path`; its presence does not prove that its former behavior survived. Missing paths outside obvious backup/archive directories are `unresolved-missing` unless an evidence-backed disposition is supplied.
+The report includes the relevant commit list (SHA, timestamp, subject), file blob object IDs by path, and rename events detected by Git's similarity-based rename detection. The report intentionally distinguishes **path continuity** from **behavioral equivalence**. A current file at the same path is only marked `present-path`; its presence does not prove that its former behavior survived. Missing paths outside obvious backup/archive directories are `unresolved-missing` unless an evidence-backed disposition is supplied. Rename detection is evidence for review, not proof of semantic equivalence.
 
 ## Dispositions and strict mode
 
