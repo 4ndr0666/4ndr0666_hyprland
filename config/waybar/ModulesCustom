@@ -48,7 +48,7 @@
 
 "custom/settings": {
 	"format": " ",
-	"on-click": "$HOME/.config/hypr/scripts/Kool_Quick_Settings.sh",
+	"on-click": "$HOME/.config/hypr/scripts/4ndr0666_Quick_Settings.sh",
 	"tooltip": true,
 	"tooltip-format": "Launch 4ndr0666 Hyprland Settings Menu",
 },
