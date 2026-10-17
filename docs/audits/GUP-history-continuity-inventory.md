@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The repository's Git object database is the reproducible source for historical configuration paths. This inventory reconstructs paths and object IDs reachable from local refs without depending on a supplied archive, conversation history, or a hand-selected commit SHA.
+The repository's Git commit trees are the reproducible source for historical configuration paths. This inventory reconstructs path-to-blob relationships from snapshots at commits reachable from local refs. It does not rely on a supplied archive, conversation history, or a hand-selected commit SHA.
 
 Run from a complete clone:
 
@@ -10,17 +10,19 @@ Run from a complete clone:
 python3 scripts/gup-history-continuity.py --output /tmp/gup-history-continuity.json
 ```
 
-The report includes the relevant commit list (SHA, timestamp, subject), file blob object IDs by path, and rename events detected by Git's similarity-based rename detection. The report intentionally distinguishes **path continuity** from **behavioral equivalence**. A current file at the same path is only marked `present-path`; its presence does not prove that its former behavior survived. Missing paths outside obvious backup/archive directories are `unresolved-missing` unless an evidence-backed disposition is supplied. Rename detection is evidence for review, not proof of semantic equivalence.
+The report includes commit identities, path-specific historical blob IDs, rename events detected by Git's similarity-based rename detection, candidate HEAD, ref tips, and worktree state. It distinguishes **path continuity** from **behavioral equivalence**. A current file at the same path is only marked `present-path`; that does not prove that its former behavior survived.
 
 ## Dispositions and strict mode
 
 A JSON disposition manifest is keyed by the exact historical repository path. Allowed statuses are:
 
-- `preserved`: evidence shows the behavior remains available.
-- `translated`: evidence identifies a replacement `target`.
+- `preserved`: evidence identifies the current target where the behavior remains available.
+- `translated`: evidence identifies the replacement target.
 - `authorized-retired`: explicit authorization and evidence support retirement.
 
-Every disposition requires non-empty `evidence`. Translation requires a `target`. Example:
+Every disposition requires non-empty `evidence`. `preserved` and `translated` require a `target` path that is tracked in candidate HEAD. `authorized-retired` requires `user_authorization: true`. Dispositions for unknown, out-of-scope, or currently present paths are rejected.
+
+Example:
 
 ```json
 {
@@ -34,12 +36,13 @@ Every disposition requires non-empty `evidence`. Translation requires a `target`
 
 Do not populate dispositions from filename similarity alone. The example is illustrative and is not a project disposition.
 
-Use `--strict` to return status 1 if any in-scope historical path remains unresolved. Git errors, invalid manifests, and I/O failures return status 2. The strict gate is deliberately not wired into CI until the initial inventory is reviewed and every genuine capability loss is dispositioned; wiring it before that review would either break CI indiscriminately or encourage unsupported blanket exemptions.
+Use `--strict` to return status 1 if any active in-scope historical path remains unresolved. Git errors, invalid manifests, and I/O failures return status 2. The strict gate is deliberately not wired into CI until the initial inventory is reviewed and every genuine capability loss is dispositioned; wiring it before that review would either break CI indiscriminately or encourage unsupported blanket exemptions.
 
 ## Scope and limitations
 
-- Scope defaults to `config/hypr`; pass `--scope` to inventory another subtree.
+- Scope defaults to `config/hypr`; pass `--scope` to inventory another subtree. Unsafe absolute paths and parent traversal are rejected.
 - All refs present in the clone are included. Fetch all relevant branches/tags before relying on the report.
-- Common backup/archive path patterns are excluded from the unresolved-path gate, but remain represented by Git history and can be audited separately.
+- Archive-like paths are **retained in the report** as `archive-path-present` or `archive-path-missing`. They are excluded only from the active unresolved count; this classification does not prove their behavior is irrelevant or preserved.
+- Historical paths are reconstructed from commit tree snapshots, not from a de-duplicated object listing. This preserves distinct paths that happen to share the same blob ID.
 - The inventory is path/object evidence, not a semantic parser. Renames and translations must be reviewed with diffs and behavioral tests.
-- The report records the current HEAD and ref tips to make each run reproducible. It does not claim that the clone contains refs not fetched into it.
+- The report records current HEAD, ref tips, and worktree state. It does not claim that the clone contains refs not fetched into it.
