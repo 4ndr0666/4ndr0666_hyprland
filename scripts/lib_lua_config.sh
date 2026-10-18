@@ -129,3 +129,61 @@ set_lua_assignment() (
   mv -- "$tmp" "$file" || return 1
   tmp=""
 )
+
+translate_legacy_userconfigs_to_lua() {
+  local backup_dir="$1"
+  local target_user_dir="$2"
+  local log="${3:-/dev/null}"
+
+  [[ -d "$backup_dir" && -d "$target_user_dir" ]] || return 0
+
+  # 1. Translate legacy Startup_Apps.conf exec-once entries into UserConfigs/Startup_Apps.lua
+  local old_startup="$backup_dir/Startup_Apps.conf"
+  local lua_startup="$target_user_dir/Startup_Apps.lua"
+  if [[ -f "$old_startup" && -f "$lua_startup" ]]; then
+    local overlay_tmp disable_tmp empty_base
+    overlay_tmp="$(mktemp)"
+    disable_tmp="$(mktemp)"
+    empty_base="$(mktemp)"
+    if declare -F compose_overlay_from_backup >/dev/null 2>&1; then
+      compose_overlay_from_backup startup "$empty_base" "$old_startup" "$overlay_tmp" "$disable_tmp" || true
+    else
+      awk '/^[[:space:]]*exec-once[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$old_startup" | sort -u >"$overlay_tmp" || true
+    fi
+    while IFS= read -r raw_line; do
+      local cmd="${raw_line#*=}"
+      cmd="$(printf '%s' "$cmd" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+      [[ -n "$cmd" ]] || continue
+      case "$cmd" in
+        *KeybindsLayoutInit.sh*|*4ndr0init.sh*|*Dropterminal.sh*|*nm-applet*|*nm-tray*|*hypridle*|*cliphist*|*mem-police*)
+          continue
+          ;;
+      esac
+      local escaped_cmd
+      escaped_cmd="$(printf '%s' "$cmd" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+      append_lua_module_line "$lua_startup" "hl.exec_cmd(\"$escaped_cmd\")" \
+        "hl.on(\"hyprland.start\", function()"$'\n'"    hl.exec_cmd(\"$escaped_cmd\")"$'\n'"end)"
+    done <"$overlay_tmp"
+    rm -f -- "$overlay_tmp" "$disable_tmp" "$empty_base"
+    printf '%s\n' "[INFO] Translated legacy Startup_Apps.conf entries into $lua_startup." | tee -a "$log"
+  fi
+
+  # 2. Translate legacy ENVariables.conf env entries into UserConfigs/ENVariables.lua
+  local old_env="$backup_dir/ENVariables.conf"
+  local lua_env="$target_user_dir/ENVariables.lua"
+  if [[ -f "$old_env" && -f "$lua_env" ]]; then
+    while IFS= read -r line; do
+      local rhs="${line#*=}"
+      local key="${rhs%%,*}"
+      local val="${rhs#*,}"
+      key="$(printf '%s' "$key" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+      val="$(printf '%s' "$val" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+      if [[ "$key" =~ ^[A-Z_][A-Z0-9_]*$ && -n "$val" ]]; then
+        local escaped_val
+        escaped_val="$(printf '%s' "$val" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+        append_lua_module_line "$lua_env" "hl.env(\"$key\", \"$escaped_val\")" "hl.env(\"$key\", \"$escaped_val\")"
+      fi
+    done < <(awk '/^[[:space:]]*envd?[[:space:]]*=/ && $0 ~ /,/ { print }' "$old_env")
+    printf '%s\n' "[INFO] Translated legacy ENVariables.conf entries into $lua_env." | tee -a "$log"
+  fi
+}

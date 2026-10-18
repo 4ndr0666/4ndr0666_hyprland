@@ -275,7 +275,18 @@ restore_user_configs() {
       if [[ "$restore_dir" != [Nn]* ]]; then
         mkdir -p -- "$dirpath/UserConfigs"
         archive_legacy_conf_files "$backup_dir_path" "$legacy_archive" "$log"
-        rsync -a --exclude='*.conf' --exclude='legacy-conf-backup/' -- "$backup_dir_path/" "$dirpath/UserConfigs/" 2>&1 | tee -a "$log"
+        if command -v rsync >/dev/null 2>&1; then
+          rsync -a --exclude='*.conf' --exclude='legacy-conf-backup/' -- "$backup_dir_path/" "$dirpath/UserConfigs/" 2>&1 | tee -a "$log"
+        else
+          while IFS= read -r -d '' item; do
+            local rel="${item#"$backup_dir_path"/}"
+            mkdir -p -- "$(dirname -- "$dirpath/UserConfigs/$rel")"
+            cp -a -- "$item" "$dirpath/UserConfigs/$rel"
+          done < <(find "$backup_dir_path" -path "$backup_dir_path/legacy-conf-backup" -prune -o \( -type f -o -type l \) ! -name '*.conf' -print0 | sort -z)
+        fi
+        if declare -F translate_legacy_userconfigs_to_lua >/dev/null 2>&1; then
+          translate_legacy_userconfigs_to_lua "$backup_dir_path" "$dirpath/UserConfigs" "$log"
+        fi
         printf '%s\n' "[OK] Restored Lua-compatible UserConfigs; legacy .conf files were preserved separately." | tee -a "$log"
       else
         printf '%s\n' "[NOTE] Skipped restoring UserConfigs." | tee -a "$log"
@@ -297,6 +308,9 @@ restore_user_configs() {
         read -r -p "[ACTION] Preserve inactive legacy $file_name in legacy-conf-backup? (Y/n): " restore_file
         if [[ "$restore_file" != [Nn]* ]]; then
           archive_legacy_conf "$backup_file" "$legacy_archive" "$file_name" "$log"
+          if declare -F translate_legacy_userconfigs_to_lua >/dev/null 2>&1; then
+            translate_legacy_userconfigs_to_lua "$backup_dir_path" "$dirpath/UserConfigs" "$log"
+          fi
         else
           printf '%s\n' "[NOTE] Skipped preserving $file_name by request." | tee -a "$log"
         fi

@@ -96,6 +96,12 @@ TESTS=(
   tests/unit/test-oma2-evidence-allocation-contract.sh
   tests/unit/test-oma2-temp-cleanup-contract.sh
   tests/unit/test-oma-graphical-certification-packet.sh
+  tests/unit/test-oma-harness.sh
+  tests/unit/test-oma-runner-executable-contract.sh
+  tests/unit/test-overlay-composition-error-semantics.sh
+  tests/unit/test-refresh-lifecycle.sh
+  tests/unit/test-sddm-native-assets.sh
+  tests/unit/test-lua-config-superset-integrity.sh
 )
 
 failures=()

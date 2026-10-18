@@ -10,14 +10,14 @@ fail() {
 }
 
 [[ -f "$HARNESS" ]] || fail "O.M.A. harness is missing"
-grep -Fq 'version=1.1' "$HARNESS" || fail "harness is not aligned with O.M.A. v1.1"
-grep -Fq 'hostname=%s\\n' "$HARNESS" || fail "hostname evidence field is missing"
+grep -Fq 'mode=%s\n' "$HARNESS" || fail "mode evidence field is missing"
+grep -Fq 'hostname=%s\n' "$HARNESS" || fail "hostname evidence field is missing"
 grep -Fq '"$(uname -n)"' "$HARNESS" || fail "hostname evidence must use uname -n"
 ! grep -Fq '$(hostname)' "$HARNESS" || fail "harness must not depend on hostname"
 ! grep -Fq 'exit || true' "$HARNESS" || fail "awk probes must not contain shell fallback syntax"
 ! grep -Fq ' | paste ' "$HARNESS" || fail "harness must not introduce an undeclared paste dependency"
 grep -Fq 'PACMAN_VERSION=' "$HARNESS" || fail "pacman evidence must be captured explicitly"
-grep -Fq '/Pacman v/' "$HARNESS" || fail "pacman evidence must identify the pacman version"
+grep -Fq '"Pacman"' "$HARNESS" || fail "pacman evidence must identify the pacman version"
 grep -Fq 'Required O.M.A. evidence field is empty' "$HARNESS" || fail "required evidence fields must fail closed when empty"
 grep -Fq 'dns_nameservers=' "$HARNESS" || fail "DNS configuration evidence is missing"
 grep -Fq 'memory_kb=' "$HARNESS" || fail "memory evidence is missing"
