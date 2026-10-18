@@ -1,3 +1,5 @@
 -- File: Monitor_Profiles/default.lua
 -- === 4ndr0666 === --
 -- Default Monitor Profile configuration
+
+return true

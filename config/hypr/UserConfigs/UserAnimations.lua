@@ -1,9 +1,10 @@
-# /* ----  https://github.com/4ndr0666  ---- */  #
+-- File: UserConfigs/UserAnimations.lua
+-- /* ----  https://github.com/4ndr0666  ---- */  #
 
 hl.config({
-     animations = {
-         enabled = false
-     }
- })
+    animations = {
+        enabled = false
+    }
+})
 
 return true

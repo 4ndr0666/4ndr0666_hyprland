@@ -26,10 +26,13 @@ source("configs.Keybinds")
 
 -- Load defaults, then user additions/overrides
 source("configs.Startup_Apps")
+source("UserConfigs.Startup_Apps")
 source("configs.ENVariables")
+source("UserConfigs.ENVariables")
 
 -- Window Rules and Layer Rules
 source("configs.WindowRules")
+source("UserConfigs.WindowRules")
 
 -- Default config for hypr
 source("configs.SystemSettings")
@@ -39,6 +42,7 @@ source("UserConfigs.UserDecorations")
 source("UserConfigs.UserAnimations")
 source("UserConfigs.UserKeybinds")
 source("UserConfigs.UserSettings")
+source("UserConfigs.Laptops")
 
 -- Hardware & Workspaces (nwg-displays)
 source("monitors")
