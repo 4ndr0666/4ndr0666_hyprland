@@ -9,8 +9,8 @@ wallDIR="$HOME/Wallpapers"
 SCRIPTSDIR="$HOME/.config/hypr/scripts"
 wallpaper_current="$HOME/.config/hypr/wallpaper_effects/.wallpaper_current"
 
-iDIR="$HOME/.config/mako/images"
-iDIRi="$HOME/.config/mako/icons"
+iDIR="$HOME/.config/swaync/images"
+iDIRi="$HOME/.config/swaync/icons"
 
 # awww transition config
 FPS=60
@@ -157,9 +157,6 @@ main() {
     echo "File not found. Selected choice: $choice"
     exit 1
   fi
-
-  # Modify the Startup_Apps.conf file based on wallpaper type
-  modify_startup_config "$selected_file"
 
   # **CHECK FIRST** if it's a video or an image **before calling any function**
   if [[ "$selected_file" =~ \.(mp4|mkv|mov|webm|MP4|MKV|MOV|WEBM)$ ]]; then

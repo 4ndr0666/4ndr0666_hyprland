@@ -38,4 +38,4 @@ GDK_BACKEND=$BACKEND yad \
 "F10" "Console" "(Javascript console)" \
 "F11" "Fullscreen" "(FS)" \
 "F12" "Dev Tools" "(Toggle)" \
-"" "" ""\
+"" "" ""

@@ -62,7 +62,7 @@ if [[ ! -d "$dir" ]]; then
 fi
 
 ## Notify and View
-iDIR="${XDG_CONFIG_HOME:-$HOME/.config}/mako/icons"
+iDIR="${XDG_CONFIG_HOME:-$HOME/.config}/swaync/icons"
 
 notify_view() {
 	notify_cmd_shot="notify-send -h string:x-canonical-private-synchronous:sys-notify-shot -u low -i ${iDIR}/picture.png"

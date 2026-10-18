@@ -1,62 +1,169 @@
 #!/usr/bin/env bash
-# USAGE:
-# 1) Run from terminal:
-#    ./dispatch.sh <application_command> <target_workspace_number>
-#    Example:
-#    ./dispatch.sh discord 2
-#
-# 2) Call from Hyprland config (in hyprland.conf file):
-#    exec-once = /path/to/dispatch.sh <application_command> <target_workspace_number>
-#
-# Logs are saved in dispatch.log file next to the script.
-# If the window doesn't appear or is dispatched incorrectly — info will be there.
-#
-# Notes:
-# - Script waits about ~9 seconds (30 iterations of 0.3 sec) for window to appear.
-# - Uses hyprctl and jq, so these tools must be installed.
 
-LOGFILE="$(dirname "$0")/dispatch.log"
-# Log file path located next to the script.
+# ─────────────────────────────────────────────────────────────────────────────
+# Tak0-Autodispatch.sh
+# ─────────────────────────────────────────────────────────────────────────────
+# Authoritative spawn dispatcher for Hyprland. Temporary capture rules are
+# installed before launch, process lineage is supervised, and cleanup removes
+# all temporary rules on every exit path.
+# ─────────────────────────────────────────────────────────────────────────────
 
-APP=$1
-# The application command or window class to launch or match.
+set -Eeuo pipefail
 
-TARGET_WORKSPACE=$2
-# The target workspace number where the window should be moved.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+LOGFILE="$SCRIPT_DIR/dispatch.log"
 
-# Check if required arguments are provided.
-if [[ -z "$APP" || -z "$TARGET_WORKSPACE" ]]; then
-  echo "Usage: $0 <application_command> <target_workspace_number>" >>"$LOGFILE" 2>&1
+fail() {
+  printf '[ERROR] %s\n' "$*" >&2
   exit 1
-fi
+}
 
-echo "Starting dispatch of '$APP' to workspace $TARGET_WORKSPACE at $(date)" >>"$LOGFILE"
-# Starting the dispatch process and logging the event.
-# Avoid early workspace focus issues by switching workspace first.
-hyprctl dispatch workspace "$TARGET_WORKSPACE" >>"$LOGFILE" 2>&1
-sleep 0.4
+cleanup() {
+  local status=$?
+  trap - EXIT INT TERM
 
-# Launch the application in the background and disown it.
-$APP &
-disown
-pid=$!
-
-echo "Launched '$APP' with PID $pid" >>"$LOGFILE"
-# Log the launched process ID.
-# Wait for the application window to appear (matching window class).
-for i in {1..30}; do
-  win=$(hyprctl clients -j | jq -r --arg APP "$APP" '
-        .[] | select(.class | test($APP;"i")) | .address' 2>>"$LOGFILE")
-
-  if [[ -n "$win" ]]; then
-    echo "Found window $win for app '$APP', moving to workspace $TARGET_WORKSPACE" >>"$LOGFILE"
-    # Move the window to the target workspace.
-    hyprctl dispatch movetoworkspace "$TARGET_WORKSPACE,address:$win" >>"$LOGFILE" 2>&1
-    exit 0
+  printf 'Cleanup: removing temporary capture rules and initialWorkspace at %s\n' "$(date)" >>"$LOGFILE"
+  if ! hyprctl keyword windowrulev2 "unset, initialClass:.*" >>"$LOGFILE" 2>&1; then
+    printf '[ERROR] failed to remove global temporary capture rule\n' >&2
+    ((status == 0)) && status=1
   fi
-  sleep 0.3
+  for RULE in "${CAPTURE_RULES[@]}"; do
+    printf 'Cleanup: removing temporary capture rule: %s\n' "$RULE" >>"$LOGFILE"
+    if ! hyprctl keyword windowrulev2 "unset, $RULE" >>"$LOGFILE" 2>&1; then
+      printf '[ERROR] failed to remove temporary capture rule: %s\n' "$RULE" >&2
+      ((status == 0)) && status=1
+    fi
+  done
+  exit "$status"
+}
+
+TARGET_WS="${1-}"
+[[ -n "$TARGET_WS" ]] || fail "missing target workspace"
+shift
+
+CAPTURE_RULES=()
+while [[ "${1-}" != "--" && -n "${1-}" ]]; do
+  CAPTURE_RULES+=("$1")
+  shift
 done
 
-echo "ERROR: Window for '$APP' was NOT found or dispatched properly to workspace $TARGET_WORKSPACE at $(date)" >>"$LOGFILE"
-# Log error if window was not found or dispatched correctly.
-exit 1
+[[ "${1-}" == "--" ]] || fail "missing -- command separator"
+shift
+(($#)) || fail "missing command after --"
+
+CMD=("$@")
+printf "=== Deploy '%q' → WS %s @ %s ===\n" "${CMD[*]}" "$TARGET_WS" "$(date)" >>"$LOGFILE"
+
+# Hyprland may not be ready during early autostart. Fail loudly if it never
+# becomes queryable rather than launching with an ineffective capture rule.
+ready=0
+for _ in {1..50}; do
+  if hyprctl -j monitors >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  sleep 0.1
+done
+((ready)) || fail "Hyprland did not become ready within 5 seconds"
+
+trap cleanup EXIT INT TERM
+
+printf 'Applying temporary initialWorkspace capture (initialClass:.*)\n' >>"$LOGFILE"
+hyprctl keyword windowrulev2 \
+  "initialWorkspace $TARGET_WS silent, initialClass:.*" \
+  >>"$LOGFILE" 2>&1
+
+for RULE in "${CAPTURE_RULES[@]}"; do
+  printf 'Applying temporary capture rule: %s\n' "$RULE" >>"$LOGFILE"
+  hyprctl keyword windowrulev2 \
+    "initialWorkspace $TARGET_WS silent, $RULE" \
+    >>"$LOGFILE" 2>&1
+done
+
+# Launch verbatim without an extra shell parsing pass.
+"${CMD[@]}" &
+ROOT_PID=$!
+printf 'Root PID: %s\n' "$ROOT_PID" >>"$LOGFILE"
+
+APP_NAME=""
+for _ in {1..20}; do
+  if [[ -r "/proc/$ROOT_PID/comm" ]]; then
+    APP_NAME="$(tr -d '\0' </proc/$ROOT_PID/comm)"
+    break
+  fi
+  sleep 0.05
+done
+
+if [[ -z "$APP_NAME" ]]; then
+  APP_NAME="$(basename -- "${CMD[0]}")"
+fi
+printf 'App gate name: %s\n' "$APP_NAME" >>"$LOGFILE"
+
+sleep 1.5
+
+printf 'Releasing ultra-early wide capture\n' >>"$LOGFILE"
+hyprctl keyword windowrulev2 "unset, initialClass:.*" >>"$LOGFILE" 2>&1
+
+get_descendants() {
+  local root="$1"
+  local all=("$root")
+  local changed=1
+
+  while ((changed)); do
+    changed=0
+    for p in "${all[@]}"; do
+      while read -r c; do
+        [[ -n "$c" ]] || continue
+        if [[ ! " ${all[*]} " =~ " $c " ]]; then
+          all+=("$c")
+          changed=1
+        fi
+      done < <(pgrep -P "$p" 2>/dev/null || true)
+    done
+  done
+
+  printf '%s\n' "${all[*]}"
+}
+
+pid_matches_app() {
+  local pid="$1"
+  local comm
+  comm="$(ps -p "$pid" -o comm= 2>/dev/null)" || return 1
+  [[ "$comm" == "$APP_NAME" || "$comm" == "$APP_NAME"* ]]
+}
+
+END_TIME=$((SECONDS + 20))
+declare -A SEEN=()
+
+while ((SECONDS < END_TIME)); do
+  PIDS="$(get_descendants "$ROOT_PID")"
+
+  while IFS=$'\t' read -r PID ADDR CLASS; do
+    [[ -n "$PID" && -n "$ADDR" ]] || continue
+    MATCH=0
+
+    for TPID in $PIDS; do
+      [[ "$PID" == "$TPID" ]] && MATCH=1 && break
+    done
+
+    pid_matches_app "$PID" && MATCH=1
+
+    for RULE in "${CAPTURE_RULES[@]}"; do
+      if [[ "$RULE" =~ class:\^\((.*)\)\$ ]]; then
+        [[ "$CLASS" =~ ${BASH_REMATCH[1]} ]] && MATCH=1
+      fi
+    done
+
+    if ((MATCH)) && [[ -z "${SEEN[$ADDR]-}" ]]; then
+      printf 'Placing window %s (pid %s, class %s) → WS %s\n' "$ADDR" "$PID" "$CLASS" "$TARGET_WS" >>"$LOGFILE"
+      hyprctl dispatch movetoworkspacesilent \
+        "$TARGET_WS,address:$ADDR" >>"$LOGFILE" 2>&1
+      SEEN[$ADDR]=1
+    fi
+  done < <(hyprctl clients -j | jq -r '.[] | [.pid, .address, .class] | @tsv')
+
+  sleep 0.01
+done
+
+printf "=== Deploy finished: '%q' ===\n" "${CMD[*]}" >>"$LOGFILE"
+exit 0

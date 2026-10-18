@@ -5,7 +5,7 @@
 # Define directories and variables
 kitty_themes_DiR="$HOME/.config/kitty/kitty-themes" # Kitty Themes Directory
 kitty_config="$HOME/.config/kitty/kitty.conf"
-iDIR="$HOME/.config/mako/images" # For notifications
+iDIR="$HOME/.config/swaync/images" # For notifications
 rofi_theme_for_this_script="$HOME/.config/rofi/config-kitty-theme.rasi"
 
 # --- Helper Functions ---

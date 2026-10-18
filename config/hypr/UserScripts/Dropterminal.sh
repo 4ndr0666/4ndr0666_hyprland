@@ -37,6 +37,17 @@ debug_echo() {
   fi
 }
 
+# Quote a shell string as a Lua double-quoted string for hyprctl dispatch.
+lua_quote() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\\n'/\\n}"
+  value="${value//$'\\r'/\\r}"
+  value="${value//$'\\t'/\\t}"
+  printf '"%s"' "$value"
+}
+
 # Validate input
 if [ -z "$TERMINAL_CMD" ]; then
   echo "Missing terminal command. Usage: $0 [-d] <terminal_command>"
@@ -77,18 +88,18 @@ animate_slide_down() {
   local step_y=$(((target_y - start_y) / SLIDE_STEPS))
 
   # Move window to start position instantly (off-screen)
-  hyprctl dispatch movewindowpixel "exact $target_x $start_y,address:$addr" >/dev/null 2>&1
+  hyprctl dispatch "hl.dsp.window.move({ x = $target_x, y = $start_y, relative = false, window = \"address:$addr\" })" >/dev/null 2>&1
   sleep 0.05
 
   # Animate slide down
   for i in $(seq 1 $SLIDE_STEPS); do
     local current_y=$((start_y + (step_y * i)))
-    hyprctl dispatch movewindowpixel "exact $target_x $current_y,address:$addr" >/dev/null 2>&1
+    hyprctl dispatch "hl.dsp.window.move({ x = $target_x, y = $current_y, relative = false, window = \"address:$addr\" })" >/dev/null 2>&1
     sleep 0.03
   done
 
-  # Ensure final position is exact
-  hyprctl dispatch movewindowpixel "exact $target_x $target_y,address:$addr" >/dev/null 2>&1
+# Ensure final position is exact
+  hyprctl dispatch "hl.dsp.window.move({ x = $target_x, y = $target_y, relative = false, window = \"address:$addr\" })" >/dev/null 2>&1
 }
 
 # Function to animate window slide up (hide)
@@ -110,7 +121,7 @@ animate_slide_up() {
   # Animate slide up
   for i in $(seq 1 $SLIDE_STEPS); do
     local current_y=$((start_y - (step_y * i)))
-    hyprctl dispatch movewindowpixel "exact $start_x $current_y,address:$addr" >/dev/null 2>&1
+    hyprctl dispatch "hl.dsp.window.move({ x = $start_x, y = $current_y, relative = false, window = \"address:$addr\" })" >/dev/null 2>&1
     sleep 0.03
   done
 
@@ -167,7 +178,7 @@ calculate_dropdown_position() {
     logical_height=$(((mon_height * 100) / scale_int))
   fi
 
-  # Ensure we have valid integer values
+# Ensure we have valid integer values
   if ! [[ "$logical_width" =~ ^-?[0-9]+$ ]]; then logical_width=$mon_width; fi
   if ! [[ "$logical_height" =~ ^-?[0-9]+$ ]]; then logical_height=$mon_height; fi
 
@@ -248,14 +259,17 @@ spawn_terminal() {
   local height=$(echo $pos_info | cut -d' ' -f4)
   local monitor_name=$(echo $pos_info | cut -d' ' -f5)
 
-  debug_echo "Target position: ${target_x},${target_y}, size: ${width}x${height}"
+debug_echo "Target position: ${target_x},${target_y}, size: ${width}x${height}"
 
   # Get window count before spawning
   local windows_before=$(hyprctl clients -j)
   local count_before=$(echo "$windows_before" | jq 'length')
 
-  # Launch terminal directly in special workspace to avoid visible spawn
-  hyprctl dispatch exec "[float; size $width $height; workspace special:scratchpad silent] $TERMINAL_CMD"
+  # Launch terminal directly in special workspace to avoid visible spawn.
+  # Hyprland 0.55+ parses `hyprctl dispatch` as a Lua dispatcher expression.
+  local terminal_lua
+  terminal_lua=$(lua_quote "$TERMINAL_CMD")
+  hyprctl dispatch "hl.dsp.exec_cmd(${terminal_lua}, { float = true, size = { $width, $height }, workspace = \"special:scratchpad silent\" })"
 
   # Wait for window to appear
   sleep 0.1
@@ -289,8 +303,10 @@ spawn_terminal() {
 
     # Now bring it back with the same animation as subsequent shows
     # Use movetoworkspacesilent to avoid affecting workspace history
-    hyprctl dispatch movetoworkspacesilent "$CURRENT_WS,address:$new_addr"
-    hyprctl dispatch pin "address:$new_addr"
+    hyprctl dispatch "hl.dsp.window.move({ workspace = \"$CURRENT_WS\", follow = false, window = \"address:$new_addr\" })"
+    # Explicitly force floating state so it qualifies for pinning
+    hyprctl dispatch "hl.dispatch(\"setfloating\", \"address:$new_addr\")"
+    hyprctl dispatch "hl.dsp.window.pin({ window = \"address:$new_addr\" })"
     animate_slide_down "$new_addr" "$target_x" "$target_y" "$width" "$height"
 
     return 0
@@ -316,8 +332,8 @@ if terminal_exists; then
     height=$(echo $pos_info | cut -d' ' -f4)
     monitor_name=$(echo $pos_info | cut -d' ' -f5)
     # Move and resize window
-    hyprctl dispatch movewindowpixel "exact $target_x $target_y,address:$TERMINAL_ADDR"
-    hyprctl dispatch resizewindowpixel "exact $width $height,address:$TERMINAL_ADDR"
+    hyprctl dispatch "hl.dsp.window.move({ x = $target_x, y = $target_y, relative = false, window = \"address:$TERMINAL_ADDR\" })"
+    hyprctl dispatch "hl.dsp.window.resize({ x = $width, y = $height, relative = false, window = \"address:$TERMINAL_ADDR\" })"
     # Update ADDR_FILE
     echo "$TERMINAL_ADDR $monitor_name" >"$ADDR_FILE"
   fi
@@ -333,14 +349,16 @@ if terminal_exists; then
     height=$(echo $pos_info | cut -d' ' -f4)
 
     # Use movetoworkspacesilent to avoid affecting workspace history
-    hyprctl dispatch movetoworkspacesilent "$CURRENT_WS,address:$TERMINAL_ADDR"
-    hyprctl dispatch pin "address:$TERMINAL_ADDR"
+    hyprctl dispatch "hl.dsp.window.move({ workspace = \"$CURRENT_WS\", follow = false, window = \"address:$TERMINAL_ADDR\" })"
+    # Explicitly force floating state so it qualifies for pinning
+    hyprctl dispatch "hl.dispatch(\"setfloating\", \"address:$TERMINAL_ADDR\")"
+    hyprctl dispatch "hl.dsp.window.pin({ window = \"address:$TERMINAL_ADDR\" })"
 
     # Set size and animate slide down
-    hyprctl dispatch resizewindowpixel "exact $width $height,address:$TERMINAL_ADDR"
+    hyprctl dispatch "hl.dsp.window.resize({ x = $width, y = $height, relative = false, window = \"address:$TERMINAL_ADDR\" })"
     animate_slide_down "$TERMINAL_ADDR" "$target_x" "$target_y" "$width" "$height"
 
-    hyprctl dispatch focuswindow "address:$TERMINAL_ADDR"
+    hyprctl dispatch "hl.dsp.focus({ window = \"address:$TERMINAL_ADDR\" })"
   else
     debug_echo "Hiding terminal to scratchpad with slide up animation"
 
@@ -359,12 +377,12 @@ if terminal_exists; then
 
       # Small delay then move to special workspace and unpin
       sleep 0.1
-      hyprctl dispatch pin "address:$TERMINAL_ADDR" # Unpin (toggle)
-      hyprctl dispatch movetoworkspacesilent "$SPECIAL_WS,address:$TERMINAL_ADDR"
+      hyprctl dispatch "hl.dsp.window.pin({ window = \"address:$TERMINAL_ADDR\" })" # Unpin (toggle)
+      hyprctl dispatch "hl.dsp.window.move({ workspace = \"$SPECIAL_WS\", follow = false, window = \"address:$TERMINAL_ADDR\" })"
     else
       debug_echo "Could not get window geometry, moving to scratchpad without animation"
-      hyprctl dispatch pin "address:$TERMINAL_ADDR"
-      hyprctl dispatch movetoworkspacesilent "$SPECIAL_WS,address:$TERMINAL_ADDR"
+      hyprctl dispatch "hl.dsp.window.pin({ window = \"address:$TERMINAL_ADDR\" })"
+      hyprctl dispatch "hl.dsp.window.move({ workspace = \"$SPECIAL_WS\", follow = false, window = \"address:$TERMINAL_ADDR\" })"
     fi
   fi
 else
@@ -372,7 +390,7 @@ else
   if spawn_terminal; then
     TERMINAL_ADDR=$(get_terminal_address)
     if [ -n "$TERMINAL_ADDR" ]; then
-      hyprctl dispatch focuswindow "address:$TERMINAL_ADDR"
+      hyprctl dispatch "hl.dsp.focus({ window = \"address:$TERMINAL_ADDR\" })"
     fi
   fi
 fi

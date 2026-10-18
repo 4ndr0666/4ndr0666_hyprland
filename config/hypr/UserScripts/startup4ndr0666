@@ -1,33 +1,27 @@
 #!/usr/bin/env bash
-
-## Copyright (C) 2020-2025 Aditya Shakya <adi1090x@gmail.com>
-##
+# 4ndr0666
 ## Autostart Programs ---------------------------------------
 
-# Kill already running process
-_ps=(waybar mako)
-for _prs in "${_ps[@]}"; do
-	if [[ `pidof ${_prs}` ]]; then
-		killall -9 ${_prs}
-	fi
-done
+set -Eeuo pipefail
 
-# Polkit agent
-if [[ ! `pidof xfce-polkit` ]]; then
-	/usr/lib/xfce-polkit/xfce-polkit &
+USER_SCRIPTS="$HOME/.config/hypr/UserScripts"
+
+# Apply GTK themes
+if [[ -x "$USER_SCRIPTS/gtkthemes" ]]; then
+	"$USER_SCRIPTS/gtkthemes" &
 fi
 
-# Apply themes
-~/.config/hyprcat/scripts/gtkthemes &
+# Initialize portals, awww-daemon, and waybar via canonical initializer
+if [[ -x "$USER_SCRIPTS/4ndr0init.sh" ]]; then
+	"$USER_SCRIPTS/4ndr0init.sh"
+fi
 
-# Lauch notification daemon (mako)
-~/.config/hyprcat/scripts/notifications &
+# Start notification daemon (swaync) if not running
+if command -v swaync >/dev/null 2>&1 && ! pidof swaync >/dev/null 2>&1; then
+	swaync &
+fi
 
-# Lauch statusbar (waybar)
-~/.config/hyprcat/scripts/statusbar &
-
-# Start network manager applet
-nm-applet --indicator &
-
-# Start mpd
-exec mpd &
+# Start network manager applet if available
+if command -v nm-applet >/dev/null 2>&1 && ! pidof nm-applet >/dev/null 2>&1; then
+	nm-applet --indicator &
+fi
