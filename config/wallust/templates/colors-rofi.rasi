@@ -27,6 +27,10 @@ background-color: {{background}};
 background: rgba(0,0,0,0.7);
 foreground: {{foreground}};
 border-color: {{color12}};
+background-alt: {{background}};
+selected: {{color12}};
+active: {{color11}};
+urgent: {{color13}};
 
 color0: {{color0}};
 color1: {{color1}};

@@ -27,6 +27,10 @@ background-color: #181519;
 background: rgba(0,0,0,0.7);
 foreground: #FAE8E1;
 border-color: #784CA0;
+background-alt: #181519;
+selected: #CC659A;
+active: #914B4B;
+urgent: #CC659A;
 
 color0: #3F3C40;
 color1: #1A1022;

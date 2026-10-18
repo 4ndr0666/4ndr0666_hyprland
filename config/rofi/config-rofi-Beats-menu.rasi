@@ -12,9 +12,7 @@ mainbox {
 entry {
   expand: false;
   width: 25%;
-  width: 25%;
   placeholder: " Choose Music Source";
-  horizontal-align: 0.5;
   horizontal-align: 0.5;
 }
 
@@ -28,7 +26,7 @@ window {
 listview {
   fixed-columns: false;
   scrollbar: false;
-  colums: 1;
+  columns: 1;
   lines: 4;
   spacing: 6px;
   cycle: true;

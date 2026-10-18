@@ -6,6 +6,13 @@
 @import                          "wallust/colors-rofi.rasi"
 @import                          "fonts.rasi"
 
+* {
+    background-alt:              @alternate-normal-background;
+    selected:                    @selected-normal-background;
+    active:                      @active-background;
+    urgent:                      @urgent-background;
+}
+
 /*****----- Main Window -----*****/
 window {
     location:                    center;
