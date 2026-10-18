@@ -13,12 +13,15 @@ laptops_conf="$HOME/.config/hypr/UserConfigs/Laptops.lua"
 touchpad_device="${TOUCHPAD_DEVICE:-}"
 if [[ -z "$touchpad_device" && -f "$laptops_conf" ]]; then
     touchpad_device="$(
-        awk -F= '/^\$Touchpad_Device/ {
-            gsub(/[[:space:]]*/, "", $1);
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2);
-            print $2;
-            exit
-        }' "$laptops_conf"
+        awk -F= '
+            /^[[:space:]]*(local[[:space:]]+)?Touchpad_Device[[:space:]]*=/ || /^\$Touchpad_Device[[:space:]]*=/ {
+                val = $2
+                sub(/[[:space:]]*(--|#).*$/, "", val)
+                gsub(/^[[:space:]"''']+|[[:space:]"''']+$/, "", val)
+                print val
+                exit
+            }
+        ' "$laptops_conf"
     )"
 fi
 

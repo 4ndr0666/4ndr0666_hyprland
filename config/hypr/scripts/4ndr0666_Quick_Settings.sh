@@ -16,7 +16,7 @@ configs="$HOME/.config/hypr/configs"
 UserConfigs="$HOME/.config/hypr/UserConfigs"
 rofi_theme="$HOME/.config/rofi/config-edit.rasi"
 msg=' Make selection: '
-iDIR="$HOME/.config/mako/images"
+iDIR="$HOME/.config/swaync/images"
 scriptsDir="$HOME/.config/hypr/scripts"
 UserScripts="$HOME/.config/hypr/UserScripts"
 
@@ -162,6 +162,7 @@ Edit User Settings
 Edit User Decorations
 Edit User Animations
 Edit User Laptop Settings
+Edit User Workspace Rules
 --- SYSTEM DEFAULTS  ---
 Edit System Default Keybinds
 Edit System Default Startup Apps
@@ -194,10 +195,11 @@ main() {
         "Edit User Keybinds") file="$UserConfigs/UserKeybinds.lua" ;;
         "Edit User Startup Apps (overlay)") file="$UserConfigs/Startup_Apps.lua" ;;
         "Edit User Window Rules (overlay)") file="$UserConfigs/WindowRules.lua" ;;
-        "Edit User Settings") file="$configs/SystemSettings.lua"; show_info "Editing default settings. Copy to UserConfigs/UserSettings.lua to override." ;;
+        "Edit User Settings") file="$UserConfigs/UserSettings.lua" ;;
         "Edit User Decorations") file="$UserConfigs/UserDecorations.lua" ;;
         "Edit User Animations") file="$UserConfigs/UserAnimations.lua" ;;
         "Edit User Laptop Settings") file="$UserConfigs/Laptops.lua" ;;
+        "Edit User Workspace Rules") file="$UserConfigs/WorkSpaceRules.lua" ;;
         "Edit System Default Keybinds") file="$configs/Keybinds.lua" ;;
         "Edit System Default Startup Apps") file="$configs/Startup_Apps.lua" ;;
         "Edit System Default Window Rules") file="$configs/WindowRules.lua" ;;

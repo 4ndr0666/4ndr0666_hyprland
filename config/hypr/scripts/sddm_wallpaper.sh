@@ -27,8 +27,8 @@ if [[ ! -f "$rofi_wallust" ]]; then
 fi
 
 # Directory for mako
-iDIR="$HOME/.config/mako/images"
-iDIRi="$HOME/.config/mako/icons"
+iDIR="$HOME/.config/swaync/images"
+iDIRi="$HOME/.config/swaync/icons"
 
 # Parse arguments
 mode="effects" # default

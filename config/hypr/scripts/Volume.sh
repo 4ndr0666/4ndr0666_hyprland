@@ -2,7 +2,7 @@
 # /* ----  https://github.com/4ndr0666  ---- */  ##
 # Scripts for volume controls for audio and mic 
 
-iDIR="$HOME/.config/mako/icons"
+iDIR="$HOME/.config/swaync/icons"
 sDIR="$HOME/.config/hypr/scripts"
 
 # Get Volume

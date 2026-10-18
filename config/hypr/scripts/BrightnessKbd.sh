@@ -2,7 +2,7 @@
 # /* ----  https://github.com/4ndr0666  ---- */  ##
 # Script for keyboard backlights (if supported) using brightnessctl
 
-iDIR="$HOME/.config/mako/icons"
+iDIR="$HOME/.config/swaync/icons"
 
 # Get keyboard brightness
 get_kbd_backlight() {

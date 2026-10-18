@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # /* ----  https://github.com/4ndr0666  ---- */  ##
 # For Searching via web browsers
+set -Eeuo pipefail
 
 config_file="$HOME/.config/hypr/UserConfigs/01-UserDefaults.lua"
 
@@ -9,18 +10,43 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 1
 fi
 
-# Check if the config file exists
 if [[ ! -f "$config_file" ]]; then
-    echo "Error: Configuration file not found!" >&2
+    echo "Error: Configuration file not found!"
     exit 1
 fi
 
-Search_Engine=$(grep -E '^\s*local\s+search_engine\s*=' "$config_file" | sed -E 's/.*=\s*"([^"]*)".*/\1/')
-[[ -z "$Search_Engine" ]] && Search_Engine="https://www.yandex.com/search?text={}"
+# Read only the literal local search_engine assignment from the Lua defaults file.
+# Never execute the Lua source as shell code.
+read_lua_search_engine() {
+    awk '
+        $0 ~ "^[[:space:]]*local[[:space:]]+search_engine[[:space:]]*=[[:space:]]*\"" {
+            line = $0
+            sub("^[[:space:]]*local[[:space:]]+search_engine[[:space:]]*=[[:space:]]*\"", "", line)
+            sub("\"[[:space:]]*(--.*)?$", "", line)
+            print line
+            exit
+        }
+    ' "$config_file"
+}
+
+Search_Engine="$(read_lua_search_engine)"
+[[ -n "$Search_Engine" && "$Search_Engine" =~ ^https?://[^[:space:]]+$ ]] || {
+    printf '%s\n' 'Error: $Search_Engine must be a non-empty HTTP(S) URL.' >&2
+    exit 1
+}
+
+command -v rofi >/dev/null 2>&1 || {
+    printf '%s\n' 'Error: rofi executable not found.' >&2
+    exit 1
+}
+command -v xdg-open >/dev/null 2>&1 || {
+    printf '%s\n' 'Error: xdg-open executable not found.' >&2
+    exit 1
+}
 
 # Rofi theme and message
 rofi_theme="$HOME/.config/rofi/config-search.rasi"
-msg='**note** search via default web browser'
+msg='Search using the configured web browser'
 
 # Kill Rofi if already running before execution
 if pgrep -x "rofi" >/dev/null; then

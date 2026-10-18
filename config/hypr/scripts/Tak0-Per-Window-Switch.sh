@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 ##################################################################
 #                                                                #   
 #                                                                #
@@ -25,7 +26,7 @@ if ! grep -q 'kb_layout' "$CFG_FILE"; then
   echo "Error: cannot find kb_layout in $CFG_FILE" >&2
   exit 1
 fi
-kb_layouts=($(grep 'kb_layout' "$CFG_FILE" | cut -d '=' -f2 | tr -d '[:space:]' | tr ',' ' '))
+kb_layouts=($(grep 'kb_layout' "$CFG_FILE" | cut -d '=' -f2 | sed -E 's/--.*$//' | tr -d '[:space:]"'\''' | sed 's/,$//' | tr ',' ' '))
 count=${#kb_layouts[@]}
 
 # Get current active window ID

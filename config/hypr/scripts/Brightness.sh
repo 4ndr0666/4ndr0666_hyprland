@@ -2,7 +2,7 @@
 # /* ----  https://github.com/4ndr0666  ---- */  ##
 # Script for Monitor backlights (if supported) using brightnessctl
 
-iDIR="$HOME/.config/mako/icons"
+iDIR="$HOME/.config/swaync/icons"
 notification_timeout=1000
 step=10  # INCREASE/DECREASE BY THIS VALUE
 

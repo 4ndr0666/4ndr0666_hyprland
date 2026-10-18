@@ -18,7 +18,7 @@ fi
 # ==============================================================================
 declare -a KEYBINDS=(
 	" SHIFT K" "Search Keybinds" "(Rofi)"
-	" SHIFT N" "Notifications" "(Mako)"
+	" SHIFT N" "Notifications" "(SwayNC)"
 	" A" "Desktop Overview" "(Quickshell)"
 	" SHIFT A" "Hyprland Animations" "(Rofi)"
 	" CTRL R" "Rofi Themes" "(Rofi)"
@@ -153,8 +153,8 @@ if [ -n "$yad_output" ]; then
 		"Rofi" | "Rofi-wayland")
 			rofi -show drun &
 			;;
-		"Mako")
-			mako &
+		"SwayNC" | "Mako")
+			swaync-client -t -sw &
 			;;
 		"Quickshell")
 			quickshell &

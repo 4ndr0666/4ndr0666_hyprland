@@ -4,7 +4,7 @@
 
 set -Eeuo pipefail
 
-notif="$HOME/.config/mako/images/ja.png"
+notif="$HOME/.config/swaync/images/ja.png"
 SCRIPTSDIR="$HOME/.config/hypr/scripts"
 current_wallpaper="$HOME/.config/rofi/.current_wallpaper"
 

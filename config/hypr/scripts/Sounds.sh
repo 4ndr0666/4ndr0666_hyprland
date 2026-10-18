@@ -54,17 +54,20 @@ elif [ -d "$systemDIR/$theme" ]; then
 fi
 
 # Get the theme that it inherits.
-iTheme=$(cat "$sDIR/index.theme" | grep -i "inherits" | cut -d "=" -f 2)
-iDIR="$sDIR/../$iTheme"
+iTheme=""
+if [ -f "$sDIR/index.theme" ]; then
+    iTheme=$(grep -i "inherits" "$sDIR/index.theme" | cut -d "=" -f 2 || true)
+fi
+iDIR="$sDIR/../${iTheme:-$defaultTheme}"
 
 # Find the sound file and play it.
-sound_file=$(find -L $sDIR/stereo -name "$soundoption" -print -quit)
+sound_file=$(find -L "$sDIR/stereo" -name "$soundoption" -print -quit 2>/dev/null || true)
 if ! test -f "$sound_file"; then
-    sound_file=$(find -L $iDIR/stereo -name "$soundoption" -print -quit)
+    sound_file=$(find -L "$iDIR/stereo" -name "$soundoption" -print -quit 2>/dev/null || true)
     if ! test -f "$sound_file"; then
-        sound_file=$(find -L $userDIR/$defaultTheme/stereo -name "$soundoption" -print -quit)
+        sound_file=$(find -L "$userDIR/$defaultTheme/stereo" -name "$soundoption" -print -quit 2>/dev/null || true)
         if ! test -f "$sound_file"; then
-            sound_file=$(find -L $systemDIR/$defaultTheme/stereo -name "$soundoption" -print -quit)
+            sound_file=$(find -L "$systemDIR/$defaultTheme/stereo" -name "$soundoption" -print -quit 2>/dev/null || true)
             if ! test -f "$sound_file"; then
                 echo "Error: Sound file not found."
                 exit 1
