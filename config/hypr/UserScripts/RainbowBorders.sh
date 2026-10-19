@@ -6,6 +6,7 @@
 set -Eeuo pipefail
 
 WALLUST_CONF="${HOME}/.config/hypr/wallust/wallust-hyprland.conf"
+EFFECT_TYPE="wallust_random"
 
 random_hex_rgba() {
     printf 'rgba(%02x%02x%02xff)' "$((RANDOM % 256))" "$((RANDOM % 256))" "$((RANDOM % 256))"
@@ -36,7 +37,7 @@ apply_wallust_borders() {
         done < <(sed -nE 's/^\$color[0-9]+[[:space:]]*=[[:space:]]*rgb\(([0-9A-Fa-f]{6})\).*/\1/p' "$WALLUST_CONF")
     fi
 
-    if (("${#palette[@]}" >= 2)); then
+    if ((${#palette[@]} >= 2)); then
         local first="${palette[RANDOM % ${#palette[@]}]}"
         local second="${palette[RANDOM % ${#palette[@]}]}"
         apply_border_gradient "$first $second" '45deg'
@@ -45,7 +46,6 @@ apply_wallust_borders() {
     fi
 }
 
-EFFECT_TYPE="${EFFECT_TYPE:-wallust_random}"
 case "$EFFECT_TYPE" in
     wallust_random)
         apply_wallust_borders
