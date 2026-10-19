@@ -31,17 +31,8 @@ show_info() {
 toggle_rainbow_borders() {
     local rainbow_script="$UserScripts/RainbowBorders.sh"
     local disabled_sh_bak="${rainbow_script}.bak"
-    local disabled_bak_sh="$UserScripts/RainbowBorders.bak.sh"
     local refresh_script="$scriptsDir/Refresh.sh"
     local status=""
-
-    if [[ -f "$disabled_sh_bak" && -f "$disabled_bak_sh" ]]; then
-        if [[ "$disabled_sh_bak" -nt "$disabled_bak_sh" ]]; then
-            rm -f "$disabled_bak_sh"
-        else
-            rm -f "$disabled_sh_bak"
-        fi
-    fi
 
     if [[ -f "$rainbow_script" ]]; then
         if mv "$rainbow_script" "$disabled_sh_bak"; then
@@ -73,7 +64,6 @@ toggle_rainbow_borders() {
 rainbow_borders_menu() {
     local rainbow_script="$UserScripts/RainbowBorders.sh"
     local disabled_sh_bak="${rainbow_script}.bak"
-    local disabled_bak_sh="$UserScripts/RainbowBorders.bak.sh"
     local refresh_script="$scriptsDir/Refresh.sh"
 
     local current="disabled"
