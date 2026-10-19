@@ -42,10 +42,15 @@ for entry in "${required_modules[@]}"; do
     fail "Lua module $rel contains invalid shell '#' comment syntax"
   fi
   if command -v luac >/dev/null 2>&1; then
-    luac -p "$path" || fail "Lua syntax error in $rel"
+    LUA_COMPILER=luac
+  elif command -v luac5.4 >/dev/null 2>&1; then
+    LUA_COMPILER=luac5.4
   elif command -v texluac >/dev/null 2>&1; then
-    texluac -p "$path" || fail "Lua syntax error in $rel"
+    LUA_COMPILER=texluac
+  else
+    fail "No Lua parser installed; install lua5.4 (CI contract is fail-closed)"
   fi
+  "$LUA_COMPILER" -p "$path" || fail "Lua syntax error in $rel (parser: $LUA_COMPILER)"
 done
 
 # 2. Verify universal monitors.lua and workspaces.lua have zero hardcoded personal hardware descriptors (Ruling #3)
@@ -124,4 +129,4 @@ translate_legacy_userconfigs_to_lua "$TMP_DIR/backup" "$TMP_DIR/UserConfigs" "/d
 after_sha="$(sha256sum "$TMP_DIR/UserConfigs/Startup_Apps.lua" "$TMP_DIR/UserConfigs/ENVariables.lua")"
 [[ "$before_sha" == "$after_sha" ]] || fail "translate_legacy_userconfigs_to_lua is not idempotent"
 
-printf '[PASS] Lua configuration superset, strictly-Lua IPC, universal monitor defaults, and authorized retirements verified.\n'
+printf '[PASS] Lua configuration superset, strictly-Lua IPC, universal monitor defaults, and authorized retirements verified (parser: %s).\n' "$LUA_COMPILER"
