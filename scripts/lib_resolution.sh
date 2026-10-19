@@ -98,12 +98,12 @@ apply_resolution_profile() (
   printf '%s\n' '[OK] Resolution-profile customization committed.' | tee -a "$log" || return 1
 )
 
-# Overlay composition is consumed by the copy/upgrade transaction. The legacy
-# implementation used grep pipelines followed by `|| true`, which made both
-# expected "no match" statuses and real I/O/read errors indistinguishable.
-# Keep the capability intact while making the extraction boundary fail-closed
-# and the two generated artifacts atomic. The subshell scopes the cleanup trap
-# so this helper cannot overwrite a caller's RETURN trap.
+# Overlay composition is consumed by the copy/upgrade transaction and the
+# legacy .conf -> Lua migration helper (translate_legacy_userconfigs_to_lua).
+# The legacy implementation used grep pipelines followed by `|| true`, which
+# made both expected "no match" statuses and real I/O/read errors
+# indistinguishable. Keep the capability intact while making the extraction
+# boundary fail-closed and the two generated artifacts atomic.
 compose_overlay_from_backup() (
   local type="$1"
   local base_file="$2"
@@ -131,10 +131,10 @@ compose_overlay_from_backup() (
       }' "$old_user_file" | sort -u >"$disable_tmp" || return 1
       ;;
     windowrules)
-      awk '/^(windowrule|layerrule)[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$old_user_file" | sort -u >"$old_tmp" || return 1
-      awk '/^(windowrule|layerrule)[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$base_file" | sort -u >"$base_tmp" || return 1
+      awk '/^[[:space:]]*(windowrule|windowrulev2|layerrule)[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$old_user_file" | sort -u >"$old_tmp" || return 1
+      awk '/^[[:space:]]*(windowrule|windowrulev2|layerrule)[[:space:]]*=/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }' "$base_file" | sort -u >"$base_tmp" || return 1
       comm -23 "$old_tmp" "$base_tmp" >"$new_tmp" || return 1
-      awk '/^[[:space:]]*#[[:space:]]*(windowrule|layerrule)[[:space:]]*=/ {
+      awk '/^[[:space:]]*#[[:space:]]*(windowrule|windowrulev2|layerrule)[[:space:]]*=/ {
         sub(/^[[:space:]]*#[[:space:]]*/, "")
         sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "")
         if ($0 != "") print

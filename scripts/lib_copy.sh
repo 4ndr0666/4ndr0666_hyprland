@@ -198,6 +198,10 @@ restore_hypr_assets() {
       printf '%s\n' "${OK:-[OK]} - Restored file: $file_restore" | tee -a "$log"
     fi
   done
+
+  if declare -F translate_legacy_monitors_and_workspaces_to_lua >/dev/null 2>&1; then
+    translate_legacy_monitors_and_workspaces_to_lua "$backup_hypr_path" "$hypr_dir" "$log"
+  fi
 }
 
 archive_legacy_conf() {

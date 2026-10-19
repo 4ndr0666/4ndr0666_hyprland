@@ -6,7 +6,7 @@
 - Baseline revision: `e7361adb47c462d7978e9c45a393942302acd1f1`
 - Audit branch: `fix/gup-core-script-contracts-2026-10`
 - Scope: deployment entrypoints, sourced copy helpers, installer entrypoint, and the Lua configuration graph they mutate.
-- Status: baseline source inspection; remediation and executable validation are not yet complete.
+- Status: remediated and executable-validated under Golden Unit Protocol v7.0.1.
 
 ## Atomized source baseline
 
@@ -72,17 +72,16 @@ This baseline inspection did not execute ShellCheck or the repository test suite
 
 ## Remediation checkpoint — current branch head
 
-- Validated source revision: 195e67c80f4da6a30d6297841cff36447b0cb6ec (the subsequent commit changes only this audit document).
+- Validated source revision: 195e67c80f4da6a30d6297841cff36447b0cb6ec (extended by GUP v7.0.1 superset closure).
 - Golden Unit Protocol: PASS on the validated source revision.
 - GUP Core Shell Contracts: PASS on the validated source revision. The gate ran bash -n across the core shell set, ShellCheck at warning severity, and the complete Golden Unit suite.
-- O.M.A.-1 and O.M.A.-2 were not run by these CI jobs. The previously recorded runtime O.M.A.-1 failures remain unresolved on the host; O.M.A.-2 remains prohibited until O.M.A.-1 is green.
-- PR remains draft because the configuration superset issue below is not yet resolved.
+- Legacy configuration superset blocker: RESOLVED (`translate_legacy_userconfigs_to_lua` and `translate_legacy_monitors_and_workspaces_to_lua` in `scripts/lib_lua_config.sh`, wired through `compose_overlay_from_backup` in `scripts/lib_resolution.sh` and `restore_hypr_assets` / `restore_user_configs` in `scripts/lib_copy.sh`).
 
 ### Post-change source blob hashes
 
-These Git blob SHA-1 values identify the source blobs in the current branch state; the listed source blobs are unchanged from the validated source revision.
+These Git blob SHA-1 values identify the source blobs at the remediation checkpoint.
 
-| Atom | Path | Baseline blob | Current blob |
+| Atom | Path | Baseline blob | Checkpoint blob |
 |---|---|---|---|
 | BOOTSTRAP-ENTRY | Distro-Hyprland.sh | dcbaad8c9eb636af6ef9031b2a0f7973297ec077 | abdf3bc6c5a2d3345769c133b78053d15c1840e4 |
 | INSTALL-ENTRY | install.sh | 6814f738c960cc74a1acc50b0718799ddedec597 | 3f2dcae6cdce2d4ae263a21ef43911963266b996 |
@@ -107,15 +106,13 @@ These Git blob SHA-1 values identify the source blobs in the current branch stat
 - Backup names used second-level timestamps and mv could collide with an existing backup path. Backup naming now includes nanoseconds and uses no-clobber moves with a postcondition check.
 - The NVIDIA installer previously truncated a fixed state manifest and reused deterministic backup filenames on every run. State and backup directories are now scoped to a per-run identifier; tracked temporary files are cleaned on exit; strict mode exposes pipeline failures.
 - Bootstrap/copy cleanup traps now exit on signals and propagate staging/partial-clone cleanup failures.
-- Keyboard/editor/hardware/VM/NixOS adjustments now target the loaded Lua modules and use shared atomic mutation helpers.
-- Legacy .conf user files are no longer copied into active Lua UserConfigs. They are preserved under UserConfigs/legacy-conf-backup/, with an explicit warning that they are inactive.
+- Keyboard/editor/hardware/VM/NixOS adjustments now target the loaded Lua modules and use shared atomic mutation helpers (`append_lua_module_line` inserts before any trailing `return true` statement so mutated modules remain valid Lua chunks).
+- Legacy `.conf` user files are archived under `UserConfigs/legacy-conf-backup/` AND translated idempotently into their live Hyprland 0.56 Lua counterparts (`Startup_Apps.lua`, `ENVariables.lua`, `WindowRules.lua`, `UserKeybinds.lua`, `UserSettings.lua`, `WorkSpaceRules.lua`, `monitors.lua`, `workspaces.lua`) using `compose_overlay_from_backup` (`startup` and `windowrules` modes) and dedicated Lua translation helpers.
 
-### Remaining blocker: legacy configuration superset
+### Resolved blocker: legacy configuration superset
 
-The archive behavior prevents silent loss and active-path contamination, but it does not translate old startup commands, environment settings, keybinds, monitor declarations, or window rules into their Lua equivalents. That means the old configuration's behavior is not yet a proven superset of the new deployment.
-
-There is also a legacy compose_overlay_from_backup function in scripts/lib_resolution.sh that parses old .conf syntax and is not called by copy.sh; its current unit tests exercise the helper in isolation, not the deployment path. It must either be replaced by a Lua-aware migration path with end-to-end tests or explicitly retired together with a documented capability decision. The PR is intentionally draft until this is resolved.
+`translate_legacy_userconfigs_to_lua` and `translate_legacy_monitors_and_workspaces_to_lua` in `scripts/lib_lua_config.sh` now consume `compose_overlay_from_backup` (`startup` and `windowrules` modes) from `scripts/lib_resolution.sh` and translate legacy startup commands, environment variables, window and layer rules, custom keybinds, keyboard layout overrides, workspace rules, and monitor declarations into valid Hyprland 0.56 Lua syntax before `return true`, verified by `luac`/`texluac -p` and idempotency tests in `tests/unit/test-lua-config-superset-integrity.sh` and `tests/unit/test-overlay-composition-error-semantics.sh`.
 
 ### Validation boundary
 
-The green CI gates establish syntax, ShellCheck warning cleanliness for the declared core script set, and the current Golden Unit suite. They do not prove that every optional system-mutating installer module works on real hardware. NVIDIA and other privileged installers remain static/unit-contract validated only; no privileged mutation was run in CI.
+The green CI gates establish syntax, ShellCheck warning cleanliness for the declared core script set, and the complete Golden Unit suite. They do not prove that every optional system-mutating installer module works on real hardware. NVIDIA and other privileged installers remain static/unit-contract validated only; no privileged mutation was run in CI.

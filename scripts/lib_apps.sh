@@ -82,7 +82,7 @@ choose_default_editor() {
       printf '[ERROR] Required Lua defaults module is missing: %s\n' "$defaults" >&2
       return 1
     }
-    matches="$(awk '/^[[:space:]]*hl\.env\("EDITOR", "[^"]+"\)/ { count++ } END { print count + 0 }' "$defaults")" || return 1
+    matches="$(awk '/^[[:space:]]*hl\.env\(\042EDITOR\042, \042[^\042]+\042\)/ { count++ } END { print count + 0 }' "$defaults")" || return 1
     [[ "$matches" -eq 1 ]] || {
       printf '[ERROR] Expected exactly one EDITOR declaration in %s; found %s.\n' "$defaults" "$matches" >&2
       return 1

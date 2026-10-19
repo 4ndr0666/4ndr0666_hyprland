@@ -35,6 +35,8 @@ exec-once = user-command
 # exec-once = disabled-command
 windowrule = float, class:^(base)$
 windowrule = float, class:^(user)$
+windowrulev2 = opacity 0.9 0.8, class:^(user-v2)$
+layerrule = blur, rofi
 # windowrule = float, class:^(disabled)$
 EOF
 
@@ -42,6 +44,15 @@ compose_overlay_from_backup startup "$base" "$old" "$out" "$disable"
 grep -Fxq 'exec-once = user-command' "$out" || fail 'startup overlay lost user entry'
 ! grep -Fq 'base-command' "$out" || fail 'startup overlay retained base entry'
 grep -Fxq 'disabled-command' "$disable" || fail 'startup disable entry was not preserved'
+
+wr_out="$tmp/wr.out.conf"
+wr_disable="$tmp/wr.disable.conf"
+compose_overlay_from_backup windowrules "$base" "$old" "$wr_out" "$wr_disable"
+grep -Fxq 'windowrule = float, class:^(user)$' "$wr_out" || fail 'windowrules overlay lost user windowrule entry'
+grep -Fxq 'windowrulev2 = opacity 0.9 0.8, class:^(user-v2)$' "$wr_out" || fail 'windowrules overlay lost user windowrulev2 entry'
+grep -Fxq 'layerrule = blur, rofi' "$wr_out" || fail 'windowrules overlay lost user layerrule entry'
+! grep -Fq 'class:^(base)' "$wr_out" || fail 'windowrules overlay retained base entry'
+grep -Fxq 'windowrule = float, class:^(disabled)$' "$wr_disable" || fail 'windowrules disable entry was not preserved'
 
 empty="$tmp/empty.conf"
 empty_out="$tmp/out.empty"

@@ -103,32 +103,102 @@ for alias_key in background-alt selected active urgent; do
   grep -Fq "${alias_key}:" "$ROOT/config/rofi/wallust/colors-rofi.rasi" || fail "Missing ${alias_key} in rofi/wallust/colors-rofi.rasi"
 done
 
-# 7. Verify legacy .conf to Lua translation helper is idempotent
+# 7. Verify legacy .conf to Lua translation helper is complete, valid Lua, and idempotent
+# shellcheck source=/dev/null
+source "$ROOT/scripts/lib_resolution.sh"
 # shellcheck source=/dev/null
 source "$ROOT/scripts/lib_lua_config.sh"
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/gup-lua-superset.XXXXXX")"
 trap 'rm -rf -- "$TMP_DIR"' EXIT
-mkdir -p "$TMP_DIR/backup" "$TMP_DIR/UserConfigs"
-cp "$ROOT/config/hypr/UserConfigs/Startup_Apps.lua" "$TMP_DIR/UserConfigs/Startup_Apps.lua"
-cp "$ROOT/config/hypr/UserConfigs/ENVariables.lua" "$TMP_DIR/UserConfigs/ENVariables.lua"
+mkdir -p "$TMP_DIR/backup" "$TMP_DIR/UserConfigs" "$TMP_DIR/hypr_backup" "$TMP_DIR/hypr_target"
+for f in 01-UserDefaults.lua Startup_Apps.lua ENVariables.lua WindowRules.lua UserKeybinds.lua UserSettings.lua WorkSpaceRules.lua; do
+  cp "$ROOT/config/hypr/UserConfigs/$f" "$TMP_DIR/UserConfigs/$f"
+done
+cp "$ROOT/config/hypr/monitors.lua" "$TMP_DIR/hypr_target/monitors.lua"
+cp "$ROOT/config/hypr/workspaces.lua" "$TMP_DIR/hypr_target/workspaces.lua"
+
+cat >"$TMP_DIR/backup/01-UserDefaults.conf" <<'EOF'
+env = EDITOR,vim
+$term = alacritty
+EOF
 
 cat >"$TMP_DIR/backup/Startup_Apps.conf" <<'EOF'
 exec-once = custom-user-daemon --flag
 exec-once = $scriptsDir/KeybindsLayoutInit.sh
+# exec-once = disabled-user-daemon
 EOF
 
 cat >"$TMP_DIR/backup/ENVariables.conf" <<'EOF'
 env = CUSTOM_USER_VAR,custom_val
 EOF
 
+cat >"$TMP_DIR/backup/WindowRules.conf" <<'EOF'
+windowrule = float, class:^(my-custom-app)$
+windowrulev2 = opacity 0.92 0.84, class:^(my-custom-app)$, title:^(Custom)$
+layerrule = blur, custom-overlay
+# windowrule = float, class:^(disabled-app)$
+EOF
+
+cat >"$TMP_DIR/backup/UserKeybinds.conf" <<'EOF'
+bind = $mainMod, U, exec, custom-keybind-cmd
+binde = $mainMod SHIFT, U, workspace, 4
+EOF
+
+cat >"$TMP_DIR/backup/UserSettings.conf" <<'EOF'
+kb_layout = us,de
+EOF
+
+cat >"$TMP_DIR/backup/WorkSpaceRules.conf" <<'EOF'
+workspace = 3, monitor:DP-2
+EOF
+
+cat >"$TMP_DIR/hypr_backup/monitors.conf" <<'EOF'
+monitor = DP-2, 2560x1440@144, 0x0, 1.0
+EOF
+
+cat >"$TMP_DIR/hypr_backup/workspaces.conf" <<'EOF'
+workspace = 1, monitor:DP-2
+EOF
+
 translate_legacy_userconfigs_to_lua "$TMP_DIR/backup" "$TMP_DIR/UserConfigs" "/dev/null"
+translate_legacy_monitors_and_workspaces_to_lua "$TMP_DIR/hypr_backup" "$TMP_DIR/hypr_target" "/dev/null"
+
+grep -Fq 'hl.env("EDITOR", "vim")' "$TMP_DIR/UserConfigs/01-UserDefaults.lua" || fail "Legacy 01-UserDefaults.conf EDITOR was not translated"
+grep -Fq 'local term = "alacritty"' "$TMP_DIR/UserConfigs/01-UserDefaults.lua" || fail "Legacy 01-UserDefaults.conf term was not translated"
 grep -Fq 'hl.exec_cmd("custom-user-daemon --flag")' "$TMP_DIR/UserConfigs/Startup_Apps.lua" || fail "Legacy Startup_Apps.conf command was not translated"
+grep -Fq -- '-- disabled-by-user: exec-once = disabled-user-daemon' "$TMP_DIR/UserConfigs/Startup_Apps.lua" || fail "Disabled Startup_Apps.conf entry was not preserved"
 ! grep -Fq 'KeybindsLayoutInit.sh' "$TMP_DIR/UserConfigs/Startup_Apps.lua" || fail "Canonical startup command was duplicated into UserConfigs/Startup_Apps.lua"
 grep -Fq 'hl.env("CUSTOM_USER_VAR", "custom_val")' "$TMP_DIR/UserConfigs/ENVariables.lua" || fail "Legacy ENVariables.conf variable was not translated"
+grep -Fq 'hl.window_rule({ match = { class = "^(my-custom-app)$" }, float = true })' "$TMP_DIR/UserConfigs/WindowRules.lua" || fail "Legacy windowrule was not translated"
+grep -Fq 'hl.window_rule({ match = { class = "^(my-custom-app)$", title = "^(Custom)$" }, opacity = "0.92 0.84" })' "$TMP_DIR/UserConfigs/WindowRules.lua" || fail "Legacy windowrulev2 was not translated"
+grep -Fq 'hl.layer_rule({ match = { namespace = "custom-overlay" }, blur = true })' "$TMP_DIR/UserConfigs/WindowRules.lua" || fail "Legacy layerrule was not translated"
+grep -Fq 'hl.bind("SUPER + U", hl.dsp.exec_cmd("custom-keybind-cmd")' "$TMP_DIR/UserConfigs/UserKeybinds.lua" || fail "Legacy bind was not translated"
+grep -Fq 'kb_layout = "us,de"' "$TMP_DIR/UserConfigs/UserSettings.lua" || fail "Legacy UserSettings.conf kb_layout was not translated"
+grep -Fq 'hl.workspace_rule({ workspace = 3, monitor = "DP-2" })' "$TMP_DIR/UserConfigs/WorkSpaceRules.lua" || fail "Legacy WorkSpaceRules.conf was not translated"
+grep -Fq 'hl.monitor({ output = "DP-2", mode = "2560x1440@144", position = "0x0", scale = 1.0 })' "$TMP_DIR/hypr_target/monitors.lua" || fail "Legacy monitors.conf was not translated"
+grep -Fq 'hl.workspace_rule({ workspace = 1, monitor = "DP-2" })' "$TMP_DIR/hypr_target/workspaces.lua" || fail "Legacy workspaces.conf was not translated"
 
-before_sha="$(sha256sum "$TMP_DIR/UserConfigs/Startup_Apps.lua" "$TMP_DIR/UserConfigs/ENVariables.lua")"
+for mutated_lua in \
+  "$TMP_DIR/UserConfigs/Startup_Apps.lua" \
+  "$TMP_DIR/UserConfigs/ENVariables.lua" \
+  "$TMP_DIR/UserConfigs/WindowRules.lua" \
+  "$TMP_DIR/UserConfigs/UserKeybinds.lua" \
+  "$TMP_DIR/UserConfigs/UserSettings.lua" \
+  "$TMP_DIR/UserConfigs/WorkSpaceRules.lua" \
+  "$TMP_DIR/hypr_target/monitors.lua" \
+  "$TMP_DIR/hypr_target/workspaces.lua"; do
+  [[ "$(tail -n 1 "$mutated_lua")" == "return true" ]] || fail "Mutated Lua module $mutated_lua does not end with 'return true'"
+  if command -v luac >/dev/null 2>&1; then
+    luac -p "$mutated_lua" || fail "Lua syntax error in mutated $mutated_lua"
+  elif command -v texluac >/dev/null 2>&1; then
+    texluac -p "$mutated_lua" || fail "Lua syntax error in mutated $mutated_lua"
+  fi
+done
+
+before_sha="$(sha256sum "$TMP_DIR"/UserConfigs/*.lua "$TMP_DIR"/hypr_target/*.lua)"
 translate_legacy_userconfigs_to_lua "$TMP_DIR/backup" "$TMP_DIR/UserConfigs" "/dev/null"
-after_sha="$(sha256sum "$TMP_DIR/UserConfigs/Startup_Apps.lua" "$TMP_DIR/UserConfigs/ENVariables.lua")"
-[[ "$before_sha" == "$after_sha" ]] || fail "translate_legacy_userconfigs_to_lua is not idempotent"
+translate_legacy_monitors_and_workspaces_to_lua "$TMP_DIR/hypr_backup" "$TMP_DIR/hypr_target" "/dev/null"
+after_sha="$(sha256sum "$TMP_DIR"/UserConfigs/*.lua "$TMP_DIR"/hypr_target/*.lua)"
+[[ "$before_sha" == "$after_sha" ]] || fail "legacy .conf to Lua translation is not idempotent"
 
 printf '[PASS] Lua configuration superset, strictly-Lua IPC, universal monitor defaults, and authorized retirements verified (parser: %s).\n' "$LUA_COMPILER"
