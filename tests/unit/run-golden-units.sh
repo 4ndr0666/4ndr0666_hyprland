@@ -41,6 +41,7 @@ TESTS=(
   tests/unit/test-waybar-symlink-restoration.sh
   tests/unit/test-rofi-search-config-boundary.sh
   tests/unit/test-wallpaper-effect-config-boundary.sh
+  tests/unit/test-rainbow-borders-runtime-contract.sh
   tests/unit/test-compositor-shell-installers.sh
   tests/unit/test-waybar-wallust-pipeline.sh
   tests/unit/test-waybar-wallust-orchestration.sh
