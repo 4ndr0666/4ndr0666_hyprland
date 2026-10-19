@@ -54,13 +54,9 @@ toggle_rainbow_borders() {
         if mv "$disabled_sh_bak" "$rainbow_script"; then
             status="enabled"
         fi
-    elif [[ -f "$disabled_bak_sh" ]]; then
-        if mv "$disabled_bak_sh" "$rainbow_script"; then
-            status="enabled"
-        fi
     else
-        show_info "RainbowBorders script not found in $UserScripts."
-        return
+        show_info "Functional RainbowBorders.sh is missing in $UserScripts; the .bak.sh template is not executable fallback."
+        return 1
     fi
 
     if [[ -x "$refresh_script" ]]; then
@@ -120,11 +116,9 @@ rainbow_borders_menu() {
             if [[ ! -f "$rainbow_script" ]]; then
                 if   [[ -f "$disabled_sh_bak" ]]; then
                     mv "$disabled_sh_bak" "$rainbow_script"
-                elif [[ -f "$disabled_bak_sh" ]]; then
-                    mv "$disabled_bak_sh" "$rainbow_script"
                 else
-                    show_info "RainbowBorders script not found in $UserScripts."
-                    return
+                    show_info "Functional RainbowBorders.sh is missing in $UserScripts; the .bak.sh template is not a valid fallback."
+                    return 1
                 fi
             fi
 
