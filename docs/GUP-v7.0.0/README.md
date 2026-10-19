@@ -1,4 +1,4 @@
-# GUP v7.0.0 — Core Protocol Documents
+# GUP v7.0.1 — Core Protocol Documents & Executable Toolchain
 
 This directory versions the repository-owned GUP v7 protocol contracts for project identity, Git provenance, evidence, review, and release validation. Platform-specific actionable skill files are maintained as private deliverables and are intentionally excluded from this public repository.
 
@@ -7,6 +7,16 @@ This directory versions the repository-owned GUP v7 protocol contracts for proje
 - [GIT-SUBSTRATE.md](GIT-SUBSTRATE.md) — repository identity, idempotent bootstrap, inventories, history continuity, and candidate freeze.
 - [EVIDENCE-CONTRACT.md](EVIDENCE-CONTRACT.md) — evidence schema requirements, hashing, reconciliation, and invalidation.
 - [OPERATING-PROCEDURE.md](OPERATING-PROCEDURE.md) — operator sequence from preflight through post-merge verification.
+
+## Vendored executable toolchain
+
+- `golden_unit_hash.py` — AST/lexical unit inventory and structural hash comparison engine (Python, JS/TS, Bash, plus `--manual-units`).
+- `scripts/gup_init.py` — idempotent Git + `.gup/project.json` bootstrap.
+- `scripts/gup_inventory.py` — tracked worktree SHA-256 inventory and cleanliness gate.
+- `scripts/gup_history_continuity.py` and `scripts/gup-history-continuity.py` — historical Git path continuity and disposition gates.
+- `scripts/gup_alignment.py` — bidirectional declaration/observation and provider/consumer alignment verifier (`schemas/gup-alignment.schema.json`).
+- `scripts/gup_validate.py` — fail-closed release evidence validator (`schemas/gup-evidence.schema.json`).
+- `tests/test_gup_tools.py` and `tests/unit/test-gup-v7-toolchain.sh` — automated synthetic Git and unit regression suite.
 
 ## Relationship to existing assurance
 
@@ -23,6 +33,4 @@ These commands are not executed by reading this document. Record actual exit sta
 
 ## Integration status
 
-This directory is the protocol/documentation portion of GUP v7.0.0. The companion standalone standard package contains executable bootstrap, inventory, history-continuity, alignment, evidence-validation, and regression-test tooling. Those executable assets are not yet vendored by this documentation-only change; they must be integrated and tested as a separate reviewable change before the repository can claim the complete v7 toolchain is landed.
-
-No certification or O.M.A. level is implied by the presence of these documents.
+Both the GUP v7 protocol documentation and the companion standalone executable toolchain (`golden_unit_hash.py`, `scripts/gup_*.py`, `schemas/*.json`, `tests/test_gup_tools.py`) are vendored in this repository and enforced by `tests/unit/test-gup-v7-toolchain.sh` inside `tests/unit/run-golden-units.sh`.

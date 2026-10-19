@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gup.invalid/schemas/gup-evidence.schema.json",
+  "title": "GUP v7.0.0 Certification Evidence",
+  "type": "object",
+  "required": ["protocol_version", "baseline_commit", "candidate_commit", "units", "comparison", "semantic_reviews", "alignment", "architecture_gate", "integration_closure", "manifest_targets", "tests"],
+  "additionalProperties": false,
+  "properties": {
+    "protocol_version": {"const": "7.0.0"},
+    "baseline_commit": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "candidate_commit": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "units": {
+      "type": "object",
+      "required": ["baseline_manifest", "candidate_manifest", "comparison_artifact"],
+      "additionalProperties": false,
+      "properties": {
+        "baseline_manifest": {"type": "string", "minLength": 1},
+        "candidate_manifest": {"type": "string", "minLength": 1},
+        "comparison_artifact": {"type": "string", "minLength": 1}
+      }
+    },
+    "comparison": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["unit_id", "classification"],
+        "additionalProperties": false,
+        "properties": {
+          "unit_id": {"type": "string", "minLength": 1},
+          "classification": {"enum": ["UNCHANGED", "CHANGED", "NEW", "MISSING"]}
+        }
+      }
+    },
+    "semantic_reviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["unit_id", "classification", "verdict", "rationale", "evidence"],
+        "properties": {
+          "unit_id": {"type": "string", "minLength": 1},
+          "classification": {"enum": ["UNCHANGED", "CHANGED", "NEW", "MISSING"]},
+          "verdict": {"type": "string", "minLength": 1},
+          "rationale": {"type": "string", "minLength": 1},
+          "evidence": {"type": "string", "minLength": 1},
+          "user_authorization": {"type": "boolean"}
+        }
+      }
+    },
+    "alignment": {"type": "object", "required": ["status", "evidence"], "properties": {"status": {"const": "PASS"}, "evidence": {"type": "string", "minLength": 1}}},
+    "architecture_gate": {"type": "object", "required": ["status", "evidence"], "properties": {"status": {"const": "PASS"}, "evidence": {"type": "string", "minLength": 1}}},
+    "integration_closure": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface", "status", "evidence"],
+        "properties": {
+          "surface": {"enum": ["entry_points", "loaders", "callers", "providers", "consumers", "configuration_paths", "install_migration_paths", "tests", "runtime_dependencies"]},
+          "status": {"enum": ["CLOSED", "NOT_APPLICABLE"]},
+          "evidence": {"type": "string", "minLength": 1},
+          "rationale": {"type": "string"}
+        }
+      }
+    },
+    "manifest_targets": {
+      "type": "array",
+      "items": {"type": "object", "required": ["target", "status", "evidence"], "properties": {"target": {"type": "string", "minLength": 1}, "status": {"enum": ["CLOSED", "BLOCKED", "NOT_APPLICABLE"]}, "evidence": {"type": "string", "minLength": 1}}}
+    },
+    "tests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "object", "required": ["command", "exit_code", "evidence"], "properties": {"command": {"type": "string", "minLength": 1}, "exit_code": {"const": 0}, "evidence": {"type": "string", "minLength": 1}}}
+    }
+  }
+}

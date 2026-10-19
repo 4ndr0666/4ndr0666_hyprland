@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gup.invalid/schemas/gup-alignment.schema.json",
+  "title": "GUP Bidirectional Alignment Review",
+  "type": "object",
+  "required": ["declarations", "observations"],
+  "additionalProperties": false,
+  "properties": {
+    "declarations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "provider", "consumer", "declaration_evidence", "provider_evidence", "consumer_evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "provider": {"type": "string", "minLength": 1},
+          "consumer": {"type": "string", "minLength": 1},
+          "declaration_evidence": {"type": "string", "minLength": 1},
+          "provider_evidence": {"type": "string", "minLength": 1},
+          "consumer_evidence": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "provider", "consumer", "observation_evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "provider": {"type": "string", "minLength": 1},
+          "consumer": {"type": "string", "minLength": 1},
+          "observation_evidence": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

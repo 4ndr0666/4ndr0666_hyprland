@@ -103,6 +103,7 @@ TESTS=(
   tests/unit/test-refresh-lifecycle.sh
   tests/unit/test-sddm-native-assets.sh
   tests/unit/test-lua-config-superset-integrity.sh
+  tests/unit/test-gup-v7-toolchain.sh
 )
 
 failures=()
