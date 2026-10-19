@@ -198,7 +198,8 @@ hl.bind(mainMod .. " + U",           hl.dsp.workspace.toggle_special(), { descri
 for i = 1, 10 do
     local key  = i % 10
     local code = 9 + (i == 10 and 10 or i)
-    hl.bind(mainMod .. " + SHIFT + code:" .. code, hl.dsp.window.move({ workspace = i }),         { description = "move to workspace " .. key })
+    hl.bind(mainMod .. " + code:" .. code,         hl.dsp.focus({ workspace = i }),                       { description = "switch to workspace " .. key })
+    hl.bind(mainMod .. " + SHIFT + code:" .. code, hl.dsp.window.move({ workspace = i }),                 { description = "move to workspace " .. key })
     hl.bind(mainMod .. " + CTRL + code:" .. code,  hl.dsp.window.move({ workspace = i, follow = false }), { description = "move silently to workspace " .. key })
 end
 
