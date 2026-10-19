@@ -35,7 +35,9 @@ export RAINBOW_HYPRCTL_LOG="$TMP/hyprctl.log"
 
 for mode in wallust_random rainbow gradient_flow; do
   : >"$RAINBOW_HYPRCTL_LOG"
-  EFFECT_TYPE="$mode" "$SCRIPT" || fail "$mode mode failed"
+  cp "$SCRIPT" "$TMP/RainbowBorders-$mode.sh"
+  sed -i 's/^EFFECT_TYPE=.*/EFFECT_TYPE="'"$mode"'"/' "$TMP/RainbowBorders-$mode.sh"
+  bash "$TMP/RainbowBorders-$mode.sh" || fail "$mode mode failed"
   [[ "$(wc -l <"$RAINBOW_HYPRCTL_LOG")" -eq 1 ]] || fail "$mode must issue exactly one compositor update"
   grep -Fq 'dispatch hl.config(' "$RAINBOW_HYPRCTL_LOG" || fail "$mode did not use the Hyprland Lua IPC configuration dispatcher"
   grep -Fq 'col.active_border' "$RAINBOW_HYPRCTL_LOG" || fail "$mode did not configure active borders"
@@ -43,7 +45,9 @@ for mode in wallust_random rainbow gradient_flow; do
 done
 
 : >"$RAINBOW_HYPRCTL_LOG"
-if EFFECT_TYPE=unsupported "$SCRIPT" >/dev/null 2>&1; then
+cp "$SCRIPT" "$TMP/RainbowBorders-unsupported.sh"
+sed -i 's/^EFFECT_TYPE=.*/EFFECT_TYPE="unsupported"/' "$TMP/RainbowBorders-unsupported.sh"
+if bash "$TMP/RainbowBorders-unsupported.sh" >/dev/null 2>&1; then
   fail "unsupported mode must fail closed"
 fi
 [[ ! -s "$RAINBOW_HYPRCTL_LOG" ]] || fail "unsupported mode changed compositor state"
