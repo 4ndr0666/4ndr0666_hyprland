@@ -64,3 +64,11 @@ The workflows use mocked compositor boundaries for the new behavior tests. They 
 - `tests/unit/test-rainbow-borders-runtime-contract.sh` — new behavior regression unit, registered in the Golden Unit runner.
 - `tests/unit/test-autodispatch-lifecycle.sh` — add deterministic injected-failure cleanup coverage.
 - `tests/unit/test-lua-config-superset-integrity.sh` — require and report Lua parser.
+
+
+## Append-only follow-up — dead-code reconciliation
+
+**Added after the initial evidence entry:** removed the unreferenced `toggle_rainbow_borders()` helper from Quick Settings. Repository-wide code search found only its definition; the live menu path is `rainbow_borders_menu()`. The unused helper duplicated mode toggling and contained a stale `current` reference in its fallback path. The live menu retains disable, Wallust, rainbow, and gradient-flow choices. This is a dead-code removal with no call-site capability loss.
+
+- Follow-up commit: `be7d65dab120e53080097e1cc96c1783dbb0298d`.
+- CI for this follow-up commit is pending at the time of this append; the earlier evidence above applies to `7ba63845c4ed98fca1f990522994169f482e4490` only.
