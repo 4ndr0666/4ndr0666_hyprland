@@ -32,6 +32,17 @@ required_modules=(
   "UserConfigs.WorkSpaceRules:config/hypr/UserConfigs/WorkSpaceRules.lua"
 )
 
+if command -v luac >/dev/null 2>&1; then
+  LUA_COMPILER=luac
+elif command -v luac5.4 >/dev/null 2>&1; then
+  LUA_COMPILER=luac5.4
+elif command -v texluac >/dev/null 2>&1; then
+  LUA_COMPILER=texluac
+else
+  fail "No Lua parser installed; install lua5.4 (CI contract is fail-closed)"
+fi
+"$LUA_COMPILER" -v
+
 for entry in "${required_modules[@]}"; do
   mod="${entry%%:*}"
   rel="${entry#*:}"
@@ -40,15 +51,6 @@ for entry in "${required_modules[@]}"; do
   [[ -s "$path" ]] || fail "Required Lua module is missing or 0-byte: $rel"
   if grep -Eq '^[[:space:]]*#' "$path"; then
     fail "Lua module $rel contains invalid shell '#' comment syntax"
-  fi
-  if command -v luac >/dev/null 2>&1; then
-    LUA_COMPILER=luac
-  elif command -v luac5.4 >/dev/null 2>&1; then
-    LUA_COMPILER=luac5.4
-  elif command -v texluac >/dev/null 2>&1; then
-    LUA_COMPILER=texluac
-  else
-    fail "No Lua parser installed; install lua5.4 (CI contract is fail-closed)"
   fi
   "$LUA_COMPILER" -p "$path" || fail "Lua syntax error in $rel (parser: $LUA_COMPILER)"
 done
