@@ -18,5 +18,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Lua syntax parser
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.4
       - name: Run complete Golden Unit suite
         run: bash tests/unit/run-golden-units.sh

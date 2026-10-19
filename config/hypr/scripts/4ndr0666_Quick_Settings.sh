@@ -28,56 +28,9 @@ show_info() {
     fi
 }
 
-toggle_rainbow_borders() {
-    local rainbow_script="$UserScripts/RainbowBorders.sh"
-    local disabled_sh_bak="${rainbow_script}.bak"
-    local disabled_bak_sh="$UserScripts/RainbowBorders.bak.sh"
-    local refresh_script="$scriptsDir/Refresh.sh"
-    local status=""
-
-    if [[ -f "$disabled_sh_bak" && -f "$disabled_bak_sh" ]]; then
-        if [[ "$disabled_sh_bak" -nt "$disabled_bak_sh" ]]; then
-            rm -f "$disabled_bak_sh"
-        else
-            rm -f "$disabled_sh_bak"
-        fi
-    fi
-
-    if [[ -f "$rainbow_script" ]]; then
-        if mv "$rainbow_script" "$disabled_sh_bak"; then
-            status="disabled"
-            if command -v hyprctl &>/dev/null; then
-                hyprctl reload >/dev/null 2>&1 || true
-            fi
-        fi
-    elif [[ -f "$disabled_sh_bak" ]]; then
-        if mv "$disabled_sh_bak" "$rainbow_script"; then
-            status="enabled"
-        fi
-    elif [[ -f "$disabled_bak_sh" ]]; then
-        if mv "$disabled_bak_sh" "$rainbow_script"; then
-            status="enabled"
-        fi
-    else
-        show_info "RainbowBorders script not found in $UserScripts."
-        return
-    fi
-
-    if [[ -x "$refresh_script" ]]; then
-        "$refresh_script" >/dev/null 2>&1 &
-    elif [[ "$current" != "disabled" && -x "$rainbow_script" ]]; then
-        "$rainbow_script" >/dev/null 2>&1 &
-    fi
-
-    if [[ -n "$status" ]]; then
-        show_info "Rainbow Borders ${status}."
-    fi
-}
-
 rainbow_borders_menu() {
     local rainbow_script="$UserScripts/RainbowBorders.sh"
     local disabled_sh_bak="${rainbow_script}.bak"
-    local disabled_bak_sh="$UserScripts/RainbowBorders.bak.sh"
     local refresh_script="$scriptsDir/Refresh.sh"
 
     local current="disabled"
@@ -120,11 +73,9 @@ rainbow_borders_menu() {
             if [[ ! -f "$rainbow_script" ]]; then
                 if   [[ -f "$disabled_sh_bak" ]]; then
                     mv "$disabled_sh_bak" "$rainbow_script"
-                elif [[ -f "$disabled_bak_sh" ]]; then
-                    mv "$disabled_bak_sh" "$rainbow_script"
                 else
-                    show_info "RainbowBorders script not found in $UserScripts."
-                    return
+                    show_info "Functional RainbowBorders.sh is missing in $UserScripts; the .bak.sh template is not a valid fallback."
+                    return 1
                 fi
             fi
 
