@@ -4,7 +4,7 @@
 
 notif="$HOME/.config/swaync/images"
 
-STATE=$(hyprctl -j getoption decoration:blur:passes | jq ".int")
+STATE=$(hyprctl -j getoption decoration.blur.passes | jq ".int")
 
 if [ "${STATE}" == "2" ]; then
     hyprctl dispatch 'hl.config({ decoration = { blur = { size = 2, passes = 1 } } })'

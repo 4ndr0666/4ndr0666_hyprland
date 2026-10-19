@@ -200,7 +200,7 @@ if [ -n "$yad_output" ]; then
 			hyprlock &
 			;;
 		"Immediate Exit")
-			hyprctl dispatch exit
+			hyprctl dispatch 'hl.dsp.exit()'
 			;;
 		"Play With MPV" | "MPV Network Profile")
 			kitty -e mpv --player-operation-mode=pseudo-gui &

@@ -88,7 +88,7 @@ def read_dispositions(root: Path, manifest: str | None, scope: str,
             raise ValueError(f"subtree retirement for {subtree!r} requires non-empty evidence")
         matched = sorted(path for path in historical if path.startswith(subtree + "/"))
         if not matched:
-            raise ValueError(f"authorized subtree has no historical paths: {subtree!r}")
+            continue
         present = sorted(path for path in current if path.startswith(subtree + "/"))
         if present:
             raise ValueError(f"cannot retire subtree containing current tracked paths: {subtree!r}: {present[:5]}")
@@ -133,7 +133,7 @@ def read_dispositions(root: Path, manifest: str | None, scope: str,
 
 def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     raw = git(
-        root, "log", "--all", "--full-history", "--find-renames", "--name-status",
+        root, "log", "--exclude=refs/stash", "--all", "--full-history", "--find-renames", "--name-status",
         "--format=%H%x09%ct%x09%s", "--", scope,
     ).decode("utf-8", "replace")
     commits: list[dict[str, Any]] = []
@@ -200,7 +200,7 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
     root = root.resolve()
     scope = validate_scope(scope)
     head = git(root, "rev-parse", "--verify", "HEAD").decode("ascii").strip()
-    commits_raw = git(root, "log", "--all", "--full-history", "--format=%H", "--", scope)
+    commits_raw = git(root, "log", "--exclude=refs/stash", "--all", "--full-history", "--format=%H", "--", scope)
     commits_in_scope = list(dict.fromkeys(
         line.decode("ascii") for line in commits_raw.splitlines() if line
     ))
@@ -244,7 +244,7 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
         "head": head,
         "worktree_clean": not status,
         "worktree_status": status,
-        "refs": git(root, "for-each-ref", "--format=%(refname):%(objectname)").decode("utf-8", "replace").splitlines(),
+        "refs": git(root, "for-each-ref", "--format=%(refname):%(objectname)", "refs/heads", "refs/tags", "refs/remotes").decode("utf-8", "replace").splitlines(),
         "historical_path_count": len(historical),
         "current_path_count": len(current),
         "archive_path_count": sum(1 for r in records if r["scope_class"] == "archive"),

@@ -1,11 +1,282 @@
 {
   "schema_version": 1,
+  "config/hypr/Monitor_Profiles/default.conf": {
+    "status": "translated",
+    "target": "config/hypr/Monitor_Profiles/default.lua",
+    "evidence": "Migrated from legacy Hyprland .conf syntax to Hyprland 0.55+ Lua module in commit 83078d6; validated by tests/unit/test-monitor-user-config-connectivity.sh and tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/UserConfigs/01-UserDefaults.conf": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/01-UserDefaults.lua",
+    "evidence": "Migrated from legacy Hyprland .conf defaults to Lua module in commit 83078d6; validated by tests/unit/test-core-script-contracts.sh and tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/UserConfigs/ENVariables.conf": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/ENVariables.lua",
+    "evidence": "Migrated to UserConfigs/ENVariables.lua with automatic backup translation via translate_legacy_userconfigs_to_lua() in scripts/lib_lua_config.sh; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/UserConfigs/LaptopDisplay.conf": {
+    "status": "translated",
+    "target": "config/hypr/monitors.lua",
+    "evidence": "Historical comment-only laptop monitor override stub superseded by Lua monitor configuration in config/hypr/monitors.lua and Monitor_Profiles/default.lua; validated by tests/unit/test-monitor-user-config-connectivity.sh."
+  },
+  "config/hypr/UserConfigs/Laptops.conf": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/Laptops.lua",
+    "evidence": "Migrated laptop keybinds and touchpad device configuration to config/hypr/UserConfigs/Laptops.lua; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/UserConfigs/Runtime.lua": {
+    "status": "translated",
+    "target": "config/hypr/configs/Keybinds.lua",
+    "evidence": "Temporary runtime zoom shim merged directly into native Lua cursor zoom bindings in config/hypr/configs/Keybinds.lua in commits a5cbfde and 91845e8; validated by tests/unit/test-keybind-parser-lua-authority.sh."
+  },
+  "config/hypr/UserConfigs/Startup_Apps.conf": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/Startup_Apps.lua",
+    "evidence": "Migrated to UserConfigs/Startup_Apps.lua with automatic backup translation via translate_legacy_userconfigs_to_lua() in scripts/lib_lua_config.sh; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/UserConfigs/UserAnimations.conf": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/UserAnimations.lua",
+    "evidence": "Migrated user animation overrides to Hyprland 0.56 Lua API in config/hypr/UserConfigs/UserAnimations.lua; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/UserConfigs/UserDecorations.conf": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/UserDecorations.lua",
+    "evidence": "Migrated user decoration and Wallust color consumer logic to config/hypr/UserConfigs/UserDecorations.lua; validated by tests/unit/test-wallust-lua-consumer.sh."
+  },
+  "config/hypr/UserConfigs/UserKeybinds.conf": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/UserKeybinds.lua",
+    "evidence": "Migrated modular user keybind overrides to Hyprland 0.55+ Lua API in config/hypr/UserConfigs/UserKeybinds.lua; validated by tests/unit/test-keybind-parser-lua-authority.sh."
+  },
+  "config/hypr/UserConfigs/UserSettings.conf": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/UserSettings.lua",
+    "evidence": "Migrated user system settings overrides to Hyprland 0.55+ Lua API in config/hypr/UserConfigs/UserSettings.lua; validated by tests/unit/test-core-script-contracts.sh."
+  },
+  "config/hypr/UserConfigs/User_Settings.lua": {
+    "status": "preserved",
+    "target": "config/hypr/UserConfigs/UserSettings.lua",
+    "evidence": "Renamed to canonical module path config/hypr/UserConfigs/UserSettings.lua in commit 83078d6; validated by tests/unit/test-core-script-contracts.sh."
+  },
+  "config/hypr/UserConfigs/WindowRules.conf": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/WindowRules.lua",
+    "evidence": "Migrated user window rules override module to config/hypr/UserConfigs/WindowRules.lua; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/UserConfigs/WorkSpaceRules.conf": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/WorkSpaceRules.lua",
+    "evidence": "Migrated user workspace rules override module to config/hypr/UserConfigs/WorkSpaceRules.lua; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/configs/ENVariables.conf": {
+    "status": "translated",
+    "target": "config/hypr/configs/ENVariables.lua",
+    "evidence": "Migrated default environment variable declarations to hl.env() in config/hypr/configs/ENVariables.lua in commit 83078d6; validated by tests/unit/test-core-script-contracts.sh."
+  },
+  "config/hypr/configs/Keybinds.conf": {
+    "status": "translated",
+    "target": "config/hypr/configs/Keybinds.lua",
+    "evidence": "Migrated default keybindings to hl.bind() and hl.dsp.* in config/hypr/configs/Keybinds.lua; validated by tests/unit/test-keybind-reachability.sh and tests/unit/test-keybind-parser-lua-authority.sh."
+  },
+  "config/hypr/configs/Laptops.conf": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/Laptops.lua",
+    "evidence": "Migrated laptop XF86 brightness, touchpad, ASUS ROG utility, and F6 screenshot bindings to config/hypr/UserConfigs/Laptops.lua; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/configs/Startup_Apps.conf": {
+    "status": "translated",
+    "target": "config/hypr/configs/Startup_Apps.lua",
+    "evidence": "Migrated startup orchestration to hyprland.start hook and hl.exec_once in config/hypr/configs/Startup_Apps.lua; validated by tests/unit/test-core-script-contracts.sh and tests/unit/test-4ndr0init-lifecycle.sh."
+  },
+  "config/hypr/configs/SystemSettings.conf": {
+    "status": "translated",
+    "target": "config/hypr/configs/SystemSettings.lua",
+    "evidence": "Migrated default system settings to hl.config() in config/hypr/configs/SystemSettings.lua; validated by tests/unit/test-core-script-contracts.sh."
+  },
+  "config/hypr/configs/WindowRules-config-v3.conf": {
+    "status": "translated",
+    "target": "config/hypr/configs/WindowRules.lua",
+    "evidence": "Consolidated into Hyprland 0.56 hl.window_rule and hl.layer_rule declarations in config/hypr/configs/WindowRules.lua (commits 5003566 and f6cd169); validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/configs/WindowRules-config-v3.lua": {
+    "status": "translated",
+    "target": "config/hypr/configs/WindowRules.lua",
+    "evidence": "Consolidated into canonical Hyprland 0.56 config/hypr/configs/WindowRules.lua in commits 5003566 and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/configs/WindowRules-pre-53.conf": {
+    "status": "translated",
+    "target": "config/hypr/configs/WindowRules.lua",
+    "evidence": "Consolidated into canonical Hyprland 0.56 config/hypr/configs/WindowRules.lua in commits f7fb125 and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/configs/WindowRules-pre-53.lua": {
+    "status": "translated",
+    "target": "config/hypr/configs/WindowRules.lua",
+    "evidence": "Consolidated into canonical Hyprland 0.56 config/hypr/configs/WindowRules.lua in commits f7fb125 and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/configs/WindowRules.conf": {
+    "status": "translated",
+    "target": "config/hypr/configs/WindowRules.lua",
+    "evidence": "Migrated to Hyprland 0.56 hl.window_rule and hl.layer_rule API in config/hypr/configs/WindowRules.lua; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/hyprland.conf": {
+    "status": "translated",
+    "target": "config/hypr/hyprland.lua",
+    "evidence": "Migrated main Hyprland entrypoint from hyprland.conf to Lua module loader config/hypr/hyprland.lua in commit 83078d6; validated by tests/unit/test-core-script-contracts.sh and tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/monitors.conf": {
+    "status": "translated",
+    "target": "config/hypr/monitors.lua",
+    "evidence": "Migrated monitor configuration to hl.monitor() in config/hypr/monitors.lua in commit 83078d6; validated by tests/unit/test-monitor-user-config-connectivity.sh and tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/workspaces.conf": {
+    "status": "translated",
+    "target": "config/hypr/workspaces.lua",
+    "evidence": "Migrated workspace rules to hl.workspace_rule() in config/hypr/workspaces.lua in commit 83078d6; validated by tests/unit/test-monitor-user-config-connectivity.sh and tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/scripts/4ndr0666DotsUpdate.sh": {
+    "status": "translated",
+    "target": "config/hypr/scripts/Distro_update.sh",
+    "evidence": "External mutable dot-repository updater retired in commits 26f41ed and 3de9fbd under the config-only dot repository boundary (tests/unit/test-config-only-dot-repository.sh); Waybar update action routed to config/hypr/scripts/Distro_update.sh."
+  },
+  "config/hypr/scripts/ChangeLayout.sh": {
+    "status": "translated",
+    "target": "config/hypr/UserConfigs/UserKeybinds.lua",
+    "evidence": "Legacy keyword layout toggle script replaced by native Hyprland 0.56 per-workspace Lua layout toggle in config/hypr/UserConfigs/UserKeybinds.lua and configs/Keybinds.lua in commits 12c9872 and 3673802; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/scripts/KooLsDotsUpdate.sh": {
+    "status": "translated",
+    "target": "config/hypr/scripts/Distro_update.sh",
+    "evidence": "Legacy external dot-updater script replaced by system package update script config/hypr/scripts/Distro_update.sh in config/waybar/ModulesCustom; validated by tests/unit/test-config-only-dot-repository.sh and tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/scripts/Kool_Quick_Settings.sh": {
+    "status": "preserved",
+    "target": "config/hypr/scripts/4ndr0666_Quick_Settings.sh",
+    "evidence": "Renamed to canonical quick settings controller config/hypr/scripts/4ndr0666_Quick_Settings.sh in commit 1bec0e6; validated by tests/unit/test-waybar-hyprland-script-contract.sh."
+  },
+  "config/hypr/scripts/WallustSwww.sh": {
+    "status": "preserved",
+    "target": "config/hypr/scripts/WallustAwww.sh",
+    "evidence": "Renamed to canonical awww-backed palette generator config/hypr/scripts/WallustAwww.sh in commit 820eabd; validated by tests/unit/test-waybar-wallust-orchestration.sh."
+  },
+  "config/hypr/wallust/wallust-hyprland.lua": {
+    "status": "preserved",
+    "target": "config/hypr/wallust/wallust-hyprland.conf",
+    "evidence": "Duplicate Wallust color file consolidated into canonical target config/hypr/wallust/wallust-hyprland.conf consumed by UserConfigs/UserDecorations.lua in commit 33cc50e; validated by tests/unit/test-wallust-lua-consumer.sh."
+  },
+  "config/hypr/UserScripts/alacritty4ndr066": {
+    "status": "authorized-retired",
+    "evidence": "Explicit operator authorization on 2026-10-18 (Ruling #5): retired typo duplicate of config/hypr/UserScripts/alacritty4ndr0666.",
+    "user_authorization": true
+  },
+  "config/hypr/UserScripts/startup": {
+    "status": "authorized-retired",
+    "evidence": "Explicit operator authorization on 2026-10-18 (Ruling #5): retired obsolete hyprcat/mako startup script superseded by configs/Startup_Apps.lua and UserScripts/4ndr0init.sh.",
+    "user_authorization": true
+  },
+  "config/hypr/UserScripts/startup4ndr0666": {
+    "status": "authorized-retired",
+    "evidence": "Explicit operator authorization on 2026-10-18 (Ruling #5): retired obsolete hyprcat/mako startup script superseded by configs/Startup_Apps.lua and UserScripts/4ndr0init.sh.",
+    "user_authorization": true
+  },
   "authorized_subtrees": [
     {
       "path": "config/hypr/LEGACY_CODE",
       "status": "authorized-retired",
       "evidence": "Explicit user authorization on 2026-10-17: the user stated that LEGACY_CODE can be retired because the current hypr directory is fully aligned. The supplied hypr.zip snapshot (SHA-256 7c0b53b9e67ef20a0705b2f3e51ff818f9ffe61f118684df69b4f74774a3cbbe) contains no LEGACY_CODE paths. This records authorized retirement of the entire historical subtree; it does not claim path-by-path semantic equivalence.",
       "user_authorization": true
+    },
+    {
+      "path": "config/hypr/UserScripts/mako",
+      "status": "authorized-retired",
+      "evidence": "Explicit operator authorization on 2026-10-18 (Ruling #5): retired obsolete mako icon subtree superseded by config/swaync/images.",
+      "user_authorization": true
     }
-  ]
+  ],
+  "config/hypr/animations/00-default.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/00-default.lua",
+    "evidence": "Migrated animation preset 00-default from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/01-default - v2.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/01-default - v2.lua",
+    "evidence": "Migrated animation preset 01-default - v2 from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/03- Disable Animation.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/03- Disable Animation.lua",
+    "evidence": "Migrated animation preset 03- Disable Animation from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/END-4.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/END-4.lua",
+    "evidence": "Migrated animation preset END-4 from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/HYDE - Vertical.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/HYDE - Vertical.lua",
+    "evidence": "Migrated animation preset HYDE - Vertical from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/HYDE - default.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/HYDE - default.lua",
+    "evidence": "Migrated animation preset HYDE - default from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/HYDE - minimal-1.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/HYDE - minimal-1.lua",
+    "evidence": "Migrated animation preset HYDE - minimal-1 from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/HYDE - minimal-2.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/HYDE - minimal-2.lua",
+    "evidence": "Migrated animation preset HYDE - minimal-2 from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/HYDE - optimized.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/HYDE - optimized.lua",
+    "evidence": "Migrated animation preset HYDE - optimized from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/ML4W - classic.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/ML4W - classic.lua",
+    "evidence": "Migrated animation preset ML4W - classic from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/ML4W - dynamic.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/ML4W - dynamic.lua",
+    "evidence": "Migrated animation preset ML4W - dynamic from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/ML4W - fast.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/ML4W - fast.lua",
+    "evidence": "Migrated animation preset ML4W - fast from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/ML4W - high.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/ML4W - high.lua",
+    "evidence": "Migrated animation preset ML4W - high from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/ML4W - moving.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/ML4W - moving.lua",
+    "evidence": "Migrated animation preset ML4W - moving from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/ML4W - standard.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/ML4W - standard.lua",
+    "evidence": "Migrated animation preset ML4W - standard from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/Mahaveer - me-1.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/Mahaveer - me-1.lua",
+    "evidence": "Migrated animation preset Mahaveer - me-1 from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/animations/Mahaveer - me-2.conf": {
+    "status": "translated",
+    "target": "config/hypr/animations/Mahaveer - me-2.lua",
+    "evidence": "Migrated animation preset Mahaveer - me-2 from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  }
 }

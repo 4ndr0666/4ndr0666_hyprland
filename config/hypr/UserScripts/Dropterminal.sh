@@ -302,10 +302,10 @@ debug_echo "Target position: ${target_x},${target_y}, size: ${width}x${height}"
     sleep 0.2
 
     # Now bring it back with the same animation as subsequent shows
-    # Use movetoworkspacesilent to avoid affecting workspace history
+    # Use follow = false to avoid affecting workspace history
     hyprctl dispatch "hl.dsp.window.move({ workspace = \"$CURRENT_WS\", follow = false, window = \"address:$new_addr\" })"
     # Explicitly force floating state so it qualifies for pinning
-    hyprctl dispatch "hl.dispatch(\"setfloating\", \"address:$new_addr\")"
+    hyprctl dispatch "hl.dsp.window.float({ action = \"set\", window = \"address:$new_addr\" })"
     hyprctl dispatch "hl.dsp.window.pin({ window = \"address:$new_addr\" })"
     animate_slide_down "$new_addr" "$target_x" "$target_y" "$width" "$height"
 
@@ -348,10 +348,10 @@ if terminal_exists; then
     width=$(echo $pos_info | cut -d' ' -f3)
     height=$(echo $pos_info | cut -d' ' -f4)
 
-    # Use movetoworkspacesilent to avoid affecting workspace history
+    # Use follow = false to avoid affecting workspace history
     hyprctl dispatch "hl.dsp.window.move({ workspace = \"$CURRENT_WS\", follow = false, window = \"address:$TERMINAL_ADDR\" })"
     # Explicitly force floating state so it qualifies for pinning
-    hyprctl dispatch "hl.dispatch(\"setfloating\", \"address:$TERMINAL_ADDR\")"
+    hyprctl dispatch "hl.dsp.window.float({ action = \"set\", window = \"address:$TERMINAL_ADDR\" })"
     hyprctl dispatch "hl.dsp.window.pin({ window = \"address:$TERMINAL_ADDR\" })"
 
     # Set size and animate slide down

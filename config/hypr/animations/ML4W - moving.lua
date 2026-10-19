@@ -15,3 +15,5 @@ hl.animation({ leaf = "border", enabled = true, speed = 5, bezier = "default" })
 hl.animation({ leaf = "fade", enabled = true, speed = 5, bezier = "smoothIn" })
 hl.animation({ leaf = "fadeDim", enabled = true, speed = 5, bezier = "smoothIn" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 6, bezier = "default" })
+
+return true

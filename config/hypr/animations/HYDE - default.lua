@@ -17,3 +17,5 @@ hl.animation({ leaf = "borderangle", enabled = true, speed = 30, bezier = "liner
 hl.animation({ leaf = "fade", enabled = true, speed = 10, bezier = "default" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "wind" })
 hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 5, bezier = "wind", style = "slidevert" })
+
+return true

@@ -17,3 +17,5 @@ _G.user_defaults = {
     search_engine = search_engine,
     editor = os.getenv("EDITOR") or "micro" -- Fallback to micro if EDITOR env is empty
 }
+
+return true

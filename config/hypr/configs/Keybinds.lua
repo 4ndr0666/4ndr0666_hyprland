@@ -46,19 +46,23 @@ hl.bind(mainMod .. " + Q", hl.dsp.window.close(), { description = "close active 
 hl.bind(mainMod .. " + SHIFT + Q", hl.dsp.exec_cmd(scriptsDir .. "/KillActiveProcess.sh"), { description = "Terminate active process" })
 
 -- KILL HYPRLAND
-hl.bind("CTRL + ALT + Delete", hl.dsp.exec_cmd("hyprctl dispatch exit 0"), { description = "exit Hyprland" })
+hl.bind("CTRL + ALT + Delete", hl.dsp.exit(), { description = "exit Hyprland" })
 
 -- FULL SCREEN
 hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.fullscreen(), { description = "fullscreen" })
 
 -- FAKE FULL SCREEN
-hl.bind(mainMod .. " + CTRL + F", hl.dsp.window.fullscreen({ mode = 1 }), { description = "maximize window" })
+hl.bind(mainMod .. " + CTRL + F", hl.dsp.window.fullscreen({ mode = "maximized" }), { description = "maximize window" })
 
 -- FLOATING
 hl.bind(mainMod .. " + SPACE", hl.dsp.window.float({ action = "toggle" }), { description = "Float current window" })
 
 -- ALL FLOATING
-hl.bind(mainMod .. " + ALT + SPACE", hl.dsp.exec_cmd("hyprctl dispatch workspaceopt allfloat"), { description = "Float all windows" })
+hl.bind(mainMod .. " + ALT + SPACE", function()
+    for _, w in pairs(hl.get_workspace_windows(hl.get_active_workspace())) do
+        hl.dispatch(hl.dsp.window.float({ action = "toggle", window = "address:" .. w.address }))
+    end
+end, { description = "Float all windows" })
 
 -- DESKTOP ZOOM
 local function zoom_cursor(multiplier)
@@ -75,7 +79,7 @@ hl.bind(mainMod .. " + SHIFT + mouse_down", function() zoom_cursor(0.8) end, { d
 hl.bind(mainMod .. " + ALT + O", hl.dsp.exec_cmd(scriptsDir .. "/ChangeBlur.sh"), { description = "toggle blur" })
 
 -- OPAQUE
-hl.bind(mainMod .. " + CTRL + O", hl.dsp.exec_cmd("hyprctl dispatch setprop active opaque toggle"), { description = "toggle active window opacity" })
+hl.bind(mainMod .. " + CTRL + O", hl.dsp.window.set_prop({ prop = "opaque", value = "toggle" }), { description = "toggle active window opacity" })
 
 -- BROWSER
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("gtk-launch thorium-browser"), { description = "open default browser" })
@@ -176,7 +180,7 @@ hl.bind(mainMod .. " + ALT + up",    hl.dsp.window.swap({ direction = "u" }), { 
 hl.bind(mainMod .. " + ALT + down",  hl.dsp.window.swap({ direction = "d" }), { description = "swap window down" })
 
 -- GROUP
-hl.bind(mainMod .. " + G", function() hl.dispatch("togglegroup") end, { description = "toggle group" })
+hl.bind(mainMod .. " + G", hl.dsp.group.toggle(), { description = "toggle group" })
 
 -- MOVE FOCUS
 hl.bind(mainMod .. " + left",  hl.dsp.focus({ direction = "l" }), { description = "focus left" })
@@ -216,7 +220,7 @@ hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, descr
 local function cycle_or_focus(direction)
     local layout = hl.get_config("general.layout")
     if layout == "master" then
-        hl.dispatch(hl.dsp.layout({ action = (direction == "down" and "cyclenext" or "cycleprev") }))
+        hl.dispatch(hl.dsp.layout(direction == "down" and "cyclenext" or "cycleprev"))
     else
         hl.dispatch(hl.dsp.focus({ direction = (direction == "down" and "d" or "u") }))
     end
@@ -224,3 +228,5 @@ end
 
 hl.bind(mainMod .. " + J", function() cycle_or_focus("down") end, { description = "focus down / cycle next" })
 hl.bind(mainMod .. " + K", function() cycle_or_focus("up") end,   { description = "focus up / cycle prev" })
+
+return true

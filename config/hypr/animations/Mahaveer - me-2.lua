@@ -21,3 +21,5 @@ hl.animation({ leaf = "fade", enabled = true, speed = 3, bezier = "smoothOut" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "overshot" })
 hl.animation({ leaf = "workspacesIn", enabled = true, speed = 5, bezier = "winIn", style = "slide" })
 hl.animation({ leaf = "workspacesOut", enabled = true, speed = 5, bezier = "winOut", style = "slide" })
+
+return true

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # /* ----  https://github.com/4ndr0666  ---- */  ##
-# For disabling touchpad.
-# Edit the Touchpad_Device on ~/.config/hypr/UserConfigs/Laptops.lua according to your system
-# use hyprctl devices to get your system touchpad device name
-# source https://github.com/hyprwm/Hyprland/discussions/4283?sort=new#discussioncomment-8648109
+# For toggling touchpad in Hyprland 0.55+ using native Lua hl.device() IPC.
+# Edit Touchpad_Device in ~/.config/hypr/UserConfigs/Laptops.lua according to `hyprctl devices`.
 
 set -euo pipefail
 
@@ -17,7 +15,7 @@ if [[ -z "$touchpad_device" && -f "$laptops_conf" ]]; then
             /^[[:space:]]*(local[[:space:]]+)?Touchpad_Device[[:space:]]*=/ || /^\$Touchpad_Device[[:space:]]*=/ {
                 val = $2
                 sub(/[[:space:]]*(--|#).*$/, "", val)
-                gsub(/^[[:space:]"''']+|[[:space:]"''']+$/, "", val)
+                gsub(/^[[:space:]"'"'"']+|[[:space:]"'"'"']+$/, "", val)
                 print val
                 exit
             }
@@ -30,19 +28,19 @@ if [[ -z "$touchpad_device" ]]; then
     exit 1
 fi
 
-touchpad_keyword="${TOUCHPAD_KEYWORD:-device:${touchpad_device}:enabled}"
+escaped_device="$(printf '%s' "$touchpad_device" | sed 's/\\/\\\\/g; s/"/\\"/g')"
 status_file="${XDG_RUNTIME_DIR:-/tmp}/touchpad.status"
 
 enable_touchpad() {
     printf "true" >"$status_file"
     notify-send -u low -i "$notif" " Enabling" " touchpad"
-    hyprctl keyword "$touchpad_keyword" true -r
+    hyprctl dispatch "hl.device({ name = \"$escaped_device\", enabled = true })"
 }
 
 disable_touchpad() {
     printf "false" >"$status_file"
     notify-send -u low -i "$notif" " Disabling" " touchpad"
-    hyprctl keyword "$touchpad_keyword" false -r
+    hyprctl dispatch "hl.device({ name = \"$escaped_device\", enabled = false })"
 }
 
 current_state="false"

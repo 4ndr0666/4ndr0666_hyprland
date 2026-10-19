@@ -26,8 +26,9 @@ rofi_theme="$HOME/.config/rofi/config-keybinds.rasi"
 msg='☣️ NOTE ☣️: Clicking with Mouse or Pressing ENTER will have NO function'
 
 # collect raw bind lines (strip end-of-line comments) from available files
-files=("$keybinds_conf" "$user_keybinds_conf")
+files=("$keybinds_conf")
 [[ -f "$laptop_conf" ]] && files+=("$laptop_conf")
+files+=("$user_keybinds_conf")
 
 # Parse binds using the python script for speed
 # The last argument must be the user config for override logic to work correctly

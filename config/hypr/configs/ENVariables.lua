@@ -53,3 +53,5 @@ hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")
 hl.env("MOZ_ENABLE_WAYLAND", "1")
 hl.env("MOZ_DBUS_REMOTE", "1")
 hl.env("MOZ_WAYLAND_USE_VAAPI", "1")
+
+return true

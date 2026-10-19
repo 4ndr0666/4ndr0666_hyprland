@@ -8,7 +8,7 @@ notif="$HOME/.config/swaync/images/ja.png"
 SCRIPTSDIR="$HOME/.config/hypr/scripts"
 current_wallpaper="$HOME/.config/rofi/.current_wallpaper"
 
-HYPRGAMEMODE=$(hyprctl getoption animations:enabled | awk 'NR==1{print $2}')
+HYPRGAMEMODE=$(hyprctl getoption animations.enabled | awk 'NR==1{print $2}')
 
 if [ "$HYPRGAMEMODE" = 1 ]; then
     hyprctl dispatch 'hl.config({

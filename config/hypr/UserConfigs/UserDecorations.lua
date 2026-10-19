@@ -68,3 +68,5 @@ hl.config({
         },
     },
 })
+
+return true

@@ -22,3 +22,5 @@ hl.animation({ leaf = "borderangle", enabled = true, speed = 180, bezier = "line
 hl.animation({ leaf = "fade", enabled = true, speed = 5, bezier = "overshot" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "wind" })
 hl.animation({ leaf = "windows", enabled = true, speed = 5, bezier = "bounce", style = "popin" })
+
+return true

@@ -194,3 +194,5 @@ hl.window_rule({
     center = true,
     size = "(monitor_w*0.26) (monitor_h*0.18)"
 })
+
+return true

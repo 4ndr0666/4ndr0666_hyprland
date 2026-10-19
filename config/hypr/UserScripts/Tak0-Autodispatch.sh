@@ -3,9 +3,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Tak0-Autodispatch.sh
 # ─────────────────────────────────────────────────────────────────────────────
-# Authoritative spawn dispatcher for Hyprland. Temporary capture rules are
-# installed before launch, process lineage is supervised, and cleanup removes
-# all temporary rules on every exit path.
+# Authoritative spawn dispatcher for Hyprland 0.55+ Lua API. Temporary named
+# hl.window_rule() capture rules are installed before launch, process lineage
+# is supervised, and cleanup disables all temporary rules on every exit path.
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -Eeuo pipefail
@@ -18,18 +18,38 @@ fail() {
   exit 1
 }
 
+lua_quote() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  printf '"%s"' "$s"
+}
+
+extract_initial_class_regex() {
+  local rule="$1"
+  if [[ "$rule" =~ initial_?class[[:space:]]*[:=][[:space:]]*(.+)$ ]]; then
+    printf '%s' "${BASH_REMATCH[1]}"
+  elif [[ "$rule" =~ class[[:space:]]*[:=][[:space:]]*(.+)$ ]]; then
+    printf '%s' "${BASH_REMATCH[1]}"
+  else
+    printf '%s' "$rule"
+  fi
+}
+
 cleanup() {
   local status=$?
   trap - EXIT INT TERM
 
-  printf 'Cleanup: removing temporary capture rules and initialWorkspace at %s\n' "$(date)" >>"$LOGFILE"
-  if ! hyprctl keyword windowrulev2 "unset, initialClass:.*" >>"$LOGFILE" 2>&1; then
+  printf 'Cleanup: disabling temporary Lua capture rules at %s\n' "$(date)" >>"$LOGFILE"
+  if ! hyprctl dispatch 'hl.window_rule({ name = "tak0-autodispatch-global", match = { initial_class = "^$__disabled__$" } }):set_enabled(false)' >>"$LOGFILE" 2>&1; then
     printf '[ERROR] failed to remove global temporary capture rule\n' >&2
     ((status == 0)) && status=1
   fi
+  local idx=0
   for RULE in "${CAPTURE_RULES[@]}"; do
-    printf 'Cleanup: removing temporary capture rule: %s\n' "$RULE" >>"$LOGFILE"
-    if ! hyprctl keyword windowrulev2 "unset, $RULE" >>"$LOGFILE" 2>&1; then
+    idx=$((idx + 1))
+    printf 'Cleanup: disabling temporary capture rule #%d (%s)\n' "$idx" "$RULE" >>"$LOGFILE"
+    if ! hyprctl dispatch "hl.window_rule({ name = \"tak0-autodispatch-rule-$idx\", match = { initial_class = \"^\$__disabled__\$\" } }):set_enabled(false)" >>"$LOGFILE" 2>&1; then
       printf '[ERROR] failed to remove temporary capture rule: %s\n' "$RULE" >&2
       ((status == 0)) && status=1
     fi
@@ -68,16 +88,18 @@ done
 
 trap cleanup EXIT INT TERM
 
-printf 'Applying temporary initialWorkspace capture (initialClass:.*)\n' >>"$LOGFILE"
-hyprctl keyword windowrulev2 \
-  "initialWorkspace $TARGET_WS silent, initialClass:.*" \
-  >>"$LOGFILE" 2>&1
+TARGET_WS_LUA="$(lua_quote "${TARGET_WS} silent")"
 
+printf 'Applying temporary Lua window_rule capture (initial_class = .*)\n' >>"$LOGFILE"
+hyprctl dispatch "hl.window_rule({ name = \"tak0-autodispatch-global\", match = { initial_class = \".*\" }, workspace = $TARGET_WS_LUA })" >>"$LOGFILE" 2>&1
+
+rule_idx=0
 for RULE in "${CAPTURE_RULES[@]}"; do
-  printf 'Applying temporary capture rule: %s\n' "$RULE" >>"$LOGFILE"
-  hyprctl keyword windowrulev2 \
-    "initialWorkspace $TARGET_WS silent, $RULE" \
-    >>"$LOGFILE" 2>&1
+  rule_idx=$((rule_idx + 1))
+  regex_val="$(extract_initial_class_regex "$RULE")"
+  regex_lua="$(lua_quote "$regex_val")"
+  printf 'Applying temporary Lua capture rule #%d: %s\n' "$rule_idx" "$RULE" >>"$LOGFILE"
+  hyprctl dispatch "hl.window_rule({ name = \"tak0-autodispatch-rule-$rule_idx\", match = { initial_class = $regex_lua }, workspace = $TARGET_WS_LUA })" >>"$LOGFILE" 2>&1
 done
 
 # Launch verbatim without an extra shell parsing pass.
@@ -102,7 +124,7 @@ printf 'App gate name: %s\n' "$APP_NAME" >>"$LOGFILE"
 sleep 1.5
 
 printf 'Releasing ultra-early wide capture\n' >>"$LOGFILE"
-hyprctl keyword windowrulev2 "unset, initialClass:.*" >>"$LOGFILE" 2>&1
+hyprctl dispatch 'hl.window_rule({ name = "tak0-autodispatch-global", match = { initial_class = "^$__disabled__$" } }):set_enabled(false)' >>"$LOGFILE" 2>&1
 
 get_descendants() {
   local root="$1"
@@ -156,8 +178,7 @@ while ((SECONDS < END_TIME)); do
 
     if ((MATCH)) && [[ -z "${SEEN[$ADDR]-}" ]]; then
       printf 'Placing window %s (pid %s, class %s) → WS %s\n' "$ADDR" "$PID" "$CLASS" "$TARGET_WS" >>"$LOGFILE"
-      hyprctl dispatch movetoworkspacesilent \
-        "$TARGET_WS,address:$ADDR" >>"$LOGFILE" 2>&1
+      hyprctl dispatch "hl.dsp.window.move({ workspace = \"$TARGET_WS\", follow = false, window = \"address:$ADDR\" })" >>"$LOGFILE" 2>&1
       SEEN[$ADDR]=1
     fi
   done < <(hyprctl clients -j | jq -r '.[] | [.pid, .address, .class] | @tsv')

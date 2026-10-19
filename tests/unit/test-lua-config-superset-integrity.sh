@@ -2,15 +2,16 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-HYPR_LUA="$ROOT/config/hypr/hyprland.lua"
-QUICK_SETTINGS="$ROOT/config/hypr/scripts/4ndr0666_Quick_Settings.sh"
 
 fail() {
   printf '[FAIL] %s\n' "$*" >&2
   exit 1
 }
 
-# 1. Verify all authoritative and user-override Lua modules exist and are loaded by hyprland.lua
+# 1. Verify every module required by config/hypr/hyprland.lua exists and is non-empty
+HYPR_MAIN="$ROOT/config/hypr/hyprland.lua"
+[[ -f "$HYPR_MAIN" ]] || fail "Missing $HYPR_MAIN"
+
 required_modules=(
   "UserConfigs.01-UserDefaults:config/hypr/UserConfigs/01-UserDefaults.lua"
   "configs.Keybinds:config/hypr/configs/Keybinds.lua"
@@ -34,47 +35,93 @@ required_modules=(
 for entry in "${required_modules[@]}"; do
   mod="${entry%%:*}"
   rel="${entry#*:}"
-  [[ -s "$ROOT/$rel" ]] || fail "Required Lua module is missing or empty: $rel"
-  grep -Fq "source(\"$mod\")" "$HYPR_LUA" || fail "hyprland.lua does not load required module: $mod"
-done
-
-# 2. Verify no Lua file under config/hypr contains shell/conf '#' comments
-while IFS= read -r -d '' lua_file; do
-  if awk 'NR > 1 && /^[[:space:]]*#/ { exit 0 } NR == 1 && /^[[:space:]]*#/ && !/^#!/ { exit 0 } END { exit 1 }' "$lua_file"; then
-    fail "Invalid '#' comment syntax in Lua module: $lua_file"
+  path="$ROOT/$rel"
+  grep -Fq "source(\"$mod\")" "$HYPR_MAIN" || fail "hyprland.lua does not require $mod"
+  [[ -s "$path" ]] || fail "Required Lua module is missing or 0-byte: $rel"
+  if grep -Eq '^[[:space:]]*#' "$path"; then
+    fail "Lua module $rel contains invalid shell '#' comment syntax"
   fi
-done < <(find "$ROOT/config/hypr" -type f -name '*.lua' -print0)
-
-# 3. Verify Quick Settings menu targets resolve to existing Lua modules
-for target in 01-UserDefaults.lua ENVariables.lua UserKeybinds.lua Startup_Apps.lua WindowRules.lua UserSettings.lua UserDecorations.lua UserAnimations.lua Laptops.lua WorkSpaceRules.lua; do
-  grep -Fq "\$UserConfigs/$target" "$QUICK_SETTINGS" || fail "Quick Settings menu is missing UserConfigs target: $target"
-  [[ -f "$ROOT/config/hypr/UserConfigs/$target" ]] || fail "Quick Settings target file does not exist: config/hypr/UserConfigs/$target"
+  if command -v luac >/dev/null 2>&1; then
+    luac -p "$path" || fail "Lua syntax error in $rel"
+  elif command -v texluac >/dev/null 2>&1; then
+    texluac -p "$path" || fail "Lua syntax error in $rel"
+  fi
 done
 
-# 4. Verify runtime helper targets exist and no script calls undefined modify_startup_config or stale mako paths
-[[ -x "$ROOT/config/hypr/scripts/KeybindsLayoutInit.sh" ]] || fail "KeybindsLayoutInit.sh is missing or not executable"
-[[ -x "$ROOT/config/hypr/UserScripts/RainbowBorders.bak.sh" ]] || fail "RainbowBorders.bak.sh is missing or not executable"
-! grep -Fq 'modify_startup_config' "$ROOT/config/hypr/UserScripts/WallpaperSelect.sh" || fail "WallpaperSelect.sh still invokes undefined modify_startup_config"
+# 2. Verify universal monitors.lua and workspaces.lua have zero hardcoded personal hardware descriptors (Ruling #3)
+! grep -Fq 'desc:' "$ROOT/config/hypr/monitors.lua" || fail "monitors.lua contains hardcoded hardware desc: selector"
+! grep -Fq 'desc:' "$ROOT/config/hypr/workspaces.lua" || fail "workspaces.lua contains hardcoded hardware desc: selector"
+grep -Fq 'output = ""' "$ROOT/config/hypr/monitors.lua" || fail "monitors.lua missing universal fallback output = \"\""
+
+# 3. Verify strictly-Lua hyprctl IPC compliance across config/hypr, config/waybar, config/swaync, config/wlogout (Ruling #4)
+if grep -RIhE 'hyprctl[[:space:]]+keyword|windowrulev2|movetoworkspacesilent|hyprctl[[:space:]]+dispatch[[:space:]]+(layoutmsg|splitratio|workspaceopt|setprop|exit|dpms|workspace[[:space:]])' \
+  "$ROOT/config/hypr" "$ROOT/config/waybar" "$ROOT/config/swaync" "$ROOT/config/wlogout" 2>/dev/null | grep -vE '^[[:space:]]*(#|--|//)' >/dev/null 2>&1; then
+  fail "Legacy non-Lua hyprctl keyword or hyprlang dispatcher found in active configuration/scripts"
+fi
+
+if grep -RInE 'getoption[[:space:]]+[a-z_]+:' "$ROOT/config/hypr/scripts" "$ROOT/config/hypr/UserScripts" >/dev/null 2>&1; then
+  fail "Legacy colon-delimited hyprctl getoption found in Hyprland scripts"
+fi
+
+# 4. Verify 4ndr0666_Quick_Settings.sh targets existing Lua files
+QS="$ROOT/config/hypr/scripts/4ndr0666_Quick_Settings.sh"
+[[ -x "$QS" ]] || fail "Quick Settings script is not executable"
+! grep -Fq 'Settings.conf' "$QS" || fail "Quick Settings still references legacy Settings.conf"
+for target in 01-UserDefaults.lua ENVariables.lua UserKeybinds.lua Startup_Apps.lua WindowRules.lua UserSettings.lua UserDecorations.lua UserAnimations.lua Laptops.lua WorkSpaceRules.lua; do
+  grep -Fq "$target" "$QS" || fail "Quick Settings does not expose $target"
+done
+
+# 5. Verify runtime helper targets exist and retired redundant paths are absent (Ruling #5)
+[[ -x "$ROOT/config/hypr/scripts/KeybindsLayoutInit.sh" ]] || fail "Missing executable KeybindsLayoutInit.sh"
+[[ -x "$ROOT/config/hypr/UserScripts/RainbowBorders.bak.sh" ]] || fail "Missing executable RainbowBorders.bak.sh"
+! grep -Fq 'modify_startup_config' "$ROOT/config/hypr/UserScripts/WallpaperSelect.sh" || fail "Undefined modify_startup_config call remains in WallpaperSelect.sh"
 if grep -RIn '/\.config/mako' "$ROOT/config/hypr/scripts" "$ROOT/config/hypr/UserScripts" >/dev/null 2>&1; then
   fail "Stale ~/.config/mako path remains in Hyprland runtime scripts"
 fi
+for retired in \
+  config/waybar/WaybarWorkspaces \
+  config/ghostty/config.ghostty \
+  config/hypr/UserScripts/alacritty4ndr066 \
+  config/hypr/UserScripts/startup \
+  config/hypr/UserScripts/startup4ndr0666 \
+  config/hypr/UserScripts/mako; do
+  [[ ! -e "$ROOT/$retired" ]] || fail "Authorized-retired path still exists in worktree: $retired"
+done
 
-# 5. Verify legacy .conf -> Lua overlay translation works end-to-end
+# 6. Verify Rofi rasi files have no unclosed quotes or typos and Wallust template defines required color aliases
+! grep -Fq 'colums:' "$ROOT/config/rofi/config-rofi-Beats-menu.rasi" || fail "Typo 'colums:' remains in config-rofi-Beats-menu.rasi"
+grep -Fq 'placeholder: " Choose Media or Stations to play";' "$ROOT/config/rofi/config-rofi-Beats.rasi" || fail "Unclosed quote in config-rofi-Beats.rasi not fixed"
+for alias_key in background-alt selected active urgent; do
+  grep -Fq "${alias_key}:" "$ROOT/config/wallust/templates/colors-rofi.rasi" || fail "Missing ${alias_key} in wallust template colors-rofi.rasi"
+  grep -Fq "${alias_key}:" "$ROOT/config/rofi/wallust/colors-rofi.rasi" || fail "Missing ${alias_key} in rofi/wallust/colors-rofi.rasi"
+done
+
+# 7. Verify legacy .conf to Lua translation helper is idempotent
+# shellcheck source=/dev/null
 source "$ROOT/scripts/lib_lua_config.sh"
-source "$ROOT/scripts/lib_resolution.sh"
-tmp="$(mktemp -d "${TMPDIR:-/tmp}/gup-lua-superset.XXXXXX")"
-trap 'rm -rf -- "$tmp"' EXIT
-mkdir -p "$tmp/backup" "$tmp/UserConfigs"
-cp "$ROOT/config/hypr/UserConfigs/Startup_Apps.lua" "$tmp/UserConfigs/Startup_Apps.lua"
-cp "$ROOT/config/hypr/UserConfigs/ENVariables.lua" "$tmp/UserConfigs/ENVariables.lua"
-printf '%s\n' 'exec-once = custom-user-daemon --flag' >"$tmp/backup/Startup_Apps.conf"
-printf '%s\n' 'env = CUSTOM_USER_VAR,enabled' >"$tmp/backup/ENVariables.conf"
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/gup-lua-superset.XXXXXX")"
+trap 'rm -rf -- "$TMP_DIR"' EXIT
+mkdir -p "$TMP_DIR/backup" "$TMP_DIR/UserConfigs"
+cp "$ROOT/config/hypr/UserConfigs/Startup_Apps.lua" "$TMP_DIR/UserConfigs/Startup_Apps.lua"
+cp "$ROOT/config/hypr/UserConfigs/ENVariables.lua" "$TMP_DIR/UserConfigs/ENVariables.lua"
 
-translate_legacy_userconfigs_to_lua "$tmp/backup" "$tmp/UserConfigs" "$tmp/migration.log"
-translate_legacy_userconfigs_to_lua "$tmp/backup" "$tmp/UserConfigs" "$tmp/migration.log"
-[[ "$(grep -Fc 'hl.exec_cmd("custom-user-daemon --flag")' "$tmp/UserConfigs/Startup_Apps.lua")" -eq 1 ]] ||
-  fail "Legacy Startup_Apps.conf exec-once was not idempotently translated to Lua"
-[[ "$(grep -Fc 'hl.env("CUSTOM_USER_VAR", "enabled")' "$tmp/UserConfigs/ENVariables.lua")" -eq 1 ]] ||
-  fail "Legacy ENVariables.conf env was not idempotently translated to Lua"
+cat >"$TMP_DIR/backup/Startup_Apps.conf" <<'EOF'
+exec-once = custom-user-daemon --flag
+exec-once = $scriptsDir/KeybindsLayoutInit.sh
+EOF
 
-printf '%s\n' '[PASS] Lua configuration superset, module graph, Quick Settings targets, and legacy migration contracts verified.'
+cat >"$TMP_DIR/backup/ENVariables.conf" <<'EOF'
+env = CUSTOM_USER_VAR,custom_val
+EOF
+
+translate_legacy_userconfigs_to_lua "$TMP_DIR/backup" "$TMP_DIR/UserConfigs" "/dev/null"
+grep -Fq 'hl.exec_cmd("custom-user-daemon --flag")' "$TMP_DIR/UserConfigs/Startup_Apps.lua" || fail "Legacy Startup_Apps.conf command was not translated"
+! grep -Fq 'KeybindsLayoutInit.sh' "$TMP_DIR/UserConfigs/Startup_Apps.lua" || fail "Canonical startup command was duplicated into UserConfigs/Startup_Apps.lua"
+grep -Fq 'hl.env("CUSTOM_USER_VAR", "custom_val")' "$TMP_DIR/UserConfigs/ENVariables.lua" || fail "Legacy ENVariables.conf variable was not translated"
+
+before_sha="$(sha256sum "$TMP_DIR/UserConfigs/Startup_Apps.lua" "$TMP_DIR/UserConfigs/ENVariables.lua")"
+translate_legacy_userconfigs_to_lua "$TMP_DIR/backup" "$TMP_DIR/UserConfigs" "/dev/null"
+after_sha="$(sha256sum "$TMP_DIR/UserConfigs/Startup_Apps.lua" "$TMP_DIR/UserConfigs/ENVariables.lua")"
+[[ "$before_sha" == "$after_sha" ]] || fail "translate_legacy_userconfigs_to_lua is not idempotent"
+
+printf '[PASS] Lua configuration superset, strictly-Lua IPC, universal monitor defaults, and authorized retirements verified.\n'

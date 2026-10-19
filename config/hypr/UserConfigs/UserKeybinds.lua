@@ -78,9 +78,9 @@ hl.bind(mainMod .. " + 0", hl.dsp.focus({ workspace = 10 }), { description = "fo
 local function cycle_window(direction)
     local layout = hl.get_config("general.layout")
     if layout == "master" then
-        hl.dispatch(hl.dsp.exec_cmd("hyprctl dispatch layoutmsg " .. (direction == "next" and "cyclenext" or "cycleprev")))
+        hl.dispatch(hl.dsp.layout(direction == "next" and "cyclenext" or "cycleprev"))
     else
-        hl.dispatch(hl.dsp.exec_cmd("hyprctl dispatch " .. (direction == "next" and "cyclenext" or "cycleprev")))
+        hl.dispatch(hl.dsp.window.cycle_next({ prev = (direction ~= "next") }))
     end
 end
 
@@ -115,14 +115,16 @@ local function toggle_layout()
 end
 
 hl.bind(mainMod .. " + ALT + L", toggle_layout, { description = "toggle master/dwindle layout" })
-hl.bind(mainMod .. " + SHIFT + I", hl.dsp.exec_cmd("hyprctl dispatch layoutmsg removemaster"), { description = "remove master" })
+hl.bind(mainMod .. " + SHIFT + I", hl.dsp.layout("removemaster"), { description = "remove master" })
 
 -- Preserve the established layout-ratio control utilizing safe shell fallback.
 hl.bind(mainMod .. " + M", function()
     local layout = hl.get_config("general.layout")
     if layout == "master" then
-        hl.dispatch(hl.dsp.exec_cmd("hyprctl dispatch layoutmsg mfact +0.3"))
+        hl.dispatch(hl.dsp.layout("mfact +0.3"))
     elseif layout == "dwindle" then
-        hl.dispatch(hl.dsp.exec_cmd("hyprctl dispatch splitratio +0.3"))
+        hl.dispatch(hl.dsp.layout("splitratio +0.3"))
     end
 end, { description = "adjust current layout ratio" })
+
+return true

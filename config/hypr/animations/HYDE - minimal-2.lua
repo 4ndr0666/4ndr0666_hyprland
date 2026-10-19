@@ -10,3 +10,5 @@ hl.animation({ leaf = "border", enabled = true, speed = 6, bezier = "quart" })
 hl.animation({ leaf = "borderangle", enabled = true, speed = 6, bezier = "quart" })
 hl.animation({ leaf = "fade", enabled = true, speed = 6, bezier = "quart" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 6, bezier = "quart" })
+
+return true

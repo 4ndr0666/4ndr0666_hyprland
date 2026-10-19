@@ -128,3 +128,5 @@ hl.gesture({
         hl.exec_cmd(scriptsDir .. "/OverviewToggle.sh")
     end,
 })
+
+return true
