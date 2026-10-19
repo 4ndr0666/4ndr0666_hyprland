@@ -11,13 +11,13 @@ import Quickshell.Hyprland
 
 /**
  * A service that provides access to Hyprland keybinds.
- * Uses the `get_keybinds.py` script to parse comments in config files in a certain format and convert to JSON.
+ * Uses the `keybinds_parser.py` script to parse authoritative Lua keybind modules and convert to JSON.
  */
 Singleton {
     id: root
-    property string keybindParserPath: FileUtils.trimFileProtocol(`${Directories.config}/quickshell/scripts/hyprland/get_keybinds.py`)
-    property string defaultKeybindConfigPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/hyprland/keybinds.conf`)
-    property string userKeybindConfigPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/custom/keybinds.conf`)
+    property string keybindParserPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/scripts/keybinds_parser.py`)
+    property string defaultKeybindConfigPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/configs/Keybinds.lua`)
+    property string userKeybindConfigPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/UserConfigs/UserKeybinds.lua`)
     property var defaultKeybinds: {"children": []}
     property var userKeybinds: {"children": []}
     property var keybinds: ({
@@ -70,4 +70,3 @@ Singleton {
         }
     }
 }
-

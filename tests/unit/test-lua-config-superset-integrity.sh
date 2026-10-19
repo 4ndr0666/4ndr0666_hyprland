@@ -61,8 +61,8 @@ done
 grep -Fq 'output = ""' "$ROOT/config/hypr/monitors.lua" || fail "monitors.lua missing universal fallback output = \"\""
 
 # 3. Verify strictly-Lua hyprctl IPC compliance across config/hypr, config/waybar, config/swaync, config/wlogout (Ruling #4)
-if grep -RIhE 'hyprctl[[:space:]]+keyword|windowrulev2|movetoworkspacesilent|hyprctl[[:space:]]+dispatch[[:space:]]+(layoutmsg|splitratio|workspaceopt|setprop|exit|dpms|workspace[[:space:]])' \
-  "$ROOT/config/hypr" "$ROOT/config/waybar" "$ROOT/config/swaync" "$ROOT/config/wlogout" 2>/dev/null | grep -vE '^[[:space:]]*(#|--|//)' >/dev/null 2>&1; then
+if grep -RIhE 'hyprctl[[:space:]]+keyword|windowrulev2|movetoworkspacesilent|Hyprland\.dispatch\([`"](workspace|movetoworkspacesilent|focuswindow|closewindow|exec)[[:space:]]|hyprctl[[:space:]]+dispatch[[:space:]]+(layoutmsg|splitratio|workspaceopt|setprop|exit|dpms|workspace[[:space:]])' \
+  "$ROOT/config/hypr" "$ROOT/config/waybar" "$ROOT/config/swaync" "$ROOT/config/wlogout" "$ROOT/config/quickshell" 2>/dev/null | grep -vE '^[[:space:]]*(#|--|//)' >/dev/null 2>&1; then
   fail "Legacy non-Lua hyprctl keyword or hyprlang dispatcher found in active configuration/scripts"
 fi
 
