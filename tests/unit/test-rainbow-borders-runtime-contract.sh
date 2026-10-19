@@ -16,6 +16,7 @@ fail() {
 [[ -x "$SCRIPT" ]] || fail "functional RainbowBorders.sh must exist and be executable"
 [[ -x "$BACKUP" ]] || fail "historical backup/template path unexpectedly disappeared"
 ! grep -Fq 'mv "$disabled_bak_sh" "$rainbow_script"' "$QUICK_SETTINGS" || fail "Quick Settings can still promote the .bak.sh template to active implementation"
+! grep -Fq 'disabled_bak_sh' "$QUICK_SETTINGS" || fail "Quick Settings still mutates or deletes the archival .bak.sh template"
 
 mkdir -p "$TMP/bin" "$TMP/home/.config/hypr/wallust"
 cat >"$TMP/bin/hyprctl" <<'STUB'
