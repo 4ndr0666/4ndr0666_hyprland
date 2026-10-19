@@ -5,17 +5,23 @@
 ## ColorPicker ----------------------------------------------
 
 # Using hyprpicker
-color=`$(which hyprpicker)`
-image="/tmp/${color}.png"
+color="$(hyprpicker 2>/dev/null || true)"
+safe_color="${color//#/}"
+image="${TMPDIR:-/tmp}/colorpicker_${safe_color:-preview}.png"
 
 main() {
-	if [[ "$color" ]]; then
+	if [[ -n "$color" ]]; then
 		# copy color code to clipboard
-		echo ${color} | tr -d "\n" | wl-copy
-		# generate preview
-		convert -size 48x48 xc:"$color" ${image}
+		printf '%s' "$color" | tr -d "\n" | wl-copy
+		# generate preview using ImageMagick 7 (magick) with convert fallback
+		if command -v magick >/dev/null 2>&1; then
+			magick -size 48x48 xc:"$color" "$image"
+		elif command -v convert >/dev/null 2>&1; then
+			convert -size 48x48 xc:"$color" "$image"
+		fi
 		# notify about it
-		notify-send -h string:x-canonical-private-synchronous:sys-notify-picker -u low -i ${image} "$color, copied to clipboard."
+		notify-send -h string:x-canonical-private-synchronous:sys-notify-picker -u low -i "$image" "$color, copied to clipboard."
+		rm -f -- "$image"
 	fi
 }
 

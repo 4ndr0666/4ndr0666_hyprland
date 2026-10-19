@@ -23,6 +23,8 @@ UserScripts="$HOME/.config/hypr/UserScripts"
 show_info() {
     if [[ -f "$iDIR/info.png" ]]; then
         notify-send -i "$iDIR/info.png" "Info" "$1"
+    elif [[ -f "$iDIR/note.png" ]]; then
+        notify-send -i "$iDIR/note.png" "Info" "$1"
     else
         notify-send "Info" "$1"
     fi
@@ -47,13 +49,17 @@ rainbow_borders_menu() {
         disabled) current_display="Disabled" ;;
     esac
 
-    local options="Disable Rainbow Borders\nWallust Color\nOriginal Rainbow\nGradient Flow"
+    local options="Toggle Rainbow Borders\nDisable Rainbow Borders\nWallust Color\nOriginal Rainbow\nGradient Flow"
     local choice
     choice=$(printf "%b" "$options" | rofi -i -dmenu -config "$rofi_theme" -mesg "Rainbow Borders: current = $current_display")
 
     [[ -z "$choice" ]] && return
 
     case "$choice" in
+        "Toggle Rainbow Borders")
+            toggle_rainbow_borders
+            return
+            ;;
         "Disable Rainbow Borders")
             if [[ -f "$rainbow_script" ]]; then
                 mv "$rainbow_script" "$disabled_sh_bak"
@@ -96,7 +102,7 @@ rainbow_borders_menu() {
 
     if [[ -x "$refresh_script" ]]; then
         "$refresh_script" >/dev/null 2>&1 &
-    elif [[ "$current" != "disabled" && -x "$rainbow_script" ]]; then
+    elif [[ "$status" != "disabled" && -x "$rainbow_script" ]]; then
         "$rainbow_script" >/dev/null 2>&1 &
     fi
 }
@@ -201,6 +207,11 @@ main() {
         $term -e $edit "$file"
     fi
 }
+
+if [[ "${1:-}" == "--toggle-rainbow-borders" ]]; then
+    toggle_rainbow_borders
+    exit 0
+fi
 
 if pidof rofi > /dev/null; then
   pkill rofi

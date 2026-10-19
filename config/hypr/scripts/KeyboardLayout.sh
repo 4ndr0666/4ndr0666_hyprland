@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # /* ----  https://github.com/4ndr0666  ---- */  ##
-# This is for changing kb_layouts. Set kb_layouts in "$HOME/.config/hypr/UserConfigs/UserSettings.conf"
+# This is for changing kb_layouts. Set kb_layouts in "$HOME/.config/hypr/UserConfigs/UserSettings.lua"
 
 set -Eeuo pipefail
 

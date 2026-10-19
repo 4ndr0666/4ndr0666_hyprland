@@ -15,25 +15,24 @@ accent="$(grep -E '^\s*selected-normal-background:' "$RASI_COLORS" | cut -d':' -
 
 ## Theme Elements
 prompt='Screenshot'
-mesg="Directory :: `xdg-user-dir PICTURES`/Screenshots"
+mesg="Directory :: $(xdg-user-dir PICTURES 2>/dev/null || printf '%s' "$HOME/Pictures")/Screenshots"
 
 ## Options
-layout=`cat "$RASI_THEME" | grep 'USE_ICON' | cut -d'=' -f2`
-#layout=$(grep 'USE_ICON' "$RASI_THEME" | cut -d'=' -f2 | tr -d ' ')
+layout=$(grep 'USE_ICON' "$RASI_THEME" | cut -d'=' -f2)
 if [[ "$layout" == 'NO' ]]; then
 	option_1=' Capture Desktop'
 	option_2=' Capture Area'
 	option_3=' Capture Window'
 	option_4=' Capture in 5s'
 	option_5=' Capture in 10s'
-    option_6=' Cancel'
+	option_6=' Cancel'
 else
 	option_1=''
 	option_2=''
 	option_3=''
 	option_4=''
 	option_5=''
-    option_6=''
+	option_6=''
 fi
 
 ## Rofi CMD
@@ -51,10 +50,13 @@ run_rofi() {
 }
 
 ## Screenshot Geometry & File
-time=`date +%Y-%m-%d-%H-%M-%S`
-dir="`xdg-user-dir PICTURES`/Screenshots"
-
-file="Screenshot_${time}_${geometry}.png"
+time=$(date +%Y-%m-%d-%H-%M-%S)
+dir="$(xdg-user-dir PICTURES 2>/dev/null || printf '%s' "$HOME/Pictures")/Screenshots"
+geometry=""
+if command -v hyprctl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    geometry="$(hyprctl monitors -j 2>/dev/null | jq -r '.[0] | select(.width != null and .height != null) | "\(.width)x\(.height)"' 2>/dev/null || true)"
+fi
+file="Screenshot_${time}${geometry:+_${geometry}}.png"
 
 ## Directory Check
 if [[ ! -d "$dir" ]]; then
@@ -67,8 +69,7 @@ iDIR="${XDG_CONFIG_HOME:-$HOME/.config}/swaync/icons"
 notify_view() {
 	notify_cmd_shot="notify-send -h string:x-canonical-private-synchronous:sys-notify-shot -u low -i ${iDIR}/picture.png"
 	${notify_cmd_shot} 'Copied to clipboard.'
-    # paplay /usr/share/sounds/freedesktop/stereo/screen-capture.oga &>/dev/null &
-	viewnior ${dir}/"$file"
+	viewnior "${dir}/$file"
 	if [[ -e "$dir/$file" ]]; then
 		${notify_cmd_shot} 'Screenshot Saved.'
 	else
@@ -78,7 +79,7 @@ notify_view() {
 
 # countdown
 countdown () {
-	for sec in `seq $1 -1 1`; do
+	for sec in $(seq "$1" -1 1); do
 		notify-send -h string:x-canonical-private-synchronous:sys-notify-count -t 1000 -i "$iDIR"/timer.png "Taking shot in : $sec"
 		sleep 1
 	done
@@ -86,31 +87,31 @@ countdown () {
 
 # take shots
 shotnow () {
-	cd ${dir} && sleep 0.5 && grim - | tee "$file" | wl-copy
+	cd "${dir}" && sleep 0.5 && grim - | tee "$file" | wl-copy
 	notify_view
 }
 
 shot5 () {
 	countdown '5'
-	sleep 1 && cd ${dir} && grim - | tee "$file" | wl-copy
+	sleep 1 && cd "${dir}" && grim - | tee "$file" | wl-copy
 	notify_view
 }
 
 shot10 () {
 	countdown '10'
-	sleep 1 && cd ${dir} && grim - | tee "$file" | wl-copy
+	sleep 1 && cd "${dir}" && grim - | tee "$file" | wl-copy
 	notify_view
 }
 
 shotwin () {
-	w_pos=`hyprctl activewindow | grep 'at:' | cut -d':' -f2 | tr -d ' ' | tail -n1`
-	w_size=`hyprctl activewindow | grep 'size:' | cut -d':' -f2 | tr -d ' ' | tail -n1 | sed s/,/x/g`
-	cd ${dir} && sleep 0.3 && grim -g "$w_pos $w_size" - | tee "$file" | wl-copy
+	w_pos=$(hyprctl activewindow | grep 'at:' | cut -d':' -f2 | tr -d ' ' | tail -n1)
+	w_size=$(hyprctl activewindow | grep 'size:' | cut -d':' -f2 | tr -d ' ' | tail -n1 | sed s/,/x/g)
+	cd "${dir}" && sleep 0.3 && grim -g "$w_pos $w_size" - | tee "$file" | wl-copy
 	notify_view
 }
 
 shotarea () {
-	cd ${dir} && grim -g "$(slurp -b ${background:1}CC -c ${accent:1}ff -s ${accent:1}0D -w 2 && sleep 0.3)" - | tee "$file" | wl-copy
+	cd "${dir}" && grim -g "$(slurp -b "${background:1}CC" -c "${accent:1}ff" -s "${accent:1}0D" -w 2 && sleep 0.3)" - | tee "$file" | wl-copy
 	notify_view
 }
 
@@ -132,22 +133,22 @@ run_cmd() {
 ## Actions
 chosen="$(run_rofi)"
 case ${chosen} in
-    $option_1)
+    "$option_1")
 		run_cmd --opt1
         ;;
-    $option_2)
+    "$option_2")
 		run_cmd --opt2
         ;;
-    $option_3)
+    "$option_3")
 		run_cmd --opt3
         ;;
-    $option_4)
+    "$option_4")
 		run_cmd --opt4
         ;;
-    $option_5)
+    "$option_5")
 		run_cmd --opt5
         ;;
-    $option_6)
+    "$option_6")
         run_cmd --opt6
         ;;
 esac

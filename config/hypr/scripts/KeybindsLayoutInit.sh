@@ -7,7 +7,7 @@ set -Eeuo pipefail
 SCRIPTS_DIR="${HOME}/.config/hypr/scripts"
 
 if [[ -x "$SCRIPTS_DIR/Tak0-Per-Window-Switch.sh" ]]; then
-    "$SCRIPTS_DIR/Tak0-Per-Window-Switch.sh" >/dev/null 2>&1 &
+    "$SCRIPTS_DIR/Tak0-Per-Window-Switch.sh" --init >/dev/null 2>&1 &
 fi
 
 if command -v hyprctl >/dev/null 2>&1 && [[ -x "$SCRIPTS_DIR/KeyboardLayout.sh" ]]; then

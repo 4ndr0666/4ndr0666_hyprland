@@ -37,11 +37,11 @@ declare -a KEYBINDS=(
 	" S" "Yandex Web Search" "(Rofi)"
 	" E" "Text Editor" "(Nvim)"
 	" F1" "Clipboard Manager" "(ClipManager.sh)"
-	" P" "Color Picker" "(Colorpicker.sh)"
+	" P" "Color Picker" "(colorpicker)"
 	" SHIFT M" "Online Music" "(RofiBeats.sh)"
 	" ALT C" "Calculator" "(RofiCalc.sh)"
 	" ALT E" "Emoticons" "(Emojis)"
-	" SHIFT N" "Night Light" "(Hypersunset.sh)"
+	" SHIFT N" "Night Light" "(Hyprsunset.sh)"
 	" ALT_L SHIFT_L" "Keyboard Switch" "(KeyboardLayout.sh)"
 	" X" "Power-menu" "(wlogout)"
 	"CTRL ALT L" "Screen Lock" "(Hyprlock)"
@@ -157,11 +157,16 @@ if [ -n "$yad_output" ]; then
 			swaync-client -t -sw &
 			;;
 		"Quickshell")
-			quickshell &
+			"$HOME/.config/hypr/scripts/OverviewToggle.sh" &
 			;;
 		"Wallpaper Menu")
-			# Fallback to Waypaper or equivalent wallpaper daemon UI
-			waypaper &
+			"$HOME/.config/hypr/UserScripts/WallpaperSelect.sh" &
+			;;
+		"colorpicker" | "Colorpicker.sh")
+			"$HOME/.config/hypr/UserScripts/colorpicker" &
+			;;
+		"Hyprsunset.sh" | "Hypersunset.sh")
+			"$HOME/.config/hypr/scripts/Hyprsunset.sh" toggle &
 			;;
 		"Kitty")
 			kitty &
@@ -215,8 +220,15 @@ if [ -n "$yad_output" ]; then
 			jdownloader &
 			;;
 		*.sh | *.py)
-			# Dynamic Script Handler: Assumes tools exist in $PATH and require a terminal wrapper
-			kitty -e "$clean_cmd" &
+			if [[ -x "$HOME/.config/hypr/scripts/$clean_cmd" ]]; then
+				"$HOME/.config/hypr/scripts/$clean_cmd" &
+			elif [[ -x "$HOME/.config/hypr/UserScripts/$clean_cmd" ]]; then
+				"$HOME/.config/hypr/UserScripts/$clean_cmd" &
+			elif [[ -x "$HOME/.local/bin/$clean_cmd" ]]; then
+				kitty -e "$HOME/.local/bin/$clean_cmd" &
+			else
+				kitty -e "$clean_cmd" &
+			fi
 			;;
 		"")
 			# Handle layout/WM actions that have no explicit tool listed by copying keybind

@@ -39,7 +39,7 @@ if dotfiles_replace "$SOURCE" "$TMPDIR/outside"; then
   fail 'dotfile primitive accepted destination outside HOME'
 fi
 
-file_state_restore_manifest
+dotfiles_restore
 [[ "$(cat "$HOME/.config/test/value")" == old ]] || fail 'dotfile restore failed'
 
 printf 'PASS: dotfile core\n'

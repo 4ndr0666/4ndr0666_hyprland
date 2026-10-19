@@ -12,6 +12,15 @@ is_arch_family manjaro 'arch'
 is_arch_family endeavouros 'arch'
 is_arch_family artix 'arch'
 
+[[ "$(arch_family_name arch '')" == "arch" ]] || {
+  printf '%s\n' 'arch-family-detection: FAIL arch_family_name arch' >&2
+  exit 1
+}
+[[ "$(arch_family_name manjaro 'arch')" == "manjaro" ]] || {
+  printf '%s\n' 'arch-family-detection: FAIL arch_family_name manjaro' >&2
+  exit 1
+}
+
 if is_arch_family ubuntu 'debian'; then
   printf '%s\n' 'arch-family-detection: FAIL non-Arch host accepted' >&2
   exit 1

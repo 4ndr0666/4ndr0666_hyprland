@@ -159,6 +159,9 @@ case "$1" in
 "--get")
   get_volume
   ;;
+"--get-mic")
+  get_mic_volume
+  ;;
 "--inc")
   inc_volume 5
   ;;

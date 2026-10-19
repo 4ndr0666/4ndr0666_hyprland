@@ -60,7 +60,7 @@ source /etc/os-release
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/core/platform.sh"
 if ! is_arch_family; then
-  printf '[ERROR] This installer supports Arch-family distributions only (detected: %s).\n' "${PRETTY_NAME:-${ID:-unknown}}" >&2
+  printf '[ERROR] This installer supports Arch-family distributions only (detected: %s / %s).\n' "${PRETTY_NAME:-${ID:-unknown}}" "$(arch_family_name)" >&2
   exit 1
 fi
 
