@@ -45,8 +45,8 @@ if bash "$TMP/script/Tak0-Autodispatch.sh" 2 'class:^(example)$' -- /bin/true >/
   fail "injected capture-rule failure must propagate as nonzero"
 fi
 grep -Fq 'name = "tak0-autodispatch-global"' "$AUTODISPATCH_LOG" || fail "global temporary capture rule was not installed"
-grep -Fq 'name = "tak0-autodispatch-global"' "$AUTODISPATCH_LOG" && grep -Fq 'set_enabled(false)' "$AUTODISPATCH_LOG" || fail "global temporary rule cleanup was not attempted"
+grep -F 'name = "tak0-autodispatch-global"' "$AUTODISPATCH_LOG" | grep -Fq 'set_enabled(false)' || fail "global temporary rule cleanup was not attempted"
 grep -Fq 'name = "tak0-autodispatch-rule-1"' "$AUTODISPATCH_LOG" || fail "narrow temporary capture rule was not attempted"
-grep -Fq 'name = "tak0-autodispatch-rule-1"' "$AUTODISPATCH_LOG" && grep -Fq 'set_enabled(false)' "$AUTODISPATCH_LOG" || fail "narrow temporary rule cleanup was not attempted"
+grep -F 'name = "tak0-autodispatch-rule-1"' "$AUTODISPATCH_LOG" | grep -Fq 'set_enabled(false)' || fail "narrow temporary rule cleanup was not attempted"
 
 printf 'PASS: autodispatch cleanup is exercised against an injected compositor failure\n'
