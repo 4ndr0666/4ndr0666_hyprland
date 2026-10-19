@@ -28,39 +28,6 @@ show_info() {
     fi
 }
 
-toggle_rainbow_borders() {
-    local rainbow_script="$UserScripts/RainbowBorders.sh"
-    local disabled_sh_bak="${rainbow_script}.bak"
-    local refresh_script="$scriptsDir/Refresh.sh"
-    local status=""
-
-    if [[ -f "$rainbow_script" ]]; then
-        if mv "$rainbow_script" "$disabled_sh_bak"; then
-            status="disabled"
-            if command -v hyprctl &>/dev/null; then
-                hyprctl reload >/dev/null 2>&1 || true
-            fi
-        fi
-    elif [[ -f "$disabled_sh_bak" ]]; then
-        if mv "$disabled_sh_bak" "$rainbow_script"; then
-            status="enabled"
-        fi
-    else
-        show_info "Functional RainbowBorders.sh is missing in $UserScripts; the .bak.sh template is not executable fallback."
-        return 1
-    fi
-
-    if [[ -x "$refresh_script" ]]; then
-        "$refresh_script" >/dev/null 2>&1 &
-    elif [[ "$current" != "disabled" && -x "$rainbow_script" ]]; then
-        "$rainbow_script" >/dev/null 2>&1 &
-    fi
-
-    if [[ -n "$status" ]]; then
-        show_info "Rainbow Borders ${status}."
-    fi
-}
-
 rainbow_borders_menu() {
     local rainbow_script="$UserScripts/RainbowBorders.sh"
     local disabled_sh_bak="${rainbow_script}.bak"
