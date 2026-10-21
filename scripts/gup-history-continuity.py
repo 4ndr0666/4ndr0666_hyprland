@@ -48,16 +48,6 @@ def validate_repo_path(path: str, label: str) -> str:
     return path
 
 
-def archive_path(path: str) -> bool:
-    parts = PurePosixPath(path).parts
-    return any(
-        part.lower() in ARCHIVE_PARTS
-        or part.lower().endswith((".bak", ".backup", "~", ".gup.tmp"))
-        or ".bak." in part.lower()
-        for part in parts
-    )
-
-
 def read_dispositions(root: Path, manifest: str | None, scope: str,
                       historical: dict[str, set[str]], current: set[str]) -> dict[str, dict[str, Any]]:
     if manifest is None:
