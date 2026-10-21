@@ -33,11 +33,13 @@ class RehydrationVerificationTests(unittest.TestCase):
         folder=self.root/"config/hypr"; folder.mkdir(parents=True); (folder/"old.conf").write_text("old\n"); commit(self.root,"old")
         (folder/"old.conf").unlink(); (folder/"new.lua").write_text("new\n"); commit(self.root,"new")
         (self.root/"dispositions.json").write_text(json.dumps({"config/hypr/old.conf":{"status":"translated","target":"config/hypr/new.lua","evidence":"reviewed migration and behavioral test"}}))
+        commit(self.root,"commit disposition manifest")
         result=self.invoke("--dispositions","dispositions.json","--strict"); self.assertEqual(result.returncode,0,result.stderr)
         record=next(x for x in json.loads(result.stdout)["path_records"] if x["path"]=="config/hypr/old.conf"); self.assertEqual(record["status"],"translated")
     def test_missing_translation_target_fails_closed(self):
         folder=self.root/"config/hypr"; folder.mkdir(parents=True); (folder/"old.conf").write_text("old\n"); commit(self.root,"old")
         (folder/"old.conf").unlink(); (folder/"new.lua").write_text("new\n"); commit(self.root,"new")
         (self.root/"dispositions.json").write_text(json.dumps({"config/hypr/old.conf":{"status":"translated","target":"config/hypr/missing.lua","evidence":"reviewed migration"}}))
+        commit(self.root,"commit disposition manifest")
         result=self.invoke("--dispositions","dispositions.json"); self.assertEqual(result.returncode,2); self.assertIn("translated target is not current",result.stderr)
 if __name__=="__main__": unittest.main(verbosity=2)
