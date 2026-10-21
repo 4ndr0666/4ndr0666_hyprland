@@ -65,4 +65,13 @@ class RehydrationVerificationTests(unittest.TestCase):
         object_path.unlink()
         result=self.invoke()
         self.assertEqual(result.returncode,2,result.stderr)
+    def test_empty_authorized_subtree_fails_closed(self):
+        folder=self.root/"config/hypr"; folder.mkdir(parents=True)
+        (folder/"current.lua").write_text("return true\\n"); commit(self.root,"current configuration")
+        manifest={"authorized_subtrees":[{"path":"config/hypr/does-not-exist","status":"authorized-retired","evidence":"no historical paths should be silently accepted","user_authorization":True}]}
+        (self.root/"dispositions.json").write_text(json.dumps(manifest)); commit(self.root,"commit empty subtree disposition")
+        result=self.invoke("--dispositions","dispositions.json","--strict")
+        self.assertEqual(result.returncode,2,result.stderr)
+        self.assertIn("retired subtree has no historical paths",result.stderr)
+
 if __name__=="__main__": unittest.main(verbosity=2)
