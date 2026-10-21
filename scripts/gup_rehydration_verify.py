@@ -5,6 +5,14 @@ import argparse, hashlib, json, os, subprocess, sys, tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+ARCHIVE_PARTS = {".bak", "backup", "backups", "archive", "archives", "legacy-conf-backup"}
+
+def archive_path(path: str) -> bool:
+    parts = PurePosixPath(path).parts
+    return any(part.lower() in ARCHIVE_PARTS
+               or part.lower().endswith((".bak", ".backup", "~", ".gup.tmp"))
+               or ".bak." in part.lower() for part in parts)
+
 def git(root: Path, *args: str, input_bytes: bytes | None = None) -> bytes:
     p = subprocess.run(["git", "-C", str(root), *args], input=input_bytes, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, timeout=180)
     if p.returncode:
@@ -76,18 +84,16 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
         if path in {"schema_version","authorized_subtrees"}: continue
         if not isinstance(path,str) or not (path==scope or path.startswith(scope+"/")): raise ValueError(f"disposition outside scope: {path!r}")
         if path not in historical: raise ValueError(f"disposition path absent from Git history: {path!r}")
+        if path in current: raise ValueError(f"disposition is only valid for a missing current path: {path!r}")
         if not isinstance(item,dict) or item.get("status") not in allowed: raise ValueError(f"invalid disposition: {path}")
         if not isinstance(item.get("evidence"),str) or not item["evidence"].strip(): raise ValueError(f"missing evidence: {path}")
-        if item.get("target") is not None:
+        if item["status"] in {"preserved", "translated"}:
             target=item.get("target")
-            label = "translated target" if item["status"] == "translated" else "disposition target"
-            if not isinstance(target,str) or target not in current: raise ValueError(f"{label} is not current: {path} -> {target!r}")
-        if item["status"]=="translated" and not item.get("target"):
-            raise ValueError(f"translated disposition requires a target: {path}")
-        if item["status"]=="authorized-retired":
-            if item.get("user_authorization") is not True: raise ValueError(f"retirement requires user_authorization=true: {path}")
-            if path in current: raise ValueError(f"cannot retire a current tracked path: {path}")
-        if path in result and result[path]!=item: raise ValueError(f"contradictory dispositions: {path}")
+            if not isinstance(target,str) or not target.strip() or target not in current:
+                raise ValueError(f"disposition target for {path!r} is not tracked in candidate HEAD: {target!r}")
+        if item["status"]=="authorized-retired" and item.get("user_authorization") is not True:
+            raise ValueError(f"retirement requires user_authorization=true: {path}")
+        if path in result: raise ValueError(f"path has overlapping subtree and individual dispositions: {path!r}")
         result[path]=item
     return result, manifest_pin
 
@@ -125,12 +131,17 @@ def main() -> int:
         head=git(root,"rev-parse","HEAD").decode().strip(); current={x["path"] for x in tree(root,head,scope)}
         historical=set(versions); disp, manifest_pin=dispositions(root,a.dispositions,scope,historical,current); records=[]
         for path in sorted(historical|current):
-            present=path in current; item=disp.get(path); status=(item or {}).get("status", "present-path" if present else "unresolved-missing"); rows=versions.get(path,[])
-            records.append({"path":path,"status":status,"present_at_head":present,"historical_commit_count":len(rows),"historical_blob_ids":sorted({x["git_object_id"] for x in rows}),"versions":rows,"disposition":item})
-        unresolved=[x for x in records if x["status"]=="unresolved-missing"]; rename_rows=renames(root,commits,scope)
+            present=path in current; archived=archive_path(path); item=disp.get(path); rows=versions.get(path,[])
+            if item and item["status"]=="authorized-retired": status="authorized-retired"
+            elif archived: status="archive-path-present" if present else "archive-path-missing"
+            elif item: status=item["status"]
+            elif present: status="present-path"
+            else: status="unresolved-missing"
+            records.append({"path":path,"scope_class":"archive" if archived else "active","status":status,"present_at_head":present,"historical_commit_count":len(rows),"historical_blob_ids":sorted({x["git_object_id"] for x in rows}),"versions":rows,"disposition":item})
+        unresolved=[x for x in records if x["scope_class"]=="active" and x["status"]=="unresolved-missing"]; rename_rows=renames(root,commits,scope)
         report={"schema_version":1,"protocol":"GUP","evidence_kind":"repository-derived-rehydration-verification","scope":scope,"head":head,
                 "object_format":git(root,"rev-parse","--show-object-format").decode().strip(),"shallow_repository":shallow,"refs":refs,
-                "reachable_commit_count":len(commits),"commits":commits,"historical_path_count":len(historical),"current_path_count":len(current),
+                "reachable_commit_count":len(commits),"commits":commits,"historical_path_count":len(historical),"current_path_count":len(current),"archive_path_count":sum(1 for x in records if x["scope_class"]=="archive"),
                 "historical_path_version_count":sum(map(len,versions.values())),"rename_event_count":len(rename_rows),"rename_events":rename_rows,
                 "blob_count":len(blob_pins),"blob_pins":blob_pins,"path_records":records,"dispositions_manifest":manifest_pin,"unresolved_missing_count":len(unresolved),
                 "verification":{"all_blob_git_ids_recomputed":all(x["git_object_id"]==x["git_object_id_recomputed"] for x in blob_pins.values()),
