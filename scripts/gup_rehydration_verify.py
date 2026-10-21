@@ -72,9 +72,11 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
         if path not in historical: raise ValueError(f"disposition path absent from Git history: {path!r}")
         if not isinstance(item,dict) or item.get("status") not in allowed: raise ValueError(f"invalid disposition: {path}")
         if not isinstance(item.get("evidence"),str) or not item["evidence"].strip(): raise ValueError(f"missing evidence: {path}")
-        if item["status"]=="translated":
+        if item.get("target") is not None:
             target=item.get("target")
-            if not isinstance(target,str) or target not in current: raise ValueError(f"translated target is not current: {path} -> {target!r}")
+            if not isinstance(target,str) or target not in current: raise ValueError(f"disposition target is not current: {path} -> {target!r}")
+        if item["status"]=="translated" and not item.get("target"):
+            raise ValueError(f"translated disposition requires a target: {path}")
         if item["status"]=="authorized-retired" and item.get("user_authorization") is not True: raise ValueError(f"retirement requires user_authorization=true: {path}")
         if path in result and result[path]!=item: raise ValueError(f"contradictory dispositions: {path}")
         result[path]=item
@@ -103,7 +105,7 @@ def main() -> int:
         commits=metadata(root,commit_ids); versions:dict[str,list[dict[str,str]]]={}; blob_ids=set()
         for cid in commit_ids:
             for item in tree(root,cid,scope):
-                pin={"commit":cid,"path":item["path"],"mode":item["mode"],"git_object_id":item["oid"]}
+                pin={"commit":cid,"path":item["path"],"mode":item["mode"],"git_object_id":item["oid"],"git_show_spec":f"{cid}:{item['path']}"}
                 versions.setdefault(item["path"],[]).append(pin); blob_ids.add(item["oid"])
         blob_pins={}
         for oid in sorted(blob_ids):
@@ -114,7 +116,7 @@ def main() -> int:
         head=git(root,"rev-parse","HEAD").decode().strip(); current={x["path"] for x in tree(root,head,scope)}
         historical=set(versions); disp=dispositions(root,a.dispositions,scope,historical,current); records=[]
         for path in sorted(historical|current):
-            present=path in current; item=disp.get(path); status="present-path" if present else (item or {}).get("status","unresolved-missing"); rows=versions.get(path,[])
+            present=path in current; item=disp.get(path); status=(item or {}).get("status", "present-path" if present else "unresolved-missing"); rows=versions.get(path,[])
             records.append({"path":path,"status":status,"present_at_head":present,"historical_commit_count":len(rows),"historical_blob_ids":sorted({x["git_object_id"] for x in rows}),"versions":rows,"disposition":item})
         unresolved=[x for x in records if x["status"]=="unresolved-missing"]; rename_rows=renames(root,commits,scope)
         report={"schema_version":1,"protocol":"GUP","evidence_kind":"repository-derived-rehydration-verification","scope":scope,"head":head,
