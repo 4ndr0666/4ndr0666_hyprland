@@ -52,8 +52,14 @@ def renames(root: Path, commits: list[dict[str,Any]], scope: str) -> list[dict[s
     return events
 
 def dispositions(root: Path, filename: str|None, scope: str, historical: set[str], current: set[str]):
-    if not filename: return {}
-    raw=json.loads((root/filename).read_text(encoding="utf-8"))
+    if not filename: return {}, None
+    manifest_path = PurePosixPath(filename)
+    if manifest_path.is_absolute() or any(part in {"", ".", ".."} for part in manifest_path.parts):
+        raise ValueError("disposition manifest must be a safe repository-relative path")
+    manifest_bytes = git(root, "show", f"HEAD:{filename}")
+    raw=json.loads(manifest_bytes.decode("utf-8"))
+    manifest_pin = {"path": filename, "git_object_id": git(root, "rev-parse", f"HEAD:{filename}").decode().strip(),
+                    "sha256": hashlib.sha256(manifest_bytes).hexdigest(), "source": "HEAD Git object"}
     if not isinstance(raw,dict): raise ValueError("disposition manifest must be an object")
     result={}; allowed={"preserved","translated","authorized-retired"}
     for entry in raw.get("authorized_subtrees",[]):
@@ -115,7 +121,7 @@ def main() -> int:
             if recomputed!=oid: raise ValueError(f"Git blob hash mismatch: {oid} recomputed as {recomputed}")
             blob_pins[oid]={"git_object_id":oid,"git_object_type":"blob","byte_length":len(content),"sha256":hashlib.sha256(content).hexdigest(),"git_object_id_recomputed":recomputed,"content_recomputable":True}
         head=git(root,"rev-parse","HEAD").decode().strip(); current={x["path"] for x in tree(root,head,scope)}
-        historical=set(versions); disp=dispositions(root,a.dispositions,scope,historical,current); records=[]
+        historical=set(versions); disp, manifest_pin=dispositions(root,a.dispositions,scope,historical,current); records=[]
         for path in sorted(historical|current):
             present=path in current; item=disp.get(path); status=(item or {}).get("status", "present-path" if present else "unresolved-missing"); rows=versions.get(path,[])
             records.append({"path":path,"status":status,"present_at_head":present,"historical_commit_count":len(rows),"historical_blob_ids":sorted({x["git_object_id"] for x in rows}),"versions":rows,"disposition":item})
@@ -124,7 +130,7 @@ def main() -> int:
                 "object_format":git(root,"rev-parse","--show-object-format").decode().strip(),"shallow_repository":shallow,"refs":refs,
                 "reachable_commit_count":len(commits),"commits":commits,"historical_path_count":len(historical),"current_path_count":len(current),
                 "historical_path_version_count":sum(map(len,versions.values())),"rename_event_count":len(rename_rows),"rename_events":rename_rows,
-                "blob_count":len(blob_pins),"blob_pins":blob_pins,"path_records":records,"unresolved_missing_count":len(unresolved),
+                "blob_count":len(blob_pins),"blob_pins":blob_pins,"path_records":records,"dispositions_manifest":manifest_pin,"unresolved_missing_count":len(unresolved),
                 "verification":{"all_blob_git_ids_recomputed":all(x["git_object_id"]==x["git_object_id_recomputed"] for x in blob_pins.values()),
                                 "all_blob_sha256_pinned":all(len(x["sha256"])==64 for x in blob_pins.values()),"all_historical_path_versions_recorded":True,"shallow_history_blocks_strict":shallow}}
         encoded=(json.dumps(report,indent=2,sort_keys=True,ensure_ascii=True)+"\n").encode()
