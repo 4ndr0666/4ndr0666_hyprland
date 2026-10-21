@@ -25,6 +25,8 @@ class RehydrationVerificationTests(unittest.TestCase):
         record=next(x for x in report["path_records"] if x["path"]=="config/hypr/old.conf"); self.assertEqual(record["status"],"unresolved-missing")
         pin=report["blob_pins"][record["historical_blob_ids"][0]]
         self.assertEqual(pin["sha256"],hashlib.sha256(b"legacy\n\x00bytes\n").hexdigest()); self.assertEqual(pin["git_object_id"],pin["git_object_id_recomputed"])
+        self.assertEqual(record["versions"][0]["git_show_spec"],f"{first}:config/hypr/old.conf")
+        repeat=self.invoke(); self.assertEqual(repeat.returncode,0,repeat.stderr); self.assertEqual(repeat.stdout,result.stdout)
     def test_strict_fails_for_unresolved_historical_path(self):
         folder=self.root/"config/hypr"; folder.mkdir(parents=True); (folder/"old.conf").write_text("old\n"); commit(self.root,"old")
         (folder/"old.conf").unlink(); (folder/"new.lua").write_text("new\n"); commit(self.root,"new")
@@ -42,4 +44,11 @@ class RehydrationVerificationTests(unittest.TestCase):
         (self.root/"dispositions.json").write_text(json.dumps({"config/hypr/old.conf":{"status":"translated","target":"config/hypr/missing.lua","evidence":"reviewed migration"}}))
         commit(self.root,"commit disposition manifest")
         result=self.invoke("--dispositions","dispositions.json"); self.assertEqual(result.returncode,2); self.assertIn("translated target is not current",result.stderr)
+    def test_archived_missing_path_is_recorded_but_not_active_loss(self):
+        folder=self.root/"config/hypr/archive"; folder.mkdir(parents=True)
+        old=folder/"old.conf"; old.write_text("archived\n"); commit(self.root,"archived configuration")
+        old.unlink(); (self.root/"config/hypr/current.lua").write_text("return true\n"); commit(self.root,"current configuration")
+        result=self.invoke("--strict"); self.assertEqual(result.returncode,0,result.stderr)
+        record=next(x for x in json.loads(result.stdout)["path_records"] if x["path"]=="config/hypr/archive/old.conf")
+        self.assertEqual(record["scope_class"],"archive"); self.assertEqual(record["status"],"archive-path-missing")
 if __name__=="__main__": unittest.main(verbosity=2)
