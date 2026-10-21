@@ -5,8 +5,10 @@ on:
     paths:
       - 'config/hypr/**'
       - 'scripts/gup-history-continuity.py'
+      - 'scripts/gup_rehydration_verify.py'
+      - 'docs/audits/GUP-rehydration-verification.md'
+      - 'tests/test_gup_rehydration_verify.py'
       - 'tests/unit/test-gup-history-continuity.sh'
-      - 'docs/audits/GUP-history-continuity-inventory.md'
       - 'docs/audits/gup-history-continuity-dispositions.json'
       - '.github/workflows/gup-history-continuity.yml'
   workflow_dispatch:
@@ -22,6 +24,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Test rehydration-verification engine
+        run: python3 tests/test_gup_rehydration_verify.py
       - name: Build repository-derived continuity inventory with reviewed dispositions
         run: |
           python3 scripts/gup-history-continuity.py \
@@ -33,7 +37,7 @@ jobs:
               report = json.load(source)
           summary = (
               "## GUP historical continuity inventory\n\n"
-              f"- HEAD: `{report['head']}`\n"
+              f"- HEAD: {report['head']}\n"
               f"- Worktree clean: {report['worktree_clean']}\n"
               f"- Historical file paths: {report['historical_path_count']}\n"
               f"- Current tracked paths: {report['current_path_count']}\n"
@@ -46,10 +50,50 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
               stream.write(summary)
           PY
-      - name: Preserve inventory evidence
+      - name: Recompute historical blob pins from all reachable Git history
+        run: |
+          python3 scripts/gup_rehydration_verify.py \
+            --dispositions docs/audits/gup-history-continuity-dispositions.json \
+            --output "$RUNNER_TEMP/gup-rehydration-verification.json"
+          python3 - "$RUNNER_TEMP/gup-rehydration-verification.json" <<'PY'
+          import json, os, sys
+          with open(sys.argv[1], encoding="utf-8") as source:
+              report = json.load(source)
+          summary = (
+              "## GUP rehydration verification\n\n"
+              f"- HEAD: {report['head']}\n"
+              f"- Reachable commits: {report['reachable_commit_count']}\n"
+              f"- Historical paths: {report['historical_path_count']}\n"
+              f"- Archive-classified paths (still visible): {report['archive_path_count']}\n"
+              f"- Historical path versions: {report['historical_path_version_count']}\n"
+              f"- Git objects with recomputed IDs and SHA-256 pins: {report['git_object_count']}\n"
+              f"- Independently recomputed blobs: {report['blob_count']}\n"
+              f"- Rename events: {report['rename_event_count']}\n"
+              f"- Unresolved historical paths: {report['unresolved_missing_count']}\n"
+              f"- Shallow history: {report['shallow_repository']}\n\n"
+              "Git object IDs are recomputed from blob bytes and separately pinned by SHA-256. "
+              "Path disposition remains a semantic review obligation, not proof of equivalence.\n"
+          )
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
+              stream.write(summary)
+          if report["shallow_repository"] or not report["verification"]["all_git_object_ids_recomputed"] or not report["verification"]["all_git_objects_sha256_pinned"]:
+              raise SystemExit("GUP rehydration evidence integrity gate failed")
+          if report["unresolved_missing_count"]:
+              raise SystemExit("GUP continuity gate failed: unresolved active historical paths remain")
+          PY
+      - name: Preserve historical continuity inventory
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: gup-history-continuity
           path: ${{ runner.temp }}/gup-history-continuity.json
-          if-no-files-found: error
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Preserve recomputable rehydration evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gup-rehydration-verification
+          path: ${{ runner.temp }}/gup-rehydration-verification.json
+          if-no-files-found: warn
           retention-days: 30
