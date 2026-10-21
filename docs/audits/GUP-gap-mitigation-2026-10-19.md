@@ -72,3 +72,16 @@ The workflows use mocked compositor boundaries for the new behavior tests. They 
 
 - Follow-up commit: `be7d65dab120e53080097e1cc96c1783dbb0298d`.
 - CI for this follow-up commit is pending at the time of this append; the earlier evidence above applies to `7ba63845c4ed98fca1f990522994169f482e4490` only.
+
+
+## Append-only follow-up — Rainbow Borders toggle reachability correction
+
+**Correction to the earlier dead-code reconciliation:** the statement that `toggle_rainbow_borders()` was unreferenced is false for the current tree. The menu's `Toggle Rainbow Borders` branch and the `--toggle-rainbow-borders` command-line entry point both call the function, but its definition is absent. The earlier repository search did not establish that all call sites were absent; this is a real reachability regression.
+
+**Mitigation in this follow-up branch:** added `config/hypr/scripts/RainbowBordersToggle.sh` as a managed-state transition helper; reconnected the Quick Settings wrapper and Disable action; propagated non-zero status through the menu and CLI entry points; corrected the mode refresh fallback's undefined `status` reference to use `current`; and registered `tests/unit/test-rainbow-borders-toggle.sh` in the Golden Unit runner.
+
+**Test contract:** mocked transitions verify active-to-disabled and disabled-to-active behavior, compositor reload failure rollback, refresh failure rollback, ambiguous state fail-closed behavior, missing-state failure, shell syntax, and Quick Settings call-site connectivity. This test does not claim live compositor certification.
+
+- Branch: `gup/fix-rainbow-toggle-reachability`.
+- CI status: pending until the pull request workflows complete.
+- No runtime behavior is considered closed until the registered test and required workflows pass.

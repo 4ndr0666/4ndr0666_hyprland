@@ -30,11 +30,17 @@ show_info() {
     fi
 }
 
+toggle_rainbow_borders() {
+    local toggle_script="$scriptsDir/RainbowBordersToggle.sh"
+    [[ -f "$toggle_script" ]] || {
+        show_info "Rainbow Borders toggle helper is missing."
+        return 127
+    }
+    bash "$toggle_script" toggle
+}
+
 rainbow_borders_menu() {
     local rainbow_script="$UserScripts/RainbowBorders.sh"
-    local disabled_sh_bak="${rainbow_script}.bak"
-    local refresh_script="$scriptsDir/Refresh.sh"
-
     local current="disabled"
     if [[ -f "$rainbow_script" ]]; then
         current=$(grep -E '^EFFECT_TYPE=' "$rainbow_script" 2>/dev/null | sed -E 's/^EFFECT_TYPE="?([^"]*)"?/\1/')
@@ -58,16 +64,11 @@ rainbow_borders_menu() {
     case "$choice" in
         "Toggle Rainbow Borders")
             toggle_rainbow_borders
-            return
+            return $?
             ;;
         "Disable Rainbow Borders")
-            if [[ -f "$rainbow_script" ]]; then
-                mv "$rainbow_script" "$disabled_sh_bak"
-            fi
-            current="disabled"
-            if command -v hyprctl &>/dev/null; then
-                hyprctl reload >/dev/null 2>&1 || true
-            fi
+            bash "$scriptsDir/RainbowBordersToggle.sh" --disable
+            return $?
             ;;
         "Wallust Color"|"Original Rainbow"|"Gradient Flow")
             local mode=""
@@ -76,35 +77,13 @@ rainbow_borders_menu() {
                 "Original Rainbow") mode="rainbow" ;;
                 "Gradient Flow") mode="gradient_flow" ;;
             esac
-            if [[ ! -f "$rainbow_script" ]]; then
-                if   [[ -f "$disabled_sh_bak" ]]; then
-                    mv "$disabled_sh_bak" "$rainbow_script"
-                else
-                    show_info "Functional RainbowBorders.sh is missing in $UserScripts; the .bak.sh template is not a valid fallback."
-                    return 1
-                fi
-            fi
-
-            if grep -q '^EFFECT_TYPE=' "$rainbow_script" 2>/dev/null; then
-                sed -i 's/^EFFECT_TYPE=.*/EFFECT_TYPE="'"$mode"'"/' "$rainbow_script"
-            else
-                if head -n1 "$rainbow_script" | grep -q '^#!'; then
-                    sed -i '1a EFFECT_TYPE="'"$mode"'"' "$rainbow_script"
-                else
-                    sed -i '1i EFFECT_TYPE="'"$mode"'"' "$rainbow_script"
-                fi
-            fi
-            current="$mode"
+            bash "$scriptsDir/RainbowBordersToggle.sh" --mode "$mode"
+            return $?
             ;;
         *)
             return ;;
     esac
 
-    if [[ -x "$refresh_script" ]]; then
-        "$refresh_script" >/dev/null 2>&1 &
-    elif [[ "$status" != "disabled" && -x "$rainbow_script" ]]; then
-        "$rainbow_script" >/dev/null 2>&1 &
-    fi
 }
 
 menu() {
@@ -199,7 +178,7 @@ main() {
         "Search for Keybinds") $scriptsDir/KeyBinds.sh ;;
         "Toggle Game Mode") $scriptsDir/GameMode.sh ;;
         "Switch Dark-Light Theme") $scriptsDir/DarkLight.sh ;;
-        "Rainbow Borders Mode") rainbow_borders_menu ;;
+        "Rainbow Borders Mode") rainbow_borders_menu || return $? ;;
         *) return ;;
     esac
 
@@ -210,7 +189,7 @@ main() {
 
 if [[ "${1:-}" == "--toggle-rainbow-borders" ]]; then
     toggle_rainbow_borders
-    exit 0
+    exit $?
 fi
 
 if pidof rofi > /dev/null; then
