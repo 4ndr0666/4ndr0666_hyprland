@@ -13,11 +13,14 @@ required_files=(
   "scripts/gup_init.py"
   "scripts/gup_inventory.py"
   "scripts/gup_history_continuity.py"
+  "scripts/gup_rehydration_verify.py"
   "scripts/gup_alignment.py"
   "scripts/gup_validate.py"
   "schemas/gup-alignment.schema.json"
   "schemas/gup-evidence.schema.json"
   "tests/test_gup_tools.py"
+  "tests/test_gup_rehydration_verify.py"
+  "docs/audits/GUP-rehydration-verification.md"
 )
 
 for rel in "${required_files[@]}"; do
@@ -26,5 +29,6 @@ done
 
 python3 -B "$ROOT/golden_unit_hash.py" --selftest >/dev/null || fail "golden_unit_hash.py --selftest failed"
 python3 -B -m unittest discover -s "$ROOT/tests" -p "test_gup_tools.py" || fail "tests/test_gup_tools.py failed"
+python3 -B -m unittest discover -s "$ROOT/tests" -p "test_gup_rehydration_verify.py" || fail "tests/test_gup_rehydration_verify.py failed"
 
-printf '[PASS] GUP v7.0.1 executable toolchain, schemas, and synthetic Git test suite verified.\n'
+printf '[PASS] GUP v7.0.1 toolchain, repository-derived rehydration verifier, schemas, and synthetic Git regression suites verified.\n'
