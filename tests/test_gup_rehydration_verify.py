@@ -22,6 +22,10 @@ class RehydrationVerificationTests(unittest.TestCase):
         first=commit(self.root,"historical configuration"); old.unlink(); (folder/"new.lua").write_bytes(b"return true\n"); second=commit(self.root,"translated configuration")
         result=self.invoke(); self.assertEqual(result.returncode,0,result.stderr); report=json.loads(result.stdout)
         self.assertIn(first,{x["commit"] for x in report["commits"]}); self.assertIn(second,{x["commit"] for x in report["commits"]})
+        first_commit=next(x for x in report["commits"] if x["commit"]==first)
+        self.assertEqual(report["object_pins"][first]["git_object_type"],"commit")
+        self.assertEqual(report["object_pins"][first_commit["tree_object_id"]]["git_object_type"],"tree")
+        self.assertTrue(report["verification"]["all_git_object_ids_recomputed"])
         record=next(x for x in report["path_records"] if x["path"]=="config/hypr/old.conf"); self.assertEqual(record["status"],"unresolved-missing")
         pin=report["blob_pins"][record["historical_blob_ids"][0]]
         self.assertEqual(pin["sha256"],hashlib.sha256(b"legacy\n\x00bytes\n").hexdigest()); self.assertEqual(pin["git_object_id"],pin["git_object_id_recomputed"])
