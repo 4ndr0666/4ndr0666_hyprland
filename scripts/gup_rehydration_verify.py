@@ -76,9 +76,10 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
         if entry.get("status")!="authorized-retired" or entry.get("user_authorization") is not True: raise ValueError(f"retirement requires explicit authorization: {base}")
         if not isinstance(entry.get("evidence"),str) or not entry["evidence"].strip(): raise ValueError(f"retirement requires evidence: {base}")
         if any(p.startswith(base+"/") for p in current): raise ValueError(f"retired subtree has current paths: {base}")
-        for path in historical:
-            if path.startswith(base+"/"):
-                result[path]={"status":"authorized-retired","user_authorization":True,"evidence":entry["evidence"],"authorization_scope":base}
+        matched_paths = [path for path in historical if path.startswith(base+"/")]
+        if not matched_paths: raise ValueError(f"retired subtree has no historical paths: {base}")
+        for path in matched_paths:
+            result[path]={"status":"authorized-retired","user_authorization":True,"evidence":entry["evidence"],"authorization_scope":base}
     for path,item in raw.items():
         if path in {"schema_version","authorized_subtrees"}: continue
         if (not isinstance(path,str) or not path or PurePosixPath(path).is_absolute()
