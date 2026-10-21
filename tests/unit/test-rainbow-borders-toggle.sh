@@ -51,6 +51,21 @@ reset_state() {
     unset RAINBOW_HYPRCTL_FAIL RAINBOW_REFRESH_FAIL
 }
 
+# Exercise the actual Quick Settings CLI entry point against a staged HOME.
+cp "$HELPER" "$HOME/.config/hypr/scripts/RainbowBordersToggle.sh"
+reset_state
+make_active
+bash "$QUICK_SETTINGS" --toggle-rainbow-borders || fail "Quick Settings CLI failed to disable borders"
+[[ ! -e "$ACTIVE" && -x "$DISABLED" ]] || fail "Quick Settings CLI did not disable the active script"
+grep -Fq 'hyprctl:reload' "$RAINBOW_TEST_LOG" || fail "Quick Settings CLI did not reload Hyprland"
+
+reset_state
+make_active
+mv -- "$ACTIVE" "$DISABLED"
+bash "$QUICK_SETTINGS" --toggle-rainbow-borders || fail "Quick Settings CLI failed to enable borders"
+[[ -x "$ACTIVE" && ! -e "$DISABLED" ]] || fail "Quick Settings CLI did not enable the disabled script"
+grep -Fxq 'refresh' "$RAINBOW_TEST_LOG" || fail "Quick Settings CLI did not refresh runtime"
+
 # Active -> disabled; compositor reload must succeed.
 reset_state
 make_active
