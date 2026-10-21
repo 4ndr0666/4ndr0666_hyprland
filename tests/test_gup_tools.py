@@ -63,12 +63,16 @@ class GUPToolTests(unittest.TestCase):
 
     def test_history_inventory_flags_removed_paths_and_strict_fails(self):
         with tempfile.TemporaryDirectory() as td:
-            root=Path(td); init_repo(root); (root/"config").mkdir(); (root/"config/legacy.conf").write_text("old\n"); commit(root,"old config")
-            (root/"config/legacy.conf").unlink(); (root/"config/current.lua").write_text("new\n"); commit(root,"migrate config")
+            root=Path(td); init_repo(root); (root/"config/archive").mkdir(parents=True)
+            (root/"config/legacy.conf").write_text("old\n"); (root/"config/archive/backup.conf").write_text("archived-looking but still historical\n"); commit(root,"old config")
+            (root/"config/legacy.conf").unlink(); (root/"config/archive/backup.conf").unlink()
+            (root/"config/current.lua").write_text("new\n"); commit(root,"migrate config")
             report=run(PYTHON,str(ROOT/"scripts/gup_history_continuity.py"),"--root",str(root))
             self.assertEqual(report.returncode,0,report.stderr)
             data=json.loads(report.stdout); paths={x["path"]:x for x in data["records"]}
             self.assertEqual(paths["config/legacy.conf"]["status"],"unresolved-missing")
+            self.assertIn("config/archive/backup.conf",paths,"archive-named historical path must not be excluded")
+            self.assertEqual(paths["config/archive/backup.conf"]["status"],"unresolved-missing")
             strict=run(PYTHON,str(ROOT/"scripts/gup_history_continuity.py"),"--root",str(root),"--strict")
             self.assertEqual(strict.returncode,1)
 
