@@ -55,4 +55,13 @@ class RehydrationVerificationTests(unittest.TestCase):
         result=self.invoke("--strict"); self.assertEqual(result.returncode,0,result.stderr)
         record=next(x for x in json.loads(result.stdout)["path_records"] if x["path"]=="config/hypr/archive/old.conf")
         self.assertEqual(record["scope_class"],"archive"); self.assertEqual(record["status"],"archive-path-missing")
+    def test_missing_historical_blob_fails_closed(self):
+        folder=self.root/"config/hypr"; folder.mkdir(parents=True)
+        old=folder/"old.conf"; old.write_text("old blob\n"); commit(self.root,"historical blob")
+        oid=git(self.root,"rev-parse","HEAD:config/hypr/old.conf")
+        object_path=self.root/".git"/"objects"/oid[:2]/oid[2:]
+        self.assertTrue(object_path.is_file(),f"expected loose test object at {object_path}")
+        object_path.unlink()
+        result=self.invoke()
+        self.assertEqual(result.returncode,2,result.stderr)
 if __name__=="__main__": unittest.main(verbosity=2)
