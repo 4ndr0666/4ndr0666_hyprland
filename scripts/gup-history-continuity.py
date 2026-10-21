@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Inventory historical paths from committed Git trees without inferring semantic equivalence.
 
-Every historical path remains visible in the report. Archive-like paths are classified
-separately from active paths, never silently discarded. Strict mode fails on unresolved
-missing active paths only after the inventory has been reviewed.
+Every historical path remains visible in the report. Path names do not prove that a file
+is archival or behaviorally irrelevant. Strict mode fails on every unresolved missing path
+unless the committed evidence manifest explicitly classifies it.
 """
 from __future__ import annotations
 
@@ -17,7 +17,6 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 DEFAULT_SCOPE = "config/hypr"
-ARCHIVE_PARTS = {".bak", "backup", "backups", "archive", "archives", "legacy-conf-backup"}
 
 
 def git(root: Path, *args: str) -> bytes:
@@ -215,12 +214,9 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
     records: list[dict[str, Any]] = []
     for path in sorted(set(historical) | current):
         present = path in current
-        archived = archive_path(path)
         disposition = dispositions.get(path)
         if disposition and disposition["status"] == "authorized-retired":
             status = "authorized-retired"
-        elif archived:
-            status = "archive-path-present" if present else "archive-path-missing"
         elif present:
             status = "present-path"
         elif disposition:
@@ -229,14 +225,14 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
             status = "unresolved-missing"
         records.append({
             "path": path,
-            "scope_class": "archive" if archived else "active",
+            "scope_class": "active",
             "status": status,
             "current": present,
             "historical_object_ids": sorted(historical.get(path, set())),
             "disposition": disposition,
         })
 
-    unresolved = [r for r in records if r["scope_class"] == "active" and r["status"] == "unresolved-missing"]
+    unresolved = [r for r in records if r["status"] == "unresolved-missing"]
     status = git(root, "status", "--porcelain=v1", "--untracked-files=all").decode("utf-8", "replace").splitlines()
     return {
         "schema_version": 2,
@@ -247,7 +243,6 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
         "refs": git(root, "for-each-ref", "--format=%(refname):%(objectname)", "refs/heads", "refs/tags", "refs/remotes").decode("utf-8", "replace").splitlines(),
         "historical_path_count": len(historical),
         "current_path_count": len(current),
-        "archive_path_count": sum(1 for r in records if r["scope_class"] == "archive"),
         "authorized_retired_count": sum(1 for r in records if r["status"] == "authorized-retired"),
         "commit_count": len(commits),
         "rename_event_count": len(renames),
