@@ -5,14 +5,6 @@ import argparse, hashlib, json, os, subprocess, sys, tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-ARCHIVE_PARTS = {".bak", "backup", "backups", "archive", "archives", "legacy-conf-backup"}
-
-def archive_path(path: str) -> bool:
-    parts = PurePosixPath(path).parts
-    return any(part.lower() in ARCHIVE_PARTS
-               or part.lower().endswith((".bak", ".backup", "~", ".gup.tmp"))
-               or ".bak." in part.lower() for part in parts)
-
 def git(root: Path, *args: str, input_bytes: bytes | None = None) -> bytes:
     p = subprocess.run(["git", "-C", str(root), *args], input=input_bytes, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, timeout=180)
     if p.returncode:
@@ -137,17 +129,16 @@ def main() -> int:
         head=git(root,"rev-parse","HEAD").decode().strip(); current={x["path"] for x in tree(root,head,scope)}
         historical=set(versions); disp, manifest_pin=dispositions(root,a.dispositions,scope,historical,current); records=[]
         for path in sorted(historical|current):
-            present=path in current; archived=archive_path(path); item=disp.get(path); rows=versions.get(path,[])
+            present=path in current; item=disp.get(path); rows=versions.get(path,[])
             if item and item["status"]=="authorized-retired": status="authorized-retired"
-            elif archived: status="archive-path-present" if present else "archive-path-missing"
             elif item: status=item["status"]
             elif present: status="present-path"
             else: status="unresolved-missing"
-            records.append({"path":path,"scope_class":"archive" if archived else "active","status":status,"present_at_head":present,"historical_commit_count":len(rows),"historical_blob_ids":sorted({x["git_object_id"] for x in rows}),"versions":rows,"disposition":item})
-        unresolved=[x for x in records if x["scope_class"]=="active" and x["status"]=="unresolved-missing"]; rename_rows=renames(root,commits,scope)
+            records.append({"path":path,"scope_class":"active","status":status,"present_at_head":present,"historical_commit_count":len(rows),"historical_blob_ids":sorted({x["git_object_id"] for x in rows}),"versions":rows,"disposition":item})
+        unresolved=[x for x in records if x["status"]=="unresolved-missing"]; rename_rows=renames(root,commits,scope)
         report={"schema_version":1,"protocol":"GUP","evidence_kind":"repository-derived-rehydration-verification","scope":scope,"head":head,
                 "object_format":git(root,"rev-parse","--show-object-format").decode().strip(),"shallow_repository":shallow,"refs":refs,
-                "reachable_commit_count":len(commits),"commits":commits,"historical_path_count":len(historical),"current_path_count":len(current),"archive_path_count":sum(1 for x in records if x["scope_class"]=="archive"),
+                "reachable_commit_count":len(commits),"commits":commits,"historical_path_count":len(historical),"current_path_count":len(current),"authorized_retired_count":sum(1 for x in records if x["status"]=="authorized-retired"),
                 "historical_path_version_count":sum(map(len,versions.values())),"rename_event_count":len(rename_rows),"rename_events":rename_rows,
                 "git_object_count":len(object_pins),"object_pins":object_pins,"blob_count":len(blob_pins),"blob_pins":blob_pins,"path_records":records,"dispositions_manifest":manifest_pin,"unresolved_missing_count":len(unresolved),
                 "verification":{"all_git_object_ids_recomputed":all(x["git_object_id"]==x["git_object_id_recomputed"] for x in object_pins.values()),
