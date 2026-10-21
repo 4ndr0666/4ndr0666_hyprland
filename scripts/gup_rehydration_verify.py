@@ -81,7 +81,7 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
         if path in {"schema_version","authorized_subtrees"}: continue
         if (not isinstance(path,str) or not path or PurePosixPath(path).is_absolute()
                 or any(part in {"", ".", ".."} for part in PurePosixPath(path).parts)
-                or (scope != "." and not (path==scope or path.startswith(scope+"/"))):
+                or (scope != "." and not (path==scope or path.startswith(scope+"/")))):
             raise ValueError(f"disposition outside scope or invalid path: {path!r}")
         if path not in historical: raise ValueError(f"disposition path absent from Git history: {path!r}")
         if path in current: raise ValueError(f"disposition is only valid for a missing current path: {path!r}")
