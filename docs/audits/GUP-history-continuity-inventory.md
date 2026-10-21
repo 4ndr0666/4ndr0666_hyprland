@@ -48,13 +48,13 @@ Example of an exact path disposition:
 
 Do not populate dispositions from filename similarity alone. The example is illustrative and is not a project disposition.
 
-Use `--strict` to return status 1 if any active in-scope historical path remains unresolved. Git errors, invalid manifests, and I/O failures return status 2. The strict gate is deliberately not wired into CI until the remaining inventory is reviewed; this avoids either breaking CI indiscriminately or encouraging unsupported blanket exemptions.
+Use `--strict` to return status 1 if any in-scope historical path remains unresolved. Git errors, invalid manifests, and I/O failures return status 2. The GUP History Continuity workflow runs the repository-derived verifier and blocks on unresolved active historical paths. No filename or directory-name heuristic can exempt a path from the gate.
 
 ## Scope and limitations
 
 - Scope defaults to `config/hypr`; pass `--scope` to inventory another subtree. Unsafe absolute paths and parent traversal are rejected.
 - All refs present in the clone are included. Fetch all relevant branches/tags before relying on the report.
-- Archive-like paths are retained in the report as `archive-path-present`, `archive-path-missing`, or `authorized-retired`. Classification covers archive directories, `.bak` and compound `.bak.` filenames (for example `RainbowBorders.bak.sh`), backup suffixes, and generated `.gup.tmp` files. Archive classification does not prove behavior is irrelevant or preserved.
+- Path names and suffixes (including `archive/`, `.bak`, `backup/`, and `.gup.tmp`) never establish that historical behavior is irrelevant. Such paths remain active continuity records and block strict certification if missing, unless an explicit evidence-backed disposition authorizes retirement or identifies a current target.
 - Historical paths are reconstructed from commit tree snapshots, not from a de-duplicated object listing. This preserves distinct paths that happen to share the same blob ID.
 - The inventory is path/object evidence, not a semantic parser. Renames and translations must be reviewed with diffs and behavioral tests.
 - The report records current HEAD, ref tips, and worktree state. It does not claim that the clone contains refs not fetched into it.
