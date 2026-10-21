@@ -32,11 +32,11 @@ show_info() {
 
 toggle_rainbow_borders() {
     local toggle_script="$scriptsDir/RainbowBordersToggle.sh"
-    [[ -x "$toggle_script" ]] || {
+    [[ -f "$toggle_script" ]] || {
         show_info "Rainbow Borders toggle helper is missing or not executable."
         return 127
     }
-    "$toggle_script" toggle
+    bash "$toggle_script" toggle
 }
 
 rainbow_borders_menu() {
@@ -70,7 +70,7 @@ rainbow_borders_menu() {
             return $?
             ;;
         "Disable Rainbow Borders")
-            "$scriptsDir/RainbowBordersToggle.sh" --disable || return $?
+            bash "$scriptsDir/RainbowBordersToggle.sh" --disable || return $?
             current="disabled"
             ;;
         "Wallust Color"|"Original Rainbow"|"Gradient Flow")
