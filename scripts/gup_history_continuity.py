@@ -83,7 +83,7 @@ def main()->int:
                 path_obj=PurePosixPath(path) if isinstance(path,str) else None
                 if (path_obj is None or not path or path_obj.is_absolute()
                         or any(part in {"", ".", ".."} for part in path_obj.parts)
-                        or (scope != "." and not (path==scope or path.startswith(scope+"/"))):
+                        or (scope != "." and not (path==scope or path.startswith(scope+"/")))):
                     raise ValueError(f"invalid or out-of-scope disposition path: {path!r}")
                 if path not in historical: raise ValueError(f"disposition path absent from Git history: {path!r}")
                 if path in current: raise ValueError(f"disposition path is still present at HEAD: {path!r}")
