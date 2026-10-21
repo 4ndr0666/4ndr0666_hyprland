@@ -42,7 +42,6 @@ toggle_rainbow_borders() {
 rainbow_borders_menu() {
     local rainbow_script="$UserScripts/RainbowBorders.sh"
     local disabled_sh_bak="${rainbow_script}.bak"
-    local refresh_script="$scriptsDir/Refresh.sh"
 
     local current="disabled"
     if [[ -f "$rainbow_script" ]]; then
@@ -70,8 +69,8 @@ rainbow_borders_menu() {
             return $?
             ;;
         "Disable Rainbow Borders")
-            bash "$scriptsDir/RainbowBordersToggle.sh" --disable || return $?
-            current="disabled"
+            bash "$scriptsDir/RainbowBordersToggle.sh" --disable
+            return $?
             ;;
         "Wallust Color"|"Original Rainbow"|"Gradient Flow")
             local mode=""
@@ -80,35 +79,13 @@ rainbow_borders_menu() {
                 "Original Rainbow") mode="rainbow" ;;
                 "Gradient Flow") mode="gradient_flow" ;;
             esac
-            if [[ ! -f "$rainbow_script" ]]; then
-                if   [[ -f "$disabled_sh_bak" ]]; then
-                    mv "$disabled_sh_bak" "$rainbow_script"
-                else
-                    show_info "Functional RainbowBorders.sh is missing in $UserScripts; the .bak.sh template is not a valid fallback."
-                    return 1
-                fi
-            fi
-
-            if grep -q '^EFFECT_TYPE=' "$rainbow_script" 2>/dev/null; then
-                sed -i 's/^EFFECT_TYPE=.*/EFFECT_TYPE="'"$mode"'"/' "$rainbow_script"
-            else
-                if head -n1 "$rainbow_script" | grep -q '^#!'; then
-                    sed -i '1a EFFECT_TYPE="'"$mode"'"' "$rainbow_script"
-                else
-                    sed -i '1i EFFECT_TYPE="'"$mode"'"' "$rainbow_script"
-                fi
-            fi
-            current="$mode"
+            bash "$scriptsDir/RainbowBordersToggle.sh" --mode "$mode"
+            return $?
             ;;
         *)
             return ;;
     esac
 
-    if [[ -x "$refresh_script" ]]; then
-        "$refresh_script" >/dev/null 2>&1 &
-    elif [[ "$current" != "disabled" && -x "$rainbow_script" ]]; then
-        "$rainbow_script" >/dev/null 2>&1 &
-    fi
 }
 
 menu() {
