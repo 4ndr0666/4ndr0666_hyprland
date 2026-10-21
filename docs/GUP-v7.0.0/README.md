@@ -14,9 +14,11 @@ This directory versions the repository-owned GUP v7 protocol contracts for proje
 - `scripts/gup_init.py` — idempotent Git + `.gup/project.json` bootstrap.
 - `scripts/gup_inventory.py` — tracked worktree SHA-256 inventory and cleanliness gate.
 - `scripts/gup_history_continuity.py` and `scripts/gup-history-continuity.py` — historical Git path continuity and disposition gates.
+- `scripts/gup_rehydration_verify.py` — repository-derived commit/path/blob history, recomputed Git object IDs and SHA-256 pins, rename evidence, and fail-closed active-path continuity verification.
 - `scripts/gup_alignment.py` — bidirectional declaration/observation and provider/consumer alignment verifier (`schemas/gup-alignment.schema.json`).
 - `scripts/gup_validate.py` — fail-closed release evidence validator (`schemas/gup-evidence.schema.json`).
-- `tests/test_gup_tools.py` and `tests/unit/test-gup-v7-toolchain.sh` — automated synthetic Git and unit regression suite.
+- `tests/test_gup_tools.py`, `tests/test_gup_rehydration_verify.py`, and `tests/unit/test-gup-v7-toolchain.sh` — automated synthetic Git, rehydration integrity, and toolchain integration regression suites.
+- [Rehydration verification evidence contract](../audits/GUP-rehydration-verification.md) — reproducible evidence fields, invocation, and interpretation boundaries.
 
 ## Relationship to existing assurance
 
@@ -33,4 +35,4 @@ These commands are not executed by reading this document. Record actual exit sta
 
 ## Integration status
 
-Both the GUP v7 protocol documentation and the companion standalone executable toolchain (`golden_unit_hash.py`, `scripts/gup_*.py`, `schemas/*.json`, `tests/test_gup_tools.py`) are vendored in this repository and enforced by `tests/unit/test-gup-v7-toolchain.sh` inside `tests/unit/run-golden-units.sh`.
+Both the GUP v7 protocol documentation and the companion standalone executable toolchain (`golden_unit_hash.py`, `scripts/gup_*.py`, `schemas/*.json`, `tests/test_gup_tools.py`, `tests/test_gup_rehydration_verify.py`) are vendored in this repository and enforced by `tests/unit/test-gup-v7-toolchain.sh` inside `tests/unit/run-golden-units.sh`.
