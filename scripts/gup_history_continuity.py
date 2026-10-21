@@ -34,9 +34,9 @@ def main()->int:
             tree_args=["ls-tree","-r","-z","--full-tree",commit_id]
             if scope != ".": tree_args.extend(["--",scope])
             raw_tree=git(root,*tree_args)
-            for record in raw_tree.split(b"\\0"):
+            for record in raw_tree.split(b"\0"):
                 if not record: continue
-                header,separator,path_bytes=record.partition(b"\\t")
+                header,separator,path_bytes=record.partition(b"\t")
                 fields=header.split()
                 if not separator or len(fields)!=3: raise ValueError(f"malformed tree record in {commit_id}")
                 mode,kind,oid=(field.decode("ascii") for field in fields)
@@ -47,9 +47,9 @@ def main()->int:
         if scope != ".": current_args.extend(["--",scope])
         current_tree=git(root,*current_args)
         current=set()
-        for record in current_tree.split(b"\\0"):
+        for record in current_tree.split(b"\0"):
             if not record: continue
-            _,separator,path_bytes=record.partition(b"\\t")
+            _,separator,path_bytes=record.partition(b"\t")
             if not separator: raise ValueError("malformed candidate HEAD tree record")
             current.add(path_bytes.decode("utf-8","surrogateescape"))
         dispositions={}
