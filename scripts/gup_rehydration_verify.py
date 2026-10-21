@@ -18,7 +18,9 @@ def validate_scope(scope: str) -> str:
     return s
 
 def tree(root: Path, commit: str, scope: str) -> list[dict[str,str]]:
-    raw=git(root,"ls-tree","-r","-z","--full-tree",commit,"--",scope); rows=[]
+    args=["ls-tree","-r","-z","--full-tree",commit]
+    if scope != ".": args.extend(["--",scope])
+    raw=git(root,*args); rows=[]
     for record in raw.split(b"\0"):
         if not record: continue
         header,sep,path=record.partition(b"\t"); fields=header.split()
