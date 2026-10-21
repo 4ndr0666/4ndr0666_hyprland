@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse, json, subprocess, sys, tempfile, os
 from pathlib import Path
 
-EXCLUDED_PARTS={".git","node_modules",".venv","vendor",".bak","backup","backups","archive","legacy-conf-backup"}
 def git(root:Path,*args:str)->bytes:
     p=subprocess.run(["git","-C",str(root),*args],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False,timeout=180)
     if p.returncode: raise RuntimeError(p.stderr.decode("utf-8","replace").strip() or f"git {' '.join(args)} failed")
@@ -52,7 +51,6 @@ def main()->int:
             if item["status"]=="authorized-retired" and item.get("user_authorization") is not True: raise ValueError(f"retirement of {path} requires explicit user_authorization=true")
         commits,renames=history_events(root,scope); records=[]
         for path in sorted(set(historical)|current):
-            if any(part in EXCLUDED_PARTS for part in Path(path).parts): continue
             present=path in current; status="present-path" if present else dispositions.get(path,{}).get("status","unresolved-missing")
             records.append({"path":path,"status":status,"current":present,"historical_object_ids":sorted(historical.get(path,set())),"disposition":dispositions.get(path)})
         unresolved=[r for r in records if r["status"]=="unresolved-missing"]
