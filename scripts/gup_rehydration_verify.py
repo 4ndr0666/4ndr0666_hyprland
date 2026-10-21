@@ -84,10 +84,12 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
             if not isinstance(target,str) or target not in current: raise ValueError(f"{label} is not current: {path} -> {target!r}")
         if item["status"]=="translated" and not item.get("target"):
             raise ValueError(f"translated disposition requires a target: {path}")
-        if item["status"]=="authorized-retired" and item.get("user_authorization") is not True: raise ValueError(f"retirement requires user_authorization=true: {path}")
+        if item["status"]=="authorized-retired":
+            if item.get("user_authorization") is not True: raise ValueError(f"retirement requires user_authorization=true: {path}")
+            if path in current: raise ValueError(f"cannot retire a current tracked path: {path}")
         if path in result and result[path]!=item: raise ValueError(f"contradictory dispositions: {path}")
         result[path]=item
-    return result
+    return result, manifest_pin
 
 def atomic_write(target: Path, data: bytes) -> None:
     target.parent.mkdir(parents=True,exist_ok=True)
