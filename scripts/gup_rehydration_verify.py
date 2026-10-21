@@ -41,7 +41,8 @@ def metadata(root: Path, commits: list[str]) -> list[dict[str,Any]]:
         raw=git(root,"show","-s","--format=%H%x00%P%x00%ct%x00%s",oid).decode("utf-8","surrogateescape").rstrip("\n")
         f=raw.split("\0",3)
         if len(f)!=4 or f[0]!=oid: raise ValueError(f"cannot reconstruct commit metadata: {oid}")
-        rows.append({"commit":f[0],"parents":f[1].split() if f[1] else [],"timestamp":int(f[2]),"subject":f[3]})
+        tree_oid=git(root,"rev-parse",f"{oid}^{{tree}}").decode("ascii").strip()
+        rows.append({"commit":f[0],"tree_object_id":tree_oid,"parents":f[1].split() if f[1] else [],"timestamp":int(f[2]),"subject":f[3]})
     return rows
 
 def renames(root: Path, commits: list[dict[str,Any]], scope: str) -> list[dict[str,str]]:
@@ -123,12 +124,16 @@ def main() -> int:
             for item in tree(root,cid,scope):
                 pin={"commit":cid,"path":item["path"],"mode":item["mode"],"git_object_id":item["oid"],"git_show_spec":f"{cid}:{item['path']}"}
                 versions.setdefault(item["path"],[]).append(pin); blob_ids.add(item["oid"])
-        blob_pins={}
-        for oid in sorted(blob_ids):
-            content=git(root,"cat-file","blob",oid)
-            recomputed=git(root,"hash-object","--stdin",input_bytes=content).decode("ascii").strip()
-            if recomputed!=oid: raise ValueError(f"Git blob hash mismatch: {oid} recomputed as {recomputed}")
-            blob_pins[oid]={"git_object_id":oid,"git_object_type":"blob","byte_length":len(content),"sha256":hashlib.sha256(content).hexdigest(),"git_object_id_recomputed":recomputed,"content_recomputable":True}
+        object_types={cid:"commit" for cid in commit_ids}
+        object_types.update({item["tree_object_id"]:"tree" for item in commits})
+        object_types.update({oid:"blob" for oid in blob_ids})
+        object_pins={}
+        for oid,kind in sorted(object_types.items()):
+            content=git(root,"cat-file",kind,oid)
+            recomputed=git(root,"hash-object","-t",kind,"--stdin",input_bytes=content).decode("ascii").strip()
+            if recomputed!=oid: raise ValueError(f"Git {kind} hash mismatch: {oid} recomputed as {recomputed}")
+            object_pins[oid]={"git_object_id":oid,"git_object_type":kind,"byte_length":len(content),"sha256":hashlib.sha256(content).hexdigest(),"git_object_id_recomputed":recomputed,"content_recomputable":True}
+        blob_pins={oid:pin for oid,pin in object_pins.items() if pin["git_object_type"]=="blob"}
         head=git(root,"rev-parse","HEAD").decode().strip(); current={x["path"] for x in tree(root,head,scope)}
         historical=set(versions); disp, manifest_pin=dispositions(root,a.dispositions,scope,historical,current); records=[]
         for path in sorted(historical|current):
@@ -144,9 +149,12 @@ def main() -> int:
                 "object_format":git(root,"rev-parse","--show-object-format").decode().strip(),"shallow_repository":shallow,"refs":refs,
                 "reachable_commit_count":len(commits),"commits":commits,"historical_path_count":len(historical),"current_path_count":len(current),"archive_path_count":sum(1 for x in records if x["scope_class"]=="archive"),
                 "historical_path_version_count":sum(map(len,versions.values())),"rename_event_count":len(rename_rows),"rename_events":rename_rows,
-                "blob_count":len(blob_pins),"blob_pins":blob_pins,"path_records":records,"dispositions_manifest":manifest_pin,"unresolved_missing_count":len(unresolved),
-                "verification":{"all_blob_git_ids_recomputed":all(x["git_object_id"]==x["git_object_id_recomputed"] for x in blob_pins.values()),
-                                "all_blob_sha256_pinned":all(len(x["sha256"])==64 for x in blob_pins.values()),"all_historical_path_versions_recorded":True,"shallow_history_blocks_strict":shallow}}
+                "git_object_count":len(object_pins),"object_pins":object_pins,"blob_count":len(blob_pins),"blob_pins":blob_pins,"path_records":records,"dispositions_manifest":manifest_pin,"unresolved_missing_count":len(unresolved),
+                "verification":{"all_git_object_ids_recomputed":all(x["git_object_id"]==x["git_object_id_recomputed"] for x in object_pins.values()),
+                                "all_git_objects_sha256_pinned":all(len(x["sha256"])==64 for x in object_pins.values()),
+                                "all_blob_git_ids_recomputed":all(x["git_object_id"]==x["git_object_id_recomputed"] for x in blob_pins.values()),
+                                "all_blob_sha256_pinned":all(len(x["sha256"])==64 for x in blob_pins.values()),
+                                "all_historical_path_versions_recorded":True,"shallow_history_blocks_strict":shallow}}
         encoded=(json.dumps(report,indent=2,sort_keys=True,ensure_ascii=True)+"\n").encode()
         if a.output: atomic_write(Path(a.output),encoded)
         else: sys.stdout.buffer.write(encoded)
