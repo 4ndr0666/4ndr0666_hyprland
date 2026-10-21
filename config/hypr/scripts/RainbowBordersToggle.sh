@@ -191,7 +191,7 @@ case "${1:-toggle}" in
         fi
         ;;
     *)
-        fail "Usage: $0 [toggle|--enable|--disable]"
+        fail "Usage: $0 [toggle|--enable|--disable|--mode wallust_random|rainbow|gradient_flow]"
         exit 2
         ;;
 esac
