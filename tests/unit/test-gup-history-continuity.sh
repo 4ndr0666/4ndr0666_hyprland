@@ -43,15 +43,14 @@ assert legacy in paths, "deleted legacy path omitted"
 assert duplicate in paths, "same-blob historical path omitted"
 assert paths[legacy]["status"] == "unresolved-missing"
 assert paths[duplicate]["status"] == "unresolved-missing"
-assert paths[archive]["status"] == "archive-path-missing", "archive evidence must remain visible"
-assert paths[archive]["scope_class"] == "archive"
-assert paths[backup_script]["status"] == "archive-path-missing", "compound backup suffix must be visible as archive"
-assert paths[backup_script]["scope_class"] == "archive"
-assert paths[generated_temp]["status"] == "archive-path-missing", "generated temp file must be visible as archive"
-assert paths[generated_temp]["scope_class"] == "archive"
+assert paths[archive]["status"] == "unresolved-missing", "archive-named paths require explicit disposition"
+assert paths[archive]["scope_class"] == "active"
+assert paths[backup_script]["status"] == "unresolved-missing", "compound backup suffix is not retirement evidence"
+assert paths[backup_script]["scope_class"] == "active"
+assert paths[generated_temp]["status"] == "unresolved-missing", "generated-temp naming is not retirement evidence"
+assert paths[generated_temp]["scope_class"] == "active"
 assert paths[old]["status"] == "unresolved-missing"
-assert report["unresolved_missing_count"] == 3
-assert report["archive_path_count"] == 3
+assert report["unresolved_missing_count"] == 6
 assert report["commit_count"] == 2
 assert len(report["commits"]) == 2
 assert "rename_events" in report
@@ -73,6 +72,21 @@ cat > "$TMP/dispositions.json" <<'JSON'
     "target": "config/hypr/UserConfigs/Duplicate.lua",
     "evidence": "synthetic test disposition"
   },
+  "config/hypr/.bak/ignored.conf": {
+    "status": "authorized-retired",
+    "user_authorization": true,
+    "evidence": "synthetic explicit retirement authorization for archived test fixture"
+  },
+  "config/hypr/UserScripts/RainbowBorders.bak.sh": {
+    "status": "authorized-retired",
+    "user_authorization": true,
+    "evidence": "synthetic explicit retirement authorization for backup-named test fixture"
+  },
+  "config/hypr/scripts/Refresh.sh.gup.tmp": {
+    "status": "authorized-retired",
+    "user_authorization": true,
+    "evidence": "synthetic explicit retirement authorization for generated-temp test fixture"
+  },
   "authorized_subtrees": [
     {
       "path": "config/hypr/LEGACY_CODE",
@@ -89,13 +103,16 @@ python3 - "$TMP/strict.json" <<'PY'
 import json, sys
 report = json.load(open(sys.argv[1], encoding="utf-8"))
 assert report["unresolved_missing_count"] == 0
-assert report["authorized_retired_count"] == 1
+assert report["authorized_retired_count"] == 4
 paths = {item["path"]: item for item in report["records"]}
 assert paths["config/hypr/UserConfigs/Legacy.conf"]["status"] == "translated"
 assert paths["config/hypr/UserConfigs/Duplicate.conf"]["status"] == "preserved"
 old = paths["config/hypr/LEGACY_CODE/UserConfigs/old.conf"]
 assert old["status"] == "authorized-retired"
 assert old["disposition"]["authorization_scope"] == "config/hypr/LEGACY_CODE"
+assert paths["config/hypr/.bak/ignored.conf"]["status"] == "authorized-retired"
+assert paths["config/hypr/UserScripts/RainbowBorders.bak.sh"]["status"] == "authorized-retired"
+assert paths["config/hypr/scripts/Refresh.sh.gup.tmp"]["status"] == "authorized-retired"
 PY
 
 mkdir -p "$TMP/config/hypr/LEGACY_CODE/current"
@@ -139,4 +156,20 @@ if python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --scope ../ >
   fail "inventory accepted an unsafe path scope"
 fi
 
-printf '[PASS] complete path inventory, shared blob paths, visible archives, strict gate, explicit subtree authorization, compound backup/temp classification, and invalid-input rejection.\n'
+cat > "$TMP/empty-subtree.json" <<'JSON'
+{
+  "authorized_subtrees": [
+    {
+      "path": "config/hypr/does-not-exist",
+      "status": "authorized-retired",
+      "evidence": "no historical paths should be silently accepted",
+      "user_authorization": true
+    }
+  ]
+}
+JSON
+if python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions empty-subtree.json > /dev/null 2>&1; then
+  fail "inventory accepted retirement authorization for a subtree with no historical paths"
+fi
+
+printf '[PASS] complete path inventory, shared blob paths, explicit retirement authorization, strict unresolved-path gate, and invalid-input rejection.\n'

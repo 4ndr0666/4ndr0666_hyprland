@@ -2,16 +2,15 @@
 """Inventory historical Git paths, blob identities, commit lineage, and rename evidence."""
 from __future__ import annotations
 import argparse, json, subprocess, sys, tempfile, os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
-EXCLUDED_PARTS={".git","node_modules",".venv","vendor",".bak","backup","backups","archive","legacy-conf-backup"}
 def git(root:Path,*args:str)->bytes:
     p=subprocess.run(["git","-C",str(root),*args],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False,timeout=180)
     if p.returncode: raise RuntimeError(p.stderr.decode("utf-8","replace").strip() or f"git {' '.join(args)} failed")
     return p.stdout
 
 def history_events(root:Path,scope:str):
-    raw=git(root,"log","--all","--full-history","--find-renames","--name-status","--format=%H%x09%ct%x09%s","--",scope).decode("utf-8","replace")
+    raw=git(root,"log","--all","HEAD","--full-history","--find-renames","--name-status","--format=%H%x09%ct%x09%s","--",scope).decode("utf-8","replace")
     commits=[]; renames=[]; current=None
     for line in raw.splitlines():
         if not line: continue
@@ -25,34 +24,85 @@ def history_events(root:Path,scope:str):
 def main()->int:
     p=argparse.ArgumentParser(description=__doc__); p.add_argument("--root",default="."); p.add_argument("--scope",default="."); p.add_argument("--dispositions"); p.add_argument("--strict",action="store_true"); p.add_argument("--output"); a=p.parse_args(); root=Path(a.root).resolve(); scope=a.scope.rstrip("/") or "."
     try:
-        objects=git(root,"rev-list","--objects","--all","--",scope).decode("utf-8","replace").splitlines()
-        parsed=[]
-        for line in objects:
-            parts=line.split(" ",1)
-            if len(parts)==2 and parts[1] and not parts[1].startswith("("): parsed.append((parts[0],parts[1]))
-        # One batch type query avoids a process per historical object.
-        proc=subprocess.run(["git","-C",str(root),"cat-file","--batch-check"],input=("\n".join(oid for oid,_ in parsed)+"\n").encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False,timeout=180)
-        if proc.returncode: raise RuntimeError(proc.stderr.decode("utf-8","replace"))
-        blob_ids=set()
-        for (oid,path),info in zip(parsed,proc.stdout.decode("utf-8","replace").splitlines()):
-            parts=info.split()
-            if len(parts)>=3 and parts[1]=="blob": blob_ids.add((oid,path))
+        scope_path=PurePosixPath(scope)
+        if scope != "." and (scope_path.is_absolute() or any(part in {"", ".", ".."} for part in scope_path.parts)):
+            raise ValueError("scope must be repository-relative and cannot contain parent traversal")
+        commit_ids=git(root,"rev-list","--topo-order","--all","HEAD").decode("ascii").splitlines()
+        if not commit_ids: raise ValueError("no reachable commits; continuity cannot be established")
         historical={}
-        for oid,path in blob_ids:
-            historical.setdefault(path,set()).add(oid)
-        current={x.decode("utf-8","surrogateescape") for x in git(root,"ls-files","-z","--",scope).split(b"\0") if x}
+        for commit_id in commit_ids:
+            tree_args=["ls-tree","-r","-z","--full-tree",commit_id]
+            if scope != ".": tree_args.extend(["--",scope])
+            raw_tree=git(root,*tree_args)
+            for record in raw_tree.split(b"\0"):
+                if not record: continue
+                header,separator,path_bytes=record.partition(b"\t")
+                fields=header.split()
+                if not separator or len(fields)!=3: raise ValueError(f"malformed tree record in {commit_id}")
+                mode,kind,oid=(field.decode("ascii") for field in fields)
+                if kind=="blob":
+                    path=path_bytes.decode("utf-8","surrogateescape")
+                    historical.setdefault(path,set()).add(oid)
+        current_args=["ls-tree","-r","-z","--full-tree","HEAD"]
+        if scope != ".": current_args.extend(["--",scope])
+        current_tree=git(root,*current_args)
+        current=set()
+        for record in current_tree.split(b"\0"):
+            if not record: continue
+            _,separator,path_bytes=record.partition(b"\t")
+            if not separator: raise ValueError("malformed candidate HEAD tree record")
+            current.add(path_bytes.decode("utf-8","surrogateescape"))
         dispositions={}
         if a.dispositions:
-            dispositions=json.loads((root/a.dispositions).read_text(encoding="utf-8"))
-            if not isinstance(dispositions,dict): raise ValueError("dispositions must be an object keyed by historical path")
-        allowed={"preserved","translated","authorized-retired"}
-        for path,item in dispositions.items():
-            if not isinstance(item,dict) or item.get("status") not in allowed or not isinstance(item.get("evidence"),str) or not item["evidence"].strip(): raise ValueError(f"invalid disposition for {path}")
-            if item["status"]=="translated" and (not isinstance(item.get("target"),str) or not item["target"].strip()): raise ValueError(f"translated disposition for {path} needs target")
-            if item["status"]=="authorized-retired" and item.get("user_authorization") is not True: raise ValueError(f"retirement of {path} requires explicit user_authorization=true")
+            manifest_path=PurePosixPath(a.dispositions)
+            if manifest_path.is_absolute() or any(part in {"", ".", ".."} for part in manifest_path.parts):
+                raise ValueError("disposition manifest must be a safe repository-relative path")
+            raw=json.loads(git(root,"show",f"HEAD:{a.dispositions}").decode("utf-8"))
+            if not isinstance(raw,dict): raise ValueError("dispositions must be a JSON object")
+            allowed={"preserved","translated","authorized-retired"}
+            subtrees=raw.get("authorized_subtrees",[])
+            if not isinstance(subtrees,list): raise ValueError("authorized_subtrees must be an array")
+            for entry in subtrees:
+                if not isinstance(entry,dict): raise ValueError("authorized subtree entries must be objects")
+                base=entry.get("path")
+                base_path=PurePosixPath(base) if isinstance(base,str) else None
+                if (base_path is None or not base or base_path.is_absolute()
+                        or any(part in {"", ".", ".."} for part in base_path.parts)
+                        or (scope != "." and not base.startswith(scope+"/"))):
+                    raise ValueError(f"invalid authorized subtree: {base!r}")
+                if entry.get("status")!="authorized-retired" or entry.get("user_authorization") is not True:
+                    raise ValueError(f"subtree retirement requires explicit authorization: {base}")
+                evidence=entry.get("evidence")
+                if not isinstance(evidence,str) or not evidence.strip():
+                    raise ValueError(f"subtree retirement requires evidence: {base}")
+                matched=[path for path in historical if path.startswith(base+"/")]
+                if not matched: raise ValueError(f"authorized subtree has no historical paths: {base}")
+                if any(path.startswith(base+"/") for path in current):
+                    raise ValueError(f"authorized subtree contains current tracked paths: {base}")
+                for path in matched:
+                    if path in dispositions: raise ValueError(f"overlapping authorized subtree: {path}")
+                    dispositions[path]={"status":"authorized-retired","user_authorization":True,"evidence":evidence,"authorization_scope":base}
+            for path,item in raw.items():
+                if path in {"schema_version","authorized_subtrees"}: continue
+                path_obj=PurePosixPath(path) if isinstance(path,str) else None
+                if (path_obj is None or not path or path_obj.is_absolute()
+                        or any(part in {"", ".", ".."} for part in path_obj.parts)
+                        or (scope != "." and not (path==scope or path.startswith(scope+"/")))):
+                    raise ValueError(f"invalid or out-of-scope disposition path: {path!r}")
+                if path not in historical: raise ValueError(f"disposition path absent from Git history: {path!r}")
+                if path in current: raise ValueError(f"disposition path is still present at HEAD: {path!r}")
+                if not isinstance(item,dict) or item.get("status") not in allowed:
+                    raise ValueError(f"invalid disposition for {path!r}")
+                if not isinstance(item.get("evidence"),str) or not item["evidence"].strip():
+                    raise ValueError(f"missing disposition evidence: {path!r}")
+                if item["status"] in {"preserved","translated"} and item.get("target") not in current:
+                    raise ValueError(f"disposition target is not tracked at HEAD: {path!r} -> {item.get('target')!r}")
+                if item["status"]=="authorized-retired" and item.get("user_authorization") is not True:
+                    raise ValueError(f"retirement requires user_authorization=true: {path}")
+                if path in dispositions: raise ValueError(f"overlapping subtree and individual dispositions: {path!r}")
+                dispositions[path]=item
         commits,renames=history_events(root,scope); records=[]
         for path in sorted(set(historical)|current):
-            if any(part in EXCLUDED_PARTS for part in Path(path).parts): continue
             present=path in current; status="present-path" if present else dispositions.get(path,{}).get("status","unresolved-missing")
             records.append({"path":path,"status":status,"current":present,"historical_object_ids":sorted(historical.get(path,set())),"disposition":dispositions.get(path)})
         unresolved=[r for r in records if r["status"]=="unresolved-missing"]

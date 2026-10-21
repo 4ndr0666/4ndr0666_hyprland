@@ -48,13 +48,14 @@ class RehydrationVerificationTests(unittest.TestCase):
         (self.root/"dispositions.json").write_text(json.dumps({"config/hypr/old.conf":{"status":"translated","target":"config/hypr/missing.lua","evidence":"reviewed migration"}}))
         commit(self.root,"commit disposition manifest")
         result=self.invoke("--dispositions","dispositions.json"); self.assertEqual(result.returncode,2); self.assertIn("translated target is not current",result.stderr)
-    def test_archived_missing_path_is_recorded_but_not_active_loss(self):
+    def test_archive_name_does_not_authorize_retirement(self):
         folder=self.root/"config/hypr/archive"; folder.mkdir(parents=True)
-        old=folder/"old.conf"; old.write_text("archived\n"); commit(self.root,"archived configuration")
-        old.unlink(); (self.root/"config/hypr/current.lua").write_text("return true\n"); commit(self.root,"current configuration")
-        result=self.invoke("--strict"); self.assertEqual(result.returncode,0,result.stderr)
+        old=folder/"old.conf"; old.write_text("previously active configuration\n"); commit(self.root,"historical configuration under archive-named path")
+        old.unlink(); (self.root/"config/hypr/current.lua").write_text("return true\n"); commit(self.root,"remove historical path")
+        result=self.invoke("--strict"); self.assertEqual(result.returncode,1,result.stderr)
         record=next(x for x in json.loads(result.stdout)["path_records"] if x["path"]=="config/hypr/archive/old.conf")
-        self.assertEqual(record["scope_class"],"archive"); self.assertEqual(record["status"],"archive-path-missing")
+        self.assertEqual(record["scope_class"],"active"); self.assertEqual(record["status"],"unresolved-missing")
+        self.assertEqual(json.loads(result.stdout)["unresolved_missing_count"],1)
     def test_missing_historical_blob_fails_closed(self):
         folder=self.root/"config/hypr"; folder.mkdir(parents=True)
         old=folder/"old.conf"; old.write_text("old blob\n"); commit(self.root,"historical blob")

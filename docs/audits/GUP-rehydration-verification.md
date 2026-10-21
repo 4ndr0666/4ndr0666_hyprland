@@ -23,7 +23,7 @@ Run the strict gate:
       --strict \
       --output /tmp/gup-rehydration-verification.json
 
-The strict gate fails on active historical paths without an evidence-backed disposition or when the repository is shallow. Missing commits, trees, or blobs fail closed when Git cannot traverse or read them. The CI workflow additionally fails if any active unresolved paths remain.
+The strict gate fails on historical paths without an evidence-backed disposition or when the repository is shallow. Missing commits, trees, or blobs fail closed when Git cannot traverse or read them. The CI workflow additionally fails if any active unresolved paths remain.
 
 ## Evidence contract
 
@@ -38,7 +38,7 @@ The disposition manifest is read from HEAD using Git plumbing, not from a potent
 - present-path proves that the same path exists at HEAD; it does not by itself prove behavioral equivalence.
 - preserved and translated are reviewed manifest classifications, not automatic conclusions from filename similarity.
 - authorized-retired records explicit retirement authorization; it does not claim semantic equivalence.
-- Archive-like paths are always recorded and hash-pinned, but are classified as archive paths rather than active behavior loss.
+- Path names and suffixes never establish retirement. Archive-, backup-, and generated-temp-named paths remain active continuity records and block strict certification when missing unless the committed evidence manifest explicitly authorizes retirement or identifies a current target.
 - unresolved-missing means an active historical path has no current path and no accepted disposition. Strict mode blocks certification on this status.
 - A green run proves object recomputation and path-disposition gate coverage for the refs fetched in that run. It does not certify live compositor behavior or other runtime surfaces outside the selected scope.
 

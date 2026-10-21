@@ -192,6 +192,12 @@
       "status": "authorized-retired",
       "evidence": "Explicit operator authorization on 2026-10-18 (Ruling #5): retired obsolete mako icon subtree superseded by config/swaync/images.",
       "user_authorization": true
+    },
+    {
+      "path": "config/hypr/.bak",
+      "status": "authorized-retired",
+      "evidence": "Explicit operator authorization on 2026-10-21: retire the entire historical config/hypr/.bak subtree. This is retrospective disposition of already-removed backup/archive material, not a claim that filename alone proves irrelevance. Historical Git records are retained and inventoried; current HEAD has no paths under this subtree. Existing backup-restoration hardening in commit f34cc1a prevents pre-Lua .conf payloads from being restored.",
+      "user_authorization": true
     }
   ],
   "config/hypr/animations/00-default.conf": {
@@ -278,5 +284,20 @@
     "status": "translated",
     "target": "config/hypr/animations/Mahaveer - me-2.lua",
     "evidence": "Migrated animation preset Mahaveer - me-2 from .conf to Hyprland 0.56 Lua API (hl.curve / hl.animation) in commits f7fb125, 3c855bf, and 0e53065; validated by tests/unit/test-lua-config-superset-integrity.sh."
+  },
+  "config/hypr/UserScripts/RofiScreenshot.sh.bak": {
+    "status": "authorized-retired",
+    "evidence": "Explicit operator authorization on 2026-10-21: retire this historical .bak copy; it is not the canonical Rofi screenshot implementation. Historical object remains available in Git for reconstruction; current HEAD has no path at this name.",
+    "user_authorization": true
+  },
+  "config/hypr/configs/ENVariables.conf.~1~": {
+    "status": "authorized-retired",
+    "evidence": "Explicit operator authorization on 2026-10-21: retire this historical editor backup of the legacy ENVariables.conf. Environment declarations were migrated to the canonical Lua configuration in commit 83078d6; legacy Hyprland backup restoration was separately hardened in commit f34cc1a. Historical object remains available in Git.",
+    "user_authorization": true
+  },
+  "config/hypr/scripts/Refresh.sh.gup.tmp": {
+    "status": "authorized-retired",
+    "evidence": "Explicit operator authorization on 2026-10-21: retire this historical temporary GUP artifact; it is not a canonical runtime script. Historical object remains available in Git for audit/reconstruction; current HEAD has no path at this name.",
+    "user_authorization": true
   }
 }
