@@ -6,6 +6,7 @@ on:
       - 'config/hypr/**'
       - 'scripts/gup-history-continuity.py'
       - 'scripts/gup_rehydration_verify.py'
+      - 'docs/audits/GUP-rehydration-verification.md'
       - 'tests/test_gup_rehydration_verify.py'
       - 'tests/unit/test-gup-history-continuity.sh'
       - 'docs/audits/gup-history-continuity-dispositions.json'
