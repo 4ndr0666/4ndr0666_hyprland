@@ -65,9 +65,23 @@ class RehydrationVerificationTests(unittest.TestCase):
         object_path.unlink()
         result=self.invoke()
         self.assertEqual(result.returncode,2,result.stderr)
+    def test_authorized_subtree_disposes_existing_historical_paths(self):
+        folder=self.root/"config/hypr/legacy"; folder.mkdir(parents=True)
+        old=folder/"old.conf"; old.write_text("legacy behavior\\n"); commit(self.root,"historical legacy configuration")
+        old.unlink(); (self.root/"config/hypr/current.lua").write_text("return true\\n"); commit(self.root,"remove retired subtree")
+        manifest={"authorized_subtrees":[{"path":"config/hypr/legacy","status":"authorized-retired","evidence":"explicit synthetic test authorization","user_authorization":True}]}
+        (self.root/"dispositions.json").write_text(json.dumps(manifest)); commit(self.root,"commit valid subtree disposition")
+        result=self.invoke("--dispositions","dispositions.json","--strict")
+        self.assertEqual(result.returncode,0,result.stderr)
+        report=json.loads(result.stdout)
+        record=next(x for x in report["path_records"] if x["path"]=="config/hypr/legacy/old.conf")
+        self.assertEqual(record["status"],"authorized-retired")
+        self.assertEqual(record["disposition"]["authorization_scope"],"config/hypr/legacy")
+        self.assertEqual(report["unresolved_missing_count"],0)
+
     def test_empty_authorized_subtree_fails_closed(self):
         folder=self.root/"config/hypr"; folder.mkdir(parents=True)
-        (folder/"current.lua").write_text("return true\\n"); commit(self.root,"current configuration")
+        (folder/"current.lua").write_text("return true\n"); commit(self.root,"current configuration")
         manifest={"authorized_subtrees":[{"path":"config/hypr/does-not-exist","status":"authorized-retired","evidence":"no historical paths should be silently accepted","user_authorization":True}]}
         (self.root/"dispositions.json").write_text(json.dumps(manifest)); commit(self.root,"commit empty subtree disposition")
         result=self.invoke("--dispositions","dispositions.json","--strict")
