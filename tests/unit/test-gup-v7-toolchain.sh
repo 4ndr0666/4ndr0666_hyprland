@@ -28,7 +28,7 @@ for rel in "${required_files[@]}"; do
 done
 
 python3 -B "$ROOT/golden_unit_hash.py" --selftest >/dev/null || fail "golden_unit_hash.py --selftest failed"
-python3 -B -m unittest discover -s "$ROOT/tests" -p "test_gup_tools.py" >/dev/null 2>&1 || fail "tests/test_gup_tools.py failed"
-python3 -B "$ROOT/tests/test_gup_rehydration_verify.py" >/dev/null 2>&1 || fail "tests/test_gup_rehydration_verify.py failed"
+python3 -B -m unittest discover -s "$ROOT/tests" -p "test_gup_tools.py" || fail "tests/test_gup_tools.py failed"
+python3 -B -m unittest discover -s "$ROOT/tests" -p "test_gup_rehydration_verify.py" || fail "tests/test_gup_rehydration_verify.py failed"
 
 printf '[PASS] GUP v7.0.1 toolchain, repository-derived rehydration verifier, schemas, and synthetic Git regression suites verified.\n'
