@@ -96,6 +96,28 @@ export RAINBOW_REFRESH_FAIL=1
 if bash "$HELPER" toggle >/dev/null 2>&1; then fail "refresh failure incorrectly returned success"; fi
 [[ ! -e "$ACTIVE" && -x "$DISABLED" ]] || fail "refresh failure did not roll back to disabled state"
 
+# Explicit disable on an already-disabled state must not restore it on reload failure.
+reset_state
+make_active
+mv -- "$ACTIVE" "$DISABLED"
+export RAINBOW_HYPRCTL_FAIL=1
+if bash "$HELPER" --disable >/dev/null 2>&1; then fail "failed idempotent disable incorrectly returned success"; fi
+[[ ! -e "$ACTIVE" && -x "$DISABLED" ]] || fail "failed idempotent disable changed the existing disabled state"
+
+# Explicit enable on an already-active state must preserve it on refresh failure.
+reset_state
+make_active
+export RAINBOW_REFRESH_FAIL=1
+if bash "$HELPER" --enable >/dev/null 2>&1; then fail "failed idempotent enable incorrectly returned success"; fi
+[[ -x "$ACTIVE" && ! -e "$DISABLED" ]] || fail "failed idempotent enable changed the existing active state"
+
+# The actual Quick Settings CLI must propagate a failed compositor reload.
+reset_state
+make_active
+export RAINBOW_HYPRCTL_FAIL=1
+if bash "$QUICK_SETTINGS" --toggle-rainbow-borders >/dev/null 2>&1; then fail "Quick Settings CLI masked the toggle failure"; fi
+[[ -x "$ACTIVE" && ! -e "$DISABLED" ]] || fail "failed Quick Settings CLI toggle did not restore active state"
+
 # Ambiguous state must fail closed without changing either file.
 reset_state
 make_active
