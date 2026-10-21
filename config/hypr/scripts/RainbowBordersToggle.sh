@@ -146,7 +146,7 @@ set_mode() {
         if ((restored_from_disabled)); then mv -- "$ACTIVE" "$DISABLED" || true; fi
         fail "Could not preserve the current mode before changing it."
         return 1
-    }
+    fi
     if ! sed -i "s/^EFFECT_TYPE=.*/EFFECT_TYPE=\"$mode\"/" "$ACTIVE"; then
         mv -- "$backup" "$ACTIVE" || true
         if ((restored_from_disabled)); then mv -- "$ACTIVE" "$DISABLED" || true; fi
