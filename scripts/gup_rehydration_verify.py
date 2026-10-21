@@ -74,7 +74,8 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
         if not isinstance(item.get("evidence"),str) or not item["evidence"].strip(): raise ValueError(f"missing evidence: {path}")
         if item.get("target") is not None:
             target=item.get("target")
-            if not isinstance(target,str) or target not in current: raise ValueError(f"disposition target is not current: {path} -> {target!r}")
+            label = "translated target" if item["status"] == "translated" else "disposition target"
+            if not isinstance(target,str) or target not in current: raise ValueError(f"{label} is not current: {path} -> {target!r}")
         if item["status"]=="translated" and not item.get("target"):
             raise ValueError(f"translated disposition requires a target: {path}")
         if item["status"]=="authorized-retired" and item.get("user_authorization") is not True: raise ValueError(f"retirement requires user_authorization=true: {path}")
