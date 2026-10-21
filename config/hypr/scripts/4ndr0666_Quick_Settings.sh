@@ -30,6 +30,15 @@ show_info() {
     fi
 }
 
+toggle_rainbow_borders() {
+    local toggle_script="$scriptsDir/RainbowBordersToggle.sh"
+    [[ -x "$toggle_script" ]] || {
+        show_info "Rainbow Borders toggle helper is missing or not executable."
+        return 127
+    }
+    "$toggle_script" toggle
+}
+
 rainbow_borders_menu() {
     local rainbow_script="$UserScripts/RainbowBorders.sh"
     local disabled_sh_bak="${rainbow_script}.bak"
@@ -58,16 +67,11 @@ rainbow_borders_menu() {
     case "$choice" in
         "Toggle Rainbow Borders")
             toggle_rainbow_borders
-            return
+            return $?
             ;;
         "Disable Rainbow Borders")
-            if [[ -f "$rainbow_script" ]]; then
-                mv "$rainbow_script" "$disabled_sh_bak"
-            fi
+            "$scriptsDir/RainbowBordersToggle.sh" --disable || return $?
             current="disabled"
-            if command -v hyprctl &>/dev/null; then
-                hyprctl reload >/dev/null 2>&1 || true
-            fi
             ;;
         "Wallust Color"|"Original Rainbow"|"Gradient Flow")
             local mode=""
@@ -102,7 +106,7 @@ rainbow_borders_menu() {
 
     if [[ -x "$refresh_script" ]]; then
         "$refresh_script" >/dev/null 2>&1 &
-    elif [[ "$status" != "disabled" && -x "$rainbow_script" ]]; then
+    elif [[ "$current" != "disabled" && -x "$rainbow_script" ]]; then
         "$rainbow_script" >/dev/null 2>&1 &
     fi
 }
@@ -199,7 +203,7 @@ main() {
         "Search for Keybinds") $scriptsDir/KeyBinds.sh ;;
         "Toggle Game Mode") $scriptsDir/GameMode.sh ;;
         "Switch Dark-Light Theme") $scriptsDir/DarkLight.sh ;;
-        "Rainbow Borders Mode") rainbow_borders_menu ;;
+        "Rainbow Borders Mode") rainbow_borders_menu || return $? ;;
         *) return ;;
     esac
 
@@ -210,7 +214,7 @@ main() {
 
 if [[ "${1:-}" == "--toggle-rainbow-borders" ]]; then
     toggle_rainbow_borders
-    exit 0
+    exit $?
 fi
 
 if pidof rofi > /dev/null; then
