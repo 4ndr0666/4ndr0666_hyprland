@@ -25,6 +25,8 @@ refresh_borders() {
 }
 
 disable_borders() {
+    local moved_to_disabled=0
+
     command -v hyprctl >/dev/null 2>&1 || {
         fail "Cannot disable borders because hyprctl is unavailable."
         return 1
@@ -42,6 +44,7 @@ disable_borders() {
             fail "Could not move the active script to its managed disabled path."
             return 1
         }
+        moved_to_disabled=1
     elif [[ ! -f "$DISABLED" ]]; then
         fail "Neither the active script nor its managed disabled copy exists."
         return 1
@@ -49,17 +52,21 @@ disable_borders() {
     if hyprctl reload >/dev/null 2>&1; then
         return 0
     fi
-    if [[ -f "$DISABLED" && ! -e "$ACTIVE" ]]; then
+    if ((moved_to_disabled)); then
         mv -- "$DISABLED" "$ACTIVE" || {
             fail "Reload failed and rollback could not restore the active script."
             return 1
         }
+        fail "Hyprland reload failed; the previous active state was restored."
+    else
+        fail "Hyprland reload failed; the existing disabled state was preserved."
     fi
-    fail "Hyprland reload failed; the previous active state was restored."
     return 1
 }
 
 enable_borders() {
+    local restored_from_disabled=0
+
     if [[ -e "$ACTIVE" && -e "$DISABLED" ]]; then
         fail "Both active and disabled scripts exist; state is inconsistent and no files were changed."
         return 1
@@ -73,24 +80,27 @@ enable_borders() {
             fail "Could not restore the managed disabled script."
             return 1
         }
+        restored_from_disabled=1
     fi
     if [[ ! -x "$ACTIVE" ]]; then
-        if [[ -f "$ACTIVE" && ! -e "$DISABLED" ]]; then
+        if ((restored_from_disabled)); then
             mv -- "$ACTIVE" "$DISABLED" || true
         fi
-        fail "RainbowBorders.sh is not executable; enable operation was rolled back."
+        fail "RainbowBorders.sh is not executable; enable operation was rolled back where applicable."
         return 1
     fi
     if refresh_borders; then
         return 0
     fi
-    if [[ -f "$ACTIVE" && ! -e "$DISABLED" ]]; then
+    if ((restored_from_disabled)); then
         mv -- "$ACTIVE" "$DISABLED" || {
             fail "Startup failed and rollback to the disabled state failed."
             return 1
         }
+        fail "Rainbow Borders startup failed; the previous disabled state was restored."
+    else
+        fail "Rainbow Borders refresh failed; the existing active state was preserved."
     fi
-    fail "Rainbow Borders startup failed; disabled state was restored."
     return 1
 }
 
