@@ -40,7 +40,7 @@ STUB
 chmod +x "$TMP/bin/hyprctl" "$REFRESH"
 
 make_active() {
-    printf '#!/usr/bin/env bash\nexit 0\n' >"$ACTIVE"
+    printf '#!/usr/bin/env bash\nEFFECT_TYPE="wallust_random"\nexit 0\n' >"$ACTIVE"
     chmod +x "$ACTIVE"
 }
 reset_state() {
@@ -90,4 +90,48 @@ if bash "$HELPER" toggle >/dev/null 2>&1; then fail "inconsistent state incorrec
 reset_state
 if bash "$HELPER" toggle >/dev/null 2>&1; then fail "missing state incorrectly returned success"; fi
 
-printf '%s\n' '[PASS] Rainbow Borders toggle connects to Quick Settings, rolls back failed transitions, and fails closed on ambiguous/missing state'
+# Successful mode change applies the requested allow-listed mode.
+reset_state
+make_active
+bash "$HELPER" --mode rainbow || fail "mode change failed"
+grep -Fxq 'EFFECT_TYPE="rainbow"' "$ACTIVE" || fail "successful mode change did not persist the requested mode"
+grep -Fxq 'refresh' "$RAINBOW_TEST_LOG" || fail "mode change did not refresh runtime"
+
+# Failed mode refresh restores the original script and mode.
+reset_state
+make_active
+export RAINBOW_REFRESH_FAIL=1
+if bash "$HELPER" --mode gradient_flow >/dev/null 2>&1; then fail "failed mode refresh incorrectly returned success"; fi
+grep -Fxq 'EFFECT_TYPE="wallust_random"' "$ACTIVE" || fail "failed mode refresh did not restore the prior mode"
+[[ ! -e "$DISABLED" ]] || fail "failed mode refresh changed the enabled state"
+if compgen -G "$ACTIVE.gup.*" >/dev/null; then fail "mode transaction leaked a rollback file"; fi
+
+# Selecting a mode from disabled state enables it transactionally.
+reset_state
+make_active
+mv -- "$ACTIVE" "$DISABLED"
+bash "$HELPER" --mode gradient_flow || fail "mode selection from disabled state failed"
+[[ -x "$ACTIVE" && ! -e "$DISABLED" ]] || fail "mode selection did not restore enabled state"
+grep -Fxq 'EFFECT_TYPE="gradient_flow"' "$ACTIVE" || fail "mode selection from disabled state did not set mode"
+
+# A failed mode refresh from disabled state restores the original disabled state.
+reset_state
+make_active
+mv -- "$ACTIVE" "$DISABLED"
+export RAINBOW_REFRESH_FAIL=1
+if bash "$HELPER" --mode rainbow >/dev/null 2>&1; then fail "disabled-state mode refresh failure incorrectly returned success"; fi
+[[ ! -e "$ACTIVE" && -x "$DISABLED" ]] || fail "failed mode selection did not restore disabled state"
+grep -Fxq 'EFFECT_TYPE="wallust_random"' "$DISABLED" || fail "disabled-state rollback did not preserve original mode"
+
+# Unsupported modes fail closed without changing the script.
+reset_state
+make_active
+if bash "$HELPER" --mode unsupported >/dev/null 2>&1; then fail "unsupported mode incorrectly returned success"; fi
+grep -Fxq 'EFFECT_TYPE="wallust_random"' "$ACTIVE" || fail "unsupported mode changed the script"
+
+# Missing state must fail closed.
+reset_state
+if bash "$HELPER" toggle >/dev/null 2>&1; then fail "missing state incorrectly returned success"; fi
+
+printf '%s\n' '[PASS] Rainbow Borders toggle and mode transitions are transactional, propagate failures, and fail closed'
+
