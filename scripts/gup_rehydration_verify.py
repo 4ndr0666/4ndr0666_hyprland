@@ -13,8 +13,8 @@ def git(root: Path, *args: str, input_bytes: bytes | None = None) -> bytes:
 
 def validate_scope(scope: str) -> str:
     s=scope.strip("/"); p=PurePosixPath(s)
-    if not s or p.is_absolute() or any(x in {"", ".", ".."} for x in p.parts):
-        raise ValueError("scope must be repository-relative and cannot contain '.' or '..'")
+    if not s or p.is_absolute() or (s != "." and any(x in {"", ".", ".."} for x in p.parts)):
+        raise ValueError("scope must be repository-relative and cannot contain parent traversal")
     return s
 
 def tree(root: Path, commit: str, scope: str) -> list[dict[str,str]]:
@@ -66,7 +66,11 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
     for entry in raw.get("authorized_subtrees",[]):
         if not isinstance(entry,dict): raise ValueError("authorized_subtrees entries must be objects")
         base=entry.get("path")
-        if not isinstance(base,str) or not base.startswith(scope+"/"): raise ValueError(f"invalid retired subtree: {base!r}")
+        base_path=PurePosixPath(base) if isinstance(base,str) else None
+        if (base_path is None or not base or base_path.is_absolute()
+                or any(part in {"", ".", ".."} for part in base_path.parts)
+                or (scope != "." and not base.startswith(scope+"/"))):
+            raise ValueError(f"invalid retired subtree: {base!r}")
         if entry.get("status")!="authorized-retired" or entry.get("user_authorization") is not True: raise ValueError(f"retirement requires explicit authorization: {base}")
         if not isinstance(entry.get("evidence"),str) or not entry["evidence"].strip(): raise ValueError(f"retirement requires evidence: {base}")
         if any(p.startswith(base+"/") for p in current): raise ValueError(f"retired subtree has current paths: {base}")
@@ -75,7 +79,10 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
                 result[path]={"status":"authorized-retired","user_authorization":True,"evidence":entry["evidence"],"authorization_scope":base}
     for path,item in raw.items():
         if path in {"schema_version","authorized_subtrees"}: continue
-        if not isinstance(path,str) or not (path==scope or path.startswith(scope+"/")): raise ValueError(f"disposition outside scope: {path!r}")
+        if (not isinstance(path,str) or not path or PurePosixPath(path).is_absolute()
+                or any(part in {"", ".", ".."} for part in PurePosixPath(path).parts)
+                or (scope != "." and not (path==scope or path.startswith(scope+"/"))):
+            raise ValueError(f"disposition outside scope or invalid path: {path!r}")
         if path not in historical: raise ValueError(f"disposition path absent from Git history: {path!r}")
         if path in current: raise ValueError(f"disposition is only valid for a missing current path: {path!r}")
         if not isinstance(item,dict) or item.get("status") not in allowed: raise ValueError(f"invalid disposition: {path}")
