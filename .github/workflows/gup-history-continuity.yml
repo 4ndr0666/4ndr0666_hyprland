@@ -41,11 +41,10 @@ jobs:
               f"- Worktree clean: {report['worktree_clean']}\n"
               f"- Historical file paths: {report['historical_path_count']}\n"
               f"- Current tracked paths: {report['current_path_count']}\n"
-              f"- Archive-classified paths (still visible): {report['archive_path_count']}\n"
               f"- Explicitly authorized-retired historical paths: {report['authorized_retired_count']}\n"
               f"- Unresolved active missing paths: {report['unresolved_missing_count']}\n\n"
-              "Path disposition does not certify semantic equivalence. Authorized retirement is limited "
-              "to the explicitly recorded subtree. Remaining unresolved paths require review.\n"
+              "Path names never authorize retirement. Path disposition does not certify semantic equivalence. "
+              "Authorized retirement is limited to explicit evidence-backed dispositions. Remaining unresolved paths require review.\n"
           )
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
               stream.write(summary)
