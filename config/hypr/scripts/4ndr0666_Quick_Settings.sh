@@ -33,7 +33,7 @@ show_info() {
 toggle_rainbow_borders() {
     local toggle_script="$scriptsDir/RainbowBordersToggle.sh"
     [[ -f "$toggle_script" ]] || {
-        show_info "Rainbow Borders toggle helper is missing or not executable."
+        show_info "Rainbow Borders toggle helper is missing."
         return 127
     }
     bash "$toggle_script" toggle
@@ -41,8 +41,6 @@ toggle_rainbow_borders() {
 
 rainbow_borders_menu() {
     local rainbow_script="$UserScripts/RainbowBorders.sh"
-    local disabled_sh_bak="${rainbow_script}.bak"
-
     local current="disabled"
     if [[ -f "$rainbow_script" ]]; then
         current=$(grep -E '^EFFECT_TYPE=' "$rainbow_script" 2>/dev/null | sed -E 's/^EFFECT_TYPE="?([^"]*)"?/\1/')
