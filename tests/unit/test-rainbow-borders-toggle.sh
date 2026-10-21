@@ -16,6 +16,8 @@ fail() {
 bash -n "$HELPER" || fail "toggle helper has invalid Bash syntax"
 bash -n "$QUICK_SETTINGS" || fail "Quick Settings has invalid Bash syntax"
 grep -Fq 'bash "$toggle_script" toggle' "$QUICK_SETTINGS" || fail "Quick Settings toggle menu is not connected to the helper"
+grep -Fq 'bash "$scriptsDir/RainbowBordersToggle.sh" --disable' "$QUICK_SETTINGS" || fail "Quick Settings disable action is not connected to the helper"
+grep -Fq 'bash "$scriptsDir/RainbowBordersToggle.sh" --mode "$mode"' "$QUICK_SETTINGS" || fail "Quick Settings mode choices are not connected to the transactional helper"
 grep -Fq 'exit $?' "$QUICK_SETTINGS" || fail "Quick Settings CLI entry point masks helper failures"
 ! grep -Fq '$status' "$QUICK_SETTINGS" || fail "Rainbow Borders mode fallback references an undefined status variable"
 
