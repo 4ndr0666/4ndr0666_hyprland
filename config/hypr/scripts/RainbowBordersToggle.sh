@@ -94,9 +94,92 @@ enable_borders() {
     return 1
 }
 
+set_mode() {
+    local mode="$1"
+    local restored_from_disabled=0
+    local backup=""
+    local current_mode=""
+
+    case "$mode" in
+        wallust_random|rainbow|gradient_flow) ;;
+        *)
+            fail "Unsupported mode '$mode'; allowed modes are wallust_random, rainbow, and gradient_flow."
+            return 2
+            ;;
+    esac
+
+    if [[ -e "$ACTIVE" && -e "$DISABLED" ]]; then
+        fail "Both active and disabled scripts exist; state is inconsistent and no files were changed."
+        return 1
+    fi
+    if [[ ! -e "$ACTIVE" ]]; then
+        [[ -f "$DISABLED" ]] || {
+            fail "No functional RainbowBorders.sh exists; the archival .bak.sh template is not a fallback."
+            return 1
+        }
+        mv -- "$DISABLED" "$ACTIVE" || {
+            fail "Could not restore the managed disabled script."
+            return 1
+        }
+        restored_from_disabled=1
+    fi
+    [[ -x "$ACTIVE" ]] || {
+        if ((restored_from_disabled)); then mv -- "$ACTIVE" "$DISABLED" || true; fi
+        fail "RainbowBorders.sh is not executable; mode change was rolled back."
+        return 1
+    }
+
+    current_mode="$(sed -nE 's/^EFFECT_TYPE="?([^"]*)"?$/\1/p' "$ACTIVE" | head -n1)"
+    [[ -n "$current_mode" ]] || {
+        if ((restored_from_disabled)); then mv -- "$ACTIVE" "$DISABLED" || true; fi
+        fail "RainbowBorders.sh has no readable EFFECT_TYPE assignment."
+        return 1
+    }
+
+    backup="$(mktemp "${ACTIVE}.gup.XXXXXX")" || {
+        if ((restored_from_disabled)); then mv -- "$ACTIVE" "$DISABLED" || true; fi
+        fail "Could not allocate a same-directory rollback copy."
+        return 1
+    }
+    if ! cp -p -- "$ACTIVE" "$backup"; then
+        rm -f -- "$backup"
+        if ((restored_from_disabled)); then mv -- "$ACTIVE" "$DISABLED" || true; fi
+        fail "Could not preserve the current mode before changing it."
+        return 1
+    }
+    if ! sed -i 's/^EFFECT_TYPE=.*/EFFECT_TYPE="'"$mode"'"/' "$ACTIVE"; then
+        mv -- "$backup" "$ACTIVE" || true
+        if ((restored_from_disabled)); then mv -- "$ACTIVE" "$DISABLED" || true; fi
+        fail "Could not update EFFECT_TYPE; previous mode/state was restored where possible."
+        return 1
+    fi
+
+    if refresh_borders; then
+        rm -f -- "$backup"
+        return 0
+    fi
+
+    if ! mv -- "$backup" "$ACTIVE"; then
+        fail "Mode refresh failed and the previous script could not be restored."
+        return 1
+    fi
+    if ((restored_from_disabled)); then
+        mv -- "$ACTIVE" "$DISABLED" || {
+            fail "Mode refresh failed and the original disabled state could not be restored."
+            return 1
+        }
+    fi
+    fail "Mode refresh failed; the previous mode/state was restored."
+    return 1
+}
+
 case "${1:-toggle}" in
     --disable) disable_borders ;;
     --enable) enable_borders ;;
+    --mode)
+        [[ $# -eq 2 ]] || { fail "Usage: $0 --mode wallust_random|rainbow|gradient_flow"; exit 2; }
+        set_mode "$2"
+        ;;
     toggle)
         if [[ -e "$ACTIVE" ]]; then
             disable_borders
