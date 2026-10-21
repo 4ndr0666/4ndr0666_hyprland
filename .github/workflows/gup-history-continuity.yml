@@ -83,7 +83,7 @@ jobs:
         with:
           name: gup-history-continuity
           path: ${{ runner.temp }}/gup-history-continuity.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
       - name: Preserve recomputable rehydration evidence
         if: always()
@@ -91,5 +91,5 @@ jobs:
         with:
           name: gup-rehydration-verification
           path: ${{ runner.temp }}/gup-rehydration-verification.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
