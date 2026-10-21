@@ -29,7 +29,7 @@ The strict gate fails on active historical paths without an evidence-backed disp
 
 For each reachable commit, the report records commit metadata and every blob path state within scope. Each path-version record contains the commit, path, mode, Git blob object ID, and a git_show_spec such as COMMIT:path. Anyone with the repository objects can independently reconstruct that state with git show COMMIT:path.
 
-For each unique historical blob, the tool reads the bytes from Git, recomputes the repository's Git object ID with git hash-object --stdin, and computes a separate SHA-256 digest over the exact bytes. A report is invalid if the recomputed Git object ID differs from the recorded ID. This binds a human-readable SHA-256 content pin to Git's native object identity.
+For each reachable commit, its root tree, and every unique historical blob in scope, the tool reads the object payload from Git, recomputes the repository's native object ID with git hash-object -t TYPE --stdin, and computes a separate SHA-256 digest over the exact payload bytes. A report is invalid if a recomputed Git object ID differs from the recorded ID. This pins commit identity, complete commit-tree identity, and scoped file content with both Git-native object IDs and SHA-256 digests.
 
 The disposition manifest is read from HEAD using Git plumbing, not from a potentially modified working-tree copy. Its Git object ID and SHA-256 are included in the report. preserved and translated dispositions require a current tracked target; authorized-retired requires explicit authorization and rejects a path still present at HEAD. The report preserves the supporting evidence text from the committed manifest.
 
