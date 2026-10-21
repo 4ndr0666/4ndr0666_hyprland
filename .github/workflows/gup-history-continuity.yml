@@ -64,7 +64,7 @@ jobs:
               f"- HEAD: {report['head']}\n"
               f"- Reachable commits: {report['reachable_commit_count']}\n"
               f"- Historical paths: {report['historical_path_count']}\n"
-              f"- Archive-classified paths (still visible): {report['archive_path_count']}\n"
+              f"- Explicitly authorized-retired historical paths: {report['authorized_retired_count']}\n"
               f"- Historical path versions: {report['historical_path_version_count']}\n"
               f"- Git objects with recomputed IDs and SHA-256 pins: {report['git_object_count']}\n"
               f"- Independently recomputed blobs: {report['blob_count']}\n"
@@ -72,6 +72,7 @@ jobs:
               f"- Unresolved historical paths: {report['unresolved_missing_count']}\n"
               f"- Shallow history: {report['shallow_repository']}\n\n"
               "Git object IDs are recomputed from blob bytes and separately pinned by SHA-256. "
+              "Path names never authorize retirement; explicit evidence-backed dispositions are required. "
               "Path disposition remains a semantic review obligation, not proof of equivalence.\n"
           )
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
