@@ -89,8 +89,9 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
         if not isinstance(item.get("evidence"),str) or not item["evidence"].strip(): raise ValueError(f"missing evidence: {path}")
         if item["status"] in {"preserved", "translated"}:
             target=item.get("target")
+            label=f"{item['status']} target"
             if not isinstance(target,str) or not target.strip() or target not in current:
-                raise ValueError(f"disposition target for {path!r} is not tracked in candidate HEAD: {target!r}")
+                raise ValueError(f"{label} is not current: {path} -> {target!r}")
         if item["status"]=="authorized-retired" and item.get("user_authorization") is not True:
             raise ValueError(f"retirement requires user_authorization=true: {path}")
         if path in result: raise ValueError(f"path has overlapping subtree and individual dispositions: {path!r}")
