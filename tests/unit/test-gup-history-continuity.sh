@@ -137,7 +137,6 @@ assert report["dispositions_manifest"]["source"] == "HEAD Git object"
 assert len(report["dispositions_manifest"]["git_object_id"]) in (40, 64)
 assert len(report["dispositions_manifest"]["sha256"]) == 64
 PY
-
 mkdir -p "$TMP/config/hypr/LEGACY_CODE/current"
 printf 'unexpected active path\n' > "$TMP/config/hypr/LEGACY_CODE/current/current.lua"
 git -C "$TMP" add .
@@ -199,6 +198,21 @@ git -C "$TMP" add empty-subtree.json
 git -C "$TMP" commit -qm "commit empty subtree test manifest"
 if python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions empty-subtree.json > /dev/null 2>&1; then
   fail "inventory accepted retirement authorization for a subtree with no historical paths"
+fi
+
+cat > "$TMP/dot-segment-dispositions.json" <<'JSON'
+{
+  "config/hypr/./UserConfigs/Legacy.conf": {
+    "status": "authorized-retired",
+    "user_authorization": true,
+    "evidence": "dot-segment path must be rejected"
+  }
+}
+JSON
+git -C "$TMP" add dot-segment-dispositions.json
+git -C "$TMP" commit -qm "commit unsafe dot-segment manifest"
+if python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions dot-segment-dispositions.json > /dev/null 2>&1; then
+  fail "inventory accepted a disposition path containing a dot segment"
 fi
 
 printf '[PASS] complete path inventory, shared blob paths, explicit retirement authorization, strict unresolved-path gate, and invalid-input rejection.\n'

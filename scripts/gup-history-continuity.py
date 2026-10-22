@@ -14,7 +14,7 @@ import os
 import subprocess
 import sys
 import tempfile
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 DEFAULT_SCOPE = "config/hypr"
@@ -35,16 +35,15 @@ def git(root: Path, *args: str) -> bytes:
 
 
 def validate_scope(scope: str) -> str:
-    normalized = scope.strip("/")
-    path = PurePosixPath(normalized)
-    if not normalized or path.is_absolute() or any(part in {".", ".."} for part in path.parts):
-        raise ValueError("scope must be a non-empty repository-relative path without '.' or '..'")
-    return normalized
+    if (not isinstance(scope, str) or not scope or scope.startswith("/") or scope.endswith("/")
+            or "\\" in scope or any(part in {"", ".", ".."} for part in scope.split("/"))):
+        raise ValueError("scope must be a non-empty repository-relative path without dot segments")
+    return scope
 
 
 def validate_repo_path(path: str, label: str) -> str:
-    normalized = PurePosixPath(path)
-    if not path or normalized.is_absolute() or any(part in {"", ".", ".."} for part in normalized.parts):
+    if (not isinstance(path, str) or not path or path.startswith("/") or "\\" in path
+            or any(part in {"", ".", ".."} for part in path.split("/"))):
         raise ValueError(f"invalid repository-relative {label}: {path!r}")
     return path
 
@@ -117,8 +116,7 @@ def read_dispositions(root: Path, manifest: str | None, scope: str,
                 raise ValueError(f"disposition target for {path!r} is not tracked in candidate HEAD: {target!r}")
         if entry["status"] == "authorized-retired" and entry.get("user_authorization") is not True:
             raise ValueError(f"retirement of {path!r} requires user_authorization=true")
-        if path in dispositions:
-            raise ValueError(f"path has overlapping subtree and individual dispositions: {path!r}")
+        if path in dispositions:            raise ValueError(f"path has overlapping subtree and individual dispositions: {path!r}")
         dispositions[path] = entry
     return dispositions
 
@@ -237,8 +235,7 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
 
     unresolved = [r for r in records if r["status"] == "unresolved-missing"]
     status = git(root, "status", "--porcelain=v1", "--untracked-files=all").decode("utf-8", "replace").splitlines()
-    return {
-        "schema_version": 2,
+    return {        "schema_version": 2,
         "scope": scope,
         "head": head,
         "worktree_clean": not status,

@@ -88,4 +88,26 @@ class RehydrationVerificationTests(unittest.TestCase):
         self.assertEqual(result.returncode,2,result.stderr)
         self.assertIn("retired subtree has no historical paths",result.stderr)
 
+
+    def test_dot_segment_disposition_path_fails_closed(self):
+        folder=self.root/"config/hypr"; folder.mkdir(parents=True)
+        old=folder/"old.conf"; old.write_text("old\\n"); commit(self.root,"historical path")
+        old.unlink(); (folder/"current.lua").write_text("return true\\n"); commit(self.root,"replace historical path")
+        manifest={"config/hypr/./old.conf":{"status":"authorized-retired","user_authorization":True,"evidence":"unsafe path"}}
+        (self.root/"dispositions.json").write_text(json.dumps(manifest)); commit(self.root,"commit unsafe path manifest")
+        result=self.invoke("--dispositions","dispositions.json")
+        self.assertEqual(result.returncode,2)
+        self.assertIn("invalid repository-relative disposition path",result.stderr)
+
+    def test_overlapping_authorized_subtrees_fail_closed(self):
+        folder=self.root/"config/hypr/legacy/child"; folder.mkdir(parents=True)
+        old=folder/"old.conf"; old.write_text("old\\n"); commit(self.root,"historical nested path")
+        old.unlink(); (self.root/"config/hypr/current.lua").write_text("return true\\n"); commit(self.root,"remove nested path")
+        evidence={"status":"authorized-retired","evidence":"synthetic explicit authorization","user_authorization":True}
+        manifest={"authorized_subtrees":[dict({"path":"config/hypr/legacy"},**evidence),dict({"path":"config/hypr/legacy/child"},**evidence)]}
+        (self.root/"dispositions.json").write_text(json.dumps(manifest)); commit(self.root,"commit overlapping subtree manifest")
+        result=self.invoke("--dispositions","dispositions.json")
+        self.assertEqual(result.returncode,2)
+        self.assertIn("overlapping subtree retirement",result.stderr)
+
 if __name__=="__main__": unittest.main(verbosity=2)

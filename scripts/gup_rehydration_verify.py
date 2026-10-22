@@ -2,7 +2,7 @@
 """Build independently recomputable continuity evidence from reachable Git history."""
 from __future__ import annotations
 import argparse, hashlib, json, os, subprocess, sys, tempfile
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 def git(root: Path, *args: str, input_bytes: bytes | None = None) -> bytes:
@@ -11,11 +11,16 @@ def git(root: Path, *args: str, input_bytes: bytes | None = None) -> bytes:
         raise RuntimeError(p.stderr.decode("utf-8", "replace").strip() or f"git {' '.join(args)} failed")
     return p.stdout
 
+def validate_repo_path(path: str, label: str) -> str:
+    if (not isinstance(path, str) or not path or path.startswith("/") or "\\" in path
+            or any(part in {"", ".", ".."} for part in path.split("/"))):
+        raise ValueError(f"invalid repository-relative {label}: {path!r}")
+    return path
+
 def validate_scope(scope: str) -> str:
-    s=scope.strip("/"); p=PurePosixPath(s)
-    if not s or p.is_absolute() or (s != "." and any(x in {"", ".", ".."} for x in p.parts)):
-        raise ValueError("scope must be repository-relative and cannot contain parent traversal")
-    return s
+    if scope == ".":
+        return scope
+    return validate_repo_path(scope, "scope")
 
 def tree(root: Path, commit: str, scope: str) -> list[dict[str,str]]:
     args=["ls-tree","-r","-z","--full-tree",commit]
@@ -56,9 +61,7 @@ def renames(root: Path, commits: list[dict[str,Any]], scope: str) -> list[dict[s
 
 def dispositions(root: Path, filename: str|None, scope: str, historical: set[str], current: set[str]):
     if not filename: return {}, None
-    manifest_path = PurePosixPath(filename)
-    if manifest_path.is_absolute() or any(part in {"", ".", ".."} for part in manifest_path.parts):
-        raise ValueError("disposition manifest must be a safe repository-relative path")
+    validate_repo_path(filename, "disposition manifest")
     manifest_bytes = git(root, "show", f"HEAD:{filename}")
     raw=json.loads(manifest_bytes.decode("utf-8"))
     manifest_pin = {"path": filename, "git_object_id": git(root, "rev-parse", f"HEAD:{filename}").decode().strip(),
@@ -68,10 +71,8 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
     for entry in raw.get("authorized_subtrees",[]):
         if not isinstance(entry,dict): raise ValueError("authorized_subtrees entries must be objects")
         base=entry.get("path")
-        base_path=PurePosixPath(base) if isinstance(base,str) else None
-        if (base_path is None or not base or base_path.is_absolute()
-                or any(part in {"", ".", ".."} for part in base_path.parts)
-                or (scope != "." and not base.startswith(scope+"/"))):
+        validate_repo_path(base, "retired subtree")
+        if scope != "." and not base.startswith(scope+"/"):
             raise ValueError(f"invalid retired subtree: {base!r}")
         if entry.get("status")!="authorized-retired" or entry.get("user_authorization") is not True: raise ValueError(f"retirement requires explicit authorization: {base}")
         if not isinstance(entry.get("evidence"),str) or not entry["evidence"].strip(): raise ValueError(f"retirement requires evidence: {base}")
@@ -79,12 +80,13 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
         matched_paths = [path for path in historical if path.startswith(base+"/")]
         if not matched_paths: raise ValueError(f"retired subtree has no historical paths: {base}")
         for path in matched_paths:
+            if path in result:
+                raise ValueError(f"overlapping subtree retirement for path {path!r}")
             result[path]={"status":"authorized-retired","user_authorization":True,"evidence":entry["evidence"],"authorization_scope":base}
     for path,item in raw.items():
         if path in {"schema_version","authorized_subtrees"}: continue
-        if (not isinstance(path,str) or not path or PurePosixPath(path).is_absolute()
-                or any(part in {"", ".", ".."} for part in PurePosixPath(path).parts)
-                or (scope != "." and not (path==scope or path.startswith(scope+"/")))):
+        validate_repo_path(path, "disposition path")
+        if scope != "." and not (path==scope or path.startswith(scope+"/")):
             raise ValueError(f"disposition outside scope or invalid path: {path!r}")
         if path not in historical: raise ValueError(f"disposition path absent from Git history: {path!r}")
         if path in current: raise ValueError(f"disposition is only valid for a missing current path: {path!r}")
@@ -93,7 +95,8 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
         if item["status"] in {"preserved", "translated"}:
             target=item.get("target")
             label=f"{item['status']} target"
-            if not isinstance(target,str) or not target.strip() or target not in current:
+            validate_repo_path(target, label)
+            if target not in current:
                 raise ValueError(f"{label} is not current: {path} -> {target!r}")
         if item["status"]=="authorized-retired" and item.get("user_authorization") is not True:
             raise ValueError(f"retirement requires user_authorization=true: {path}")
