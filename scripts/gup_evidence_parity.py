@@ -112,7 +112,7 @@ def validate_report(report: dict[str, Any], records_key: str, path_key: str, cur
     return records
 
 
-def rename_keys(report: dict[str, Any]) -> list[tuple[str, str, str, str]]:
+def rename_keys(report: dict[str, Any]) -> list[tuple[str, str, str, str, str]]:
     rows = report.get("rename_events")
     if not isinstance(rows, list):
         raise EvidenceMismatch("rename_events must be an array")
@@ -123,7 +123,7 @@ def rename_keys(report: dict[str, Any]) -> list[tuple[str, str, str, str]]:
         similarity = row.get("similarity")
         if similarity is None and isinstance(row.get("status"), str) and row["status"].startswith("R"):
             similarity = row["status"][1:]
-        fields = (row.get("commit"), row.get("previous_path"), row.get("path"), similarity)
+        fields = (row.get("commit"), row.get("parent"), row.get("previous_path"), row.get("path"), similarity)
         if not all(isinstance(value, str) and value for value in fields):
             raise EvidenceMismatch(f"rename event lacks commit/path/similarity fields: {row!r}")
         result.append(fields)
@@ -173,9 +173,8 @@ def compare(continuity: dict[str, Any], rehydration: dict[str, Any]) -> dict[str
 
     continuity_manifest = continuity.get("dispositions_manifest")
     rehydration_manifest = rehydration.get("dispositions_manifest")
-    if continuity_manifest is not None and rehydration_manifest is not None:
-        if continuity_manifest != rehydration_manifest:
-            raise EvidenceMismatch("disposition manifest pins differ between reports")
+    if continuity_manifest != rehydration_manifest:
+        raise EvidenceMismatch("disposition manifest pins differ between reports")
 
     return {"paths_compared": len(left), "rename_events_compared": len(left_renames)}
 
