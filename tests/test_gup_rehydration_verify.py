@@ -117,7 +117,7 @@ class RehydrationVerificationTests(unittest.TestCase):
         commit(self.root,"current mainline configuration")
         main_branch=git(self.root,"branch","--show-current")
         git(self.root,"checkout","--orphan","stash-fixture")
-        git(self.root,"rm","-rf",".")
+        git(self.root,"clean","-fdx")
         stash_folder=self.root/"config/hypr"; stash_folder.mkdir(parents=True)
         (stash_folder/"stash-only.conf").write_text("uncommitted stash history\\n")
         stash_commit=commit(self.root,"synthetic stash-only history")
