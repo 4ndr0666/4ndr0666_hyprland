@@ -97,6 +97,8 @@ cat > "$TMP/dispositions.json" <<'JSON'
   ]
 }
 JSON
+git -C "$TMP" add dispositions.json
+git -C "$TMP" commit -qm "commit valid disposition test manifest"
 python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions dispositions.json --strict > "$TMP/strict.json" ||
   fail "strict mode rejected valid evidence-backed dispositions"
 # A dirty working-tree manifest must not override the manifest object committed at HEAD.
@@ -153,6 +155,8 @@ cat > "$TMP/invalid-dispositions.json" <<'JSON'
   }
 }
 JSON
+git -C "$TMP" add invalid-dispositions.json
+git -C "$TMP" commit -qm "commit invalid target test manifest"
 if python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions invalid-dispositions.json > /dev/null 2>&1; then
   fail "inventory accepted a disposition whose target is not in candidate HEAD"
 fi
@@ -169,6 +173,8 @@ cat > "$TMP/invalid-subtree.json" <<'JSON'
   ]
 }
 JSON
+git -C "$TMP" add invalid-subtree.json
+git -C "$TMP" commit -qm "commit invalid subtree test manifest"
 if python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions invalid-subtree.json > /dev/null 2>&1; then
   fail "inventory accepted a subtree equal to the entire requested scope"
 fi
@@ -189,6 +195,8 @@ cat > "$TMP/empty-subtree.json" <<'JSON'
   ]
 }
 JSON
+git -C "$TMP" add empty-subtree.json
+git -C "$TMP" commit -qm "commit empty subtree test manifest"
 if python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions empty-subtree.json > /dev/null 2>&1; then
   fail "inventory accepted retirement authorization for a subtree with no historical paths"
 fi
