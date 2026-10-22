@@ -122,6 +122,7 @@ class RehydrationVerificationTests(unittest.TestCase):
         (stash_folder/"stash-only.conf").write_text("uncommitted stash history\\n")
         stash_commit=commit(self.root,"synthetic stash-only history")
         git(self.root,"checkout",main_branch)
+        git(self.root,"branch","-D","stash-fixture")
         git(self.root,"update-ref","refs/stash",stash_commit)
         result=self.invoke()
         self.assertEqual(result.returncode,0,result.stderr)
