@@ -100,7 +100,8 @@ def dispositions(root: Path, filename: str|None, scope: str, historical: set[str
                 raise ValueError(f"{label} is not current: {path} -> {target!r}")
         if item["status"]=="authorized-retired" and item.get("user_authorization") is not True:
             raise ValueError(f"retirement requires user_authorization=true: {path}")
-        if path in result: raise ValueError(f"path has overlapping subtree and individual dispositions: {path!r}")
+        if path in result:
+            raise ValueError(f"path has overlapping subtree and individual dispositions: {path!r}")
         result[path]=item
     return result, manifest_pin
 
@@ -121,8 +122,8 @@ def main() -> int:
     try:
         scope=validate_scope(a.scope)
         shallow=git(root,"rev-parse","--is-shallow-repository").decode().strip()=="true"
-        refs=git(root,"for-each-ref","--format=%(refname)%09%(objectname)").decode("utf-8","replace").splitlines()
-        commit_ids=git(root,"rev-list","--topo-order","--all","HEAD").decode("ascii").splitlines()
+        refs=git(root,"for-each-ref","--format=%(refname)%09%(objectname)","refs/heads","refs/tags","refs/remotes").decode("utf-8","replace").splitlines()
+        commit_ids=git(root,"rev-list","--topo-order","--exclude=refs/stash","--all","HEAD").decode("ascii").splitlines()
         if not commit_ids: raise ValueError("no reachable commits; continuity cannot be established")
         commits=metadata(root,commit_ids); versions:dict[str,list[dict[str,str]]]={}; blob_ids=set()
         for cid in commit_ids:
@@ -149,7 +150,7 @@ def main() -> int:
             else: status="unresolved-missing"
             records.append({"path":path,"scope_class":"active","status":status,"present_at_head":present,"historical_commit_count":len(rows),"historical_blob_ids":sorted({x["git_object_id"] for x in rows}),"versions":rows,"disposition":item})
         unresolved=[x for x in records if x["status"]=="unresolved-missing"]; rename_rows=renames(root,commits,scope)
-        report={"schema_version":1,"protocol":"GUP","evidence_kind":"repository-derived-rehydration-verification","scope":scope,"head":head,
+        report = {"schema_version": 1,"protocol":"GUP","evidence_kind":"repository-derived-rehydration-verification","scope":scope,"head":head,
                 "object_format":git(root,"rev-parse","--show-object-format").decode().strip(),"shallow_repository":shallow,"refs":refs,
                 "reachable_commit_count":len(commits),"commits":commits,"historical_path_count":len(historical),"current_path_count":len(current),"authorized_retired_count":sum(1 for x in records if x["status"]=="authorized-retired"),
                 "historical_path_version_count":sum(map(len,versions.values())),"rename_event_count":len(rename_rows),"rename_events":rename_rows,
