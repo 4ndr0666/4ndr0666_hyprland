@@ -134,7 +134,7 @@ def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[d
     for line in raw.splitlines():
         if not line:
             continue
-        pieces = line.split("\\t", 3)
+        pieces = line.split("\t", 3)
         if len(pieces) != 4 or len(pieces[0]) not in (40, 64) or not pieces[1].isdigit():
             raise RuntimeError(f"cannot parse scoped Git commit metadata: {line!r}")
         sha, timestamp, parents, subject = pieces
@@ -148,7 +148,7 @@ def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[d
                 root, "diff-tree", "--no-commit-id", "--name-status", "-r", "-M", "-z",
                 parent, commit["sha"], "--", scope,
             )
-            fields = raw_diff.split(b"\\0")
+            fields = raw_diff.split(b"\0")
             index = 0
             while index < len(fields) and fields[index]:
                 status = fields[index].decode("ascii", "replace")
