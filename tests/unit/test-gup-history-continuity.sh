@@ -99,6 +99,22 @@ cat > "$TMP/dispositions.json" <<'JSON'
 JSON
 python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions dispositions.json --strict > "$TMP/strict.json" ||
   fail "strict mode rejected valid evidence-backed dispositions"
+# A dirty working-tree manifest must not override the manifest object committed at HEAD.
+cp "$TMP/dispositions.json" "$TMP/dispositions.committed.json"
+printf '{"config/hypr/UserConfigs/Legacy.conf":{"status":"authorized-retired"}}\\n' > "$TMP/dispositions.json"
+python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions dispositions.json --strict > "$TMP/head-manifest.json" ||
+  fail "inventory used a modified working-tree manifest instead of committed HEAD"
+python3 - "$TMP/head-manifest.json" "$TMP" <<'PY'
+import json, subprocess, sys
+report = json.load(open(sys.argv[1], encoding="utf-8"))
+expected = subprocess.check_output(["git", "-C", sys.argv[2], "rev-parse", "HEAD:dispositions.json"], text=True).strip()
+assert report["dispositions_manifest"]["git_object_id"] == expected
+assert report["dispositions_manifest"]["source"] == "HEAD Git object"
+assert len(report["dispositions_manifest"]["sha256"]) == 64
+paths = {item["path"]: item for item in report["records"]}
+assert paths["config/hypr/UserConfigs/Legacy.conf"]["status"] == "translated"
+PY
+mv "$TMP/dispositions.committed.json" "$TMP/dispositions.json"
 python3 - "$TMP/strict.json" <<'PY'
 import json, sys
 report = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -113,6 +129,9 @@ assert old["disposition"]["authorization_scope"] == "config/hypr/LEGACY_CODE"
 assert paths["config/hypr/.bak/ignored.conf"]["status"] == "authorized-retired"
 assert paths["config/hypr/UserScripts/RainbowBorders.bak.sh"]["status"] == "authorized-retired"
 assert paths["config/hypr/scripts/Refresh.sh.gup.tmp"]["status"] == "authorized-retired"
+assert report["dispositions_manifest"]["source"] == "HEAD Git object"
+assert len(report["dispositions_manifest"]["git_object_id"]) in (40, 64)
+assert len(report["dispositions_manifest"]["sha256"]) == 64
 PY
 
 mkdir -p "$TMP/config/hypr/LEGACY_CODE/current"
