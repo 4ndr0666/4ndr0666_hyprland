@@ -123,33 +123,50 @@ def read_dispositions(root: Path, manifest: str | None, scope: str,
 
 
 def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    # Keep commit metadata separate from diff paths. Line-oriented --name-status output
+    # corrupts filenames containing tabs/newlines; diff-tree -z preserves path boundaries.
     raw = git(
-        root, "log", "--exclude=refs/stash", "--all", "--full-history", "--find-renames", "--name-status",
-        "--format=%H%x09%ct%x09%s", "--", scope,
+        root, "log", "--exclude=refs/stash", "--all", "--full-history",
+        "--format=%H%x09%ct%x09%P%x09%s", "--", scope,
     ).decode("utf-8", "replace")
     commits: list[dict[str, Any]] = []
-    renames: list[dict[str, Any]] = []
-    current: dict[str, Any] | None = None
+    parent_map: dict[str, list[str]] = {}
     for line in raw.splitlines():
         if not line:
             continue
-        pieces = line.split("\t")
-        if len(pieces) >= 3 and len(pieces[0]) in (40, 64) and pieces[0].isalnum() and pieces[1].isdigit():
-            current = {"sha": pieces[0], "timestamp": int(pieces[1]), "subject": "\t".join(pieces[2:])}
-            commits.append(current)
-            continue
-        if current is None or len(pieces) < 2:
-            continue
-        status = pieces[0]
-        if status.startswith("R") and len(pieces) >= 3:
-            renames.append({
-                "commit": current["sha"],
-                "similarity": status[1:],
-                "previous_path": pieces[1],
-                "path": "\t".join(pieces[2:]),
-            })
-    return commits, renames
+        pieces = line.split("\\t", 3)
+        if len(pieces) != 4 or len(pieces[0]) not in (40, 64) or not pieces[1].isdigit():
+            raise RuntimeError(f"cannot parse scoped Git commit metadata: {line!r}")
+        sha, timestamp, parents, subject = pieces
+        commits.append({"sha": sha, "timestamp": int(timestamp), "subject": subject})
+        parent_map[sha] = parents.split() if parents else []
 
+    renames: list[dict[str, Any]] = []
+    for commit in commits:
+        for parent in parent_map[commit["sha"]]:
+            raw_diff = git(
+                root, "diff-tree", "--no-commit-id", "--name-status", "-r", "-M", "-z",
+                parent, commit["sha"], "--", scope,
+            )
+            fields = raw_diff.split(b"\\0")
+            index = 0
+            while index < len(fields) and fields[index]:
+                status = fields[index].decode("ascii", "replace")
+                index += 1
+                path_count = 2 if status.startswith(("R", "C")) else 1
+                if index + path_count > len(fields):
+                    raise RuntimeError(f"truncated diff-tree record for commit {commit['sha']}")
+                paths = [fields[index + offset].decode("utf-8", "surrogateescape")
+                         for offset in range(path_count)]
+                index += path_count
+                if status.startswith("R"):
+                    renames.append({
+                        "commit": commit["sha"],
+                        "similarity": status[1:],
+                        "previous_path": paths[0],
+                        "path": paths[1],
+                    })
+    return commits, renames
 
 def tree_entries(root: Path, commit: str, scope: str) -> list[tuple[str, str]]:
     raw = git(root, "ls-tree", "-r", "-z", "--full-tree", commit, "--", scope)
