@@ -220,9 +220,9 @@ fi
 python3 - "$TMP" <<'PY'
 import os, pathlib, subprocess, sys
 root = pathlib.Path(sys.argv[1])
-old = root / "config/hypr/UserConfigs/old\\tname.conf"
-new = root / "config/hypr/UserConfigs/new\\nname.conf"
-old.write_text("rename parser sentinel content\\n", encoding="utf-8")
+old = root / "config/hypr/UserConfigs/old\tname.conf"
+new = root / "config/hypr/UserConfigs/new\nname.conf"
+old.write_text("rename parser sentinel content\n", encoding="utf-8")
 subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
 subprocess.run(["git", "-C", str(root), "commit", "-qm", "add unusual path"], check=True)
 os.rename(old, new)
@@ -235,8 +235,8 @@ python3 - "$TMP/rename-report.json" <<'PY'
 import json, sys
 report = json.load(open(sys.argv[1], encoding="utf-8"))
 assert any(
-    event["previous_path"] == "config/hypr/UserConfigs/old\\tname.conf"
-    and event["path"] == "config/hypr/UserConfigs/new\\nname.conf"
+    event["previous_path"] == "config/hypr/UserConfigs/old\tname.conf"
+    and event["path"] == "config/hypr/UserConfigs/new\nname.conf"
     for event in report["rename_events"]
 ), f"tab/newline rename was not recorded exactly: {report['rename_events']!r}"
 PY
