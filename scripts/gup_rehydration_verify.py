@@ -2,7 +2,7 @@
 """Build independently recomputable continuity evidence from reachable Git history."""
 from __future__ import annotations
 import argparse, hashlib, json, os, subprocess, sys, tempfile
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 def git(root: Path, *args: str, input_bytes: bytes | None = None) -> bytes:
@@ -20,7 +20,7 @@ def validate_repo_path(path: str, label: str) -> str:
 def validate_scope(scope: str) -> str:
     if scope == ".":
         return scope
-    return validate_repo_path(scope.strip("/"), "scope")
+    return validate_repo_path(scope, "scope")
 
 def tree(root: Path, commit: str, scope: str) -> list[dict[str,str]]:
     args=["ls-tree","-r","-z","--full-tree",commit]
