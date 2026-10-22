@@ -8,6 +8,7 @@ unless the committed evidence manifest explicitly classifies it.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -52,7 +53,9 @@ def read_dispositions(root: Path, manifest: str | None, scope: str,
                       historical: dict[str, set[str]], current: set[str]) -> dict[str, dict[str, Any]]:
     if manifest is None:
         return {}
-    raw = json.loads((root / manifest).read_text(encoding="utf-8"))
+    validate_repo_path(manifest, "disposition manifest")
+    manifest_bytes = git(root, "show", f"HEAD:{manifest}")
+    raw = json.loads(manifest_bytes.decode("utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("disposition manifest must be a JSON object")
     allowed = {"preserved", "translated", "authorized-retired"}
@@ -200,6 +203,16 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
 
     current = {path for path, _ in tree_entries(root, head, scope)}
     dispositions = read_dispositions(root, manifest, scope, historical, current)
+    manifest_pin = None
+    if manifest is not None:
+        validate_repo_path(manifest, "disposition manifest")
+        manifest_bytes = git(root, "show", f"HEAD:{manifest}")
+        manifest_pin = {
+            "path": manifest,
+            "git_object_id": git(root, "rev-parse", f"HEAD:{manifest}").decode("ascii").strip(),
+            "sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+            "source": "HEAD Git object",
+        }
     commits, renames = history_events(root, scope)
     records: list[dict[str, Any]] = []
     for path in sorted(set(historical) | current):
@@ -231,6 +244,7 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
         "worktree_clean": not status,
         "worktree_status": status,
         "refs": git(root, "for-each-ref", "--format=%(refname):%(objectname)", "refs/heads", "refs/tags", "refs/remotes").decode("utf-8", "replace").splitlines(),
+        "dispositions_manifest": manifest_pin,
         "historical_path_count": len(historical),
         "current_path_count": len(current),
         "authorized_retired_count": sum(1 for r in records if r["status"] == "authorized-retired"),
