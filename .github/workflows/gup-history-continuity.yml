@@ -6,6 +6,8 @@ on:
       - 'config/hypr/**'
       - 'scripts/gup-history-continuity.py'
       - 'scripts/gup_rehydration_verify.py'
+      - 'scripts/gup_evidence_parity.py'
+      - 'tests/test_gup_evidence_parity.py'
       - 'docs/audits/GUP-rehydration-verification.md'
       - 'tests/test_gup_rehydration_verify.py'
       - 'tests/unit/test-gup-history-continuity.sh'
@@ -26,6 +28,8 @@ jobs:
           fetch-depth: 0
       - name: Test rehydration-verification engine
         run: python3 tests/test_gup_rehydration_verify.py
+      - name: Test independent evidence parity gate
+        run: python3 tests/test_gup_evidence_parity.py
       - name: Build repository-derived continuity inventory with reviewed dispositions
         run: |
           python3 scripts/gup-history-continuity.py \
@@ -81,6 +85,12 @@ jobs:
           if report["unresolved_missing_count"]:
               raise SystemExit("GUP continuity gate failed: unresolved active historical paths remain")
           PY
+
+      - name: Require parity between independent GUP evidence reports
+        run: |
+          python3 scripts/gup_evidence_parity.py \
+            --continuity "$RUNNER_TEMP/gup-history-continuity.json" \
+            --rehydration "$RUNNER_TEMP/gup-rehydration-verification.json"
       - name: Preserve historical continuity inventory
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
