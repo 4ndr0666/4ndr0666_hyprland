@@ -116,7 +116,8 @@ def read_dispositions(root: Path, manifest: str | None, scope: str,
                 raise ValueError(f"disposition target for {path!r} is not tracked in candidate HEAD: {target!r}")
         if entry["status"] == "authorized-retired" and entry.get("user_authorization") is not True:
             raise ValueError(f"retirement of {path!r} requires user_authorization=true")
-        if path in dispositions:            raise ValueError(f"path has overlapping subtree and individual dispositions: {path!r}")
+        if path in dispositions:
+            raise ValueError(f"path has overlapping subtree and individual dispositions: {path!r}")
         dispositions[path] = entry
     return dispositions
 
@@ -235,7 +236,8 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
 
     unresolved = [r for r in records if r["status"] == "unresolved-missing"]
     status = git(root, "status", "--porcelain=v1", "--untracked-files=all").decode("utf-8", "replace").splitlines()
-    return {        "schema_version": 2,
+    return {
+        "schema_version": 2,
         "scope": scope,
         "head": head,
         "worktree_clean": not status,

@@ -110,4 +110,25 @@ class RehydrationVerificationTests(unittest.TestCase):
         self.assertEqual(result.returncode,2)
         self.assertIn("overlapping subtree retirement",result.stderr)
 
+
+    def test_stash_ref_is_excluded_from_historical_inventory(self):
+        folder=self.root/"config/hypr"; folder.mkdir(parents=True)
+        (folder/"current.lua").write_text("return true\\n")
+        commit(self.root,"current mainline configuration")
+        main_branch=git(self.root,"branch","--show-current")
+        git(self.root,"checkout","--orphan","stash-fixture")
+        git(self.root,"clean","-fdx")
+        stash_folder=self.root/"config/hypr"; stash_folder.mkdir(parents=True,exist_ok=True)
+        (stash_folder/"stash-only.conf").write_text("uncommitted stash history\\n")
+        stash_commit=commit(self.root,"synthetic stash-only history")
+        git(self.root,"checkout",main_branch)
+        git(self.root,"branch","-D","stash-fixture")
+        git(self.root,"update-ref","refs/stash",stash_commit)
+        result=self.invoke()
+        self.assertEqual(result.returncode,0,result.stderr)
+        report=json.loads(result.stdout)
+        self.assertNotIn(stash_commit,{item["commit"] for item in report["commits"]})
+        self.assertNotIn("config/hypr/stash-only.conf",{item["path"] for item in report["path_records"]})
+        self.assertFalse(any(ref.startswith("refs/stash:") for ref in report["refs"]))
+
 if __name__=="__main__": unittest.main(verbosity=2)
