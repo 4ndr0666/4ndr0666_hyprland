@@ -28,7 +28,7 @@ def reports():
         "historical_blob_ids": list(path["historical_object_ids"]),
         "disposition": copy.deepcopy(path["disposition"]),
     }
-    rename = {"commit": "commit-1", "similarity": "100", "previous_path": "config/hypr/a.conf", "path": "config/hypr/b.conf"}
+    rename = {"commit": "commit-1", "parent": "commit-0", "similarity": "100", "previous_path": "config/hypr/a.conf", "path": "config/hypr/b.conf"}
     rename_rehydration = {**rename, "parent": "commit-0", "status": "R100"}
     common = {
         "head": "head-1", "scope": "config/hypr", "historical_path_count": 1,
@@ -74,6 +74,20 @@ class EvidenceParityTests(unittest.TestCase):
         a, b = reports()
         b["rename_events"][0]["path"] = "config/hypr/wrong.conf"
         with self.assertRaises(module.EvidenceMismatch):
+            module.compare(a, b)
+
+    def test_rename_parent_mismatch_fails(self):
+        module = load_module()
+        a, b = reports()
+        b["rename_events"][0]["parent"] = "different-parent"
+        with self.assertRaisesRegex(module.EvidenceMismatch, "rename evidence mismatch"):
+            module.compare(a, b)
+
+    def test_one_missing_disposition_manifest_pin_fails(self):
+        module = load_module()
+        a, b = reports()
+        a["dispositions_manifest"] = {"git_object_id": "one", "sha256": "a"}
+        with self.assertRaisesRegex(module.EvidenceMismatch, "manifest pins differ"):
             module.compare(a, b)
 
     def test_inconsistent_internal_path_counts_fail(self):

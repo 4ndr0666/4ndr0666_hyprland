@@ -162,6 +162,7 @@ def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[d
                 if status.startswith("R"):
                     renames.append({
                         "commit": commit["sha"],
+                        "parent": parent,
                         "similarity": status[1:],
                         "previous_path": paths[0],
                         "path": paths[1],
