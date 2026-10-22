@@ -61,7 +61,7 @@ def validate_report(report: dict[str, Any], records_key: str, path_key: str, cur
 
     for path, row in records.items():
         status = row.get("status")
-        if status not in allowed_statuses:
+        if not isinstance(status, str) or status not in allowed_statuses:
             raise EvidenceMismatch(f"invalid status for {path!r}: {status!r}")
         present = row.get(current_key)
         if not isinstance(present, bool):
