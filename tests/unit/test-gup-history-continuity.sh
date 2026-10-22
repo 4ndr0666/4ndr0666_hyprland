@@ -101,7 +101,9 @@ python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions d
   fail "strict mode rejected valid evidence-backed dispositions"
 # A dirty working-tree manifest must not override the manifest object committed at HEAD.
 cp "$TMP/dispositions.json" "$TMP/dispositions.committed.json"
-printf '{"config/hypr/UserConfigs/Legacy.conf":{"status":"authorized-retired"}}\\n' > "$TMP/dispositions.json"
+cat > "$TMP/dispositions.json" <<'JSON'
+{"config/hypr/UserConfigs/Legacy.conf":{"status":"authorized-retired","user_authorization":true,"evidence":"uncommitted override must be ignored"}}
+JSON
 python3 "$ROOT/scripts/gup-history-continuity.py" --root "$TMP" --dispositions dispositions.json --strict > "$TMP/head-manifest.json" ||
   fail "inventory used a modified working-tree manifest instead of committed HEAD"
 python3 - "$TMP/head-manifest.json" "$TMP" <<'PY'
