@@ -14,7 +14,7 @@ import os
 import subprocess
 import sys
 import tempfile
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 DEFAULT_SCOPE = "config/hypr"
@@ -35,12 +35,10 @@ def git(root: Path, *args: str) -> bytes:
 
 
 def validate_scope(scope: str) -> str:
-    normalized = scope.strip("/")
-    parts = normalized.split("/")
-    if (not normalized or "\\" in normalized
-            or any(part in {"", ".", ".."} for part in parts)):
+    if (not isinstance(scope, str) or not scope or scope.startswith("/") or scope.endswith("/")
+            or "\\" in scope or any(part in {"", ".", ".."} for part in scope.split("/"))):
         raise ValueError("scope must be a non-empty repository-relative path without dot segments")
-    return normalized
+    return scope
 
 
 def validate_repo_path(path: str, label: str) -> str:
