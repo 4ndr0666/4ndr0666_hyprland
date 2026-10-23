@@ -286,12 +286,12 @@ check_binary_candidates "hyprland_portal_binary" \
 check_binary_candidates "generic_portal_binary" \
   /usr/lib/xdg-desktop-portal /usr/libexec/xdg-desktop-portal
 
-if (("\${#readiness_failures[@]}" > 0)); then
+if (("${#readiness_failures[@]}" > 0)); then
   printf 'installation_readiness=BLOCKED\n' >> "$PACKET_EVIDENCE"
   printf 'oma1=NOT_RUN\n' >> "$PACKET_EVIDENCE"
   printf 'oma2=NOT_RUN\n' >> "$PACKET_EVIDENCE"
-  printf 'readiness_failure_count=%d\n' "\${#readiness_failures[@]}" >> "$PACKET_EVIDENCE"
-  printf '%s\n' "\${readiness_failures[@]}" | sed 's/^/readiness_failure=/' >> "$PACKET_EVIDENCE"
+  printf 'readiness_failure_count=%d\n' "${#readiness_failures[@]}" >> "$PACKET_EVIDENCE"
+  printf '%s\n' "${readiness_failures[@]}" | sed 's/^/readiness_failure=/' >> "$PACKET_EVIDENCE"
   printf '\nsummary=BLOCKED\n' >> "$PACKET_EVIDENCE"
   printf '[BLOCKED] Installation readiness failed; O.M.A.-1 and O.M.A.-2 were not run. This packet did not start or repair services.\n' >&2
   printf 'Evidence: %s\n' "$PACKET_EVIDENCE" >&2
