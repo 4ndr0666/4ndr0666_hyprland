@@ -14,7 +14,6 @@ export LOG
 source "$SCRIPT_DIR/core/packages.sh"
 
 XDG_PORTAL_PACKAGES=(
-  xdg-desktop-portal-hyprland
   xdg-desktop-portal-gtk
   umockdev
 )

@@ -212,6 +212,95 @@ else
   exit 1
 fi
 
+# Installation readiness is separate from runtime certification: this gate is read-only
+# and must never launch services to make the later O.M.A.-1 probes pass.
+printf '\n[installation_readiness]\n' >> "$PACKET_EVIDENCE"
+readiness_failures=()
+
+check_deployed_file() {
+  local path="$1"
+  local description="$2"
+  if [[ -f "$path" && -r "$path" ]]; then
+    printf '%s=PASS\n' "$description" >> "$PACKET_EVIDENCE"
+  else
+    printf '%s=FAIL\n' "$description" >> "$PACKET_EVIDENCE"
+    readiness_failures+=("$description: missing or unreadable file $path")
+  fi
+}
+
+check_runtime_command() {
+  local name="$1"
+  if command -v "$name" >/dev/null 2>&1; then
+    printf 'runtime_command_%s=PASS\n' "$name" >> "$PACKET_EVIDENCE"
+  else
+    printf 'runtime_command_%s=FAIL\n' "$name" >> "$PACKET_EVIDENCE"
+    readiness_failures+=("required runtime command is unavailable: $name")
+  fi
+}
+
+check_binary_candidates() {
+  local description="$1"
+  shift
+  local candidate
+  for candidate in "$@"; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s=PASS\n' "$description" >> "$PACKET_EVIDENCE"
+      return 0
+    fi
+  done
+  printf '%s=FAIL\n' "$description" >> "$PACKET_EVIDENCE"
+  readiness_failures+=("no executable found for $description (checked: $*)")
+}
+
+HYPR_CONFIG="$HOME/.config/hypr"
+check_deployed_file "$HYPR_CONFIG/UserScripts/4ndr0init.sh" "deployed_initializer"
+if [[ -x "$HYPR_CONFIG/UserScripts/4ndr0init.sh" ]]; then
+  printf 'deployed_initializer_executable=PASS\n' >> "$PACKET_EVIDENCE"
+else
+  printf 'deployed_initializer_executable=FAIL\n' >> "$PACKET_EVIDENCE"
+  readiness_failures+=("deployed initializer is not executable: $HYPR_CONFIG/UserScripts/4ndr0init.sh")
+fi
+check_deployed_file "$HYPR_CONFIG/configs/Startup_Apps.lua" "deployed_startup_module"
+if [[ -r "$HYPR_CONFIG/configs/Startup_Apps.lua" ]] &&
+   grep -Fq 'hl.exec_cmd(UserScripts .. "/4ndr0init.sh")' "$HYPR_CONFIG/configs/Startup_Apps.lua" &&
+   grep -Fq 'hl.on("hyprland.start"' "$HYPR_CONFIG/configs/Startup_Apps.lua"; then
+  printf 'deployed_initializer_hook=PASS\n' >> "$PACKET_EVIDENCE"
+else
+  printf 'deployed_initializer_hook=FAIL\n' >> "$PACKET_EVIDENCE"
+  readiness_failures+=("deployed Startup_Apps.lua does not register the required hyprland.start initializer hook")
+fi
+check_deployed_file "$HYPR_CONFIG/hyprland.lua" "deployed_hyprland_entrypoint"
+if [[ -r "$HYPR_CONFIG/hyprland.lua" ]] &&
+   grep -Fq 'source("configs.Startup_Apps")' "$HYPR_CONFIG/hyprland.lua"; then
+  printf 'deployed_startup_loader=PASS\n' >> "$PACKET_EVIDENCE"
+else
+  printf 'deployed_startup_loader=FAIL\n' >> "$PACKET_EVIDENCE"
+  readiness_failures+=("deployed hyprland.lua does not load configs.Startup_Apps")
+fi
+
+for runtime_command in dbus-send dbus-update-activation-environment systemctl killall awww-daemon awww waybar; do
+  check_runtime_command "$runtime_command"
+done
+check_binary_candidates "hyprland_portal_binary" \
+  /usr/lib/xdg-desktop-portal-hyprland /usr/libexec/xdg-desktop-portal-hyprland
+check_binary_candidates "generic_portal_binary" \
+  /usr/lib/xdg-desktop-portal /usr/libexec/xdg-desktop-portal
+
+if (("${#readiness_failures[@]}" > 0)); then
+  printf 'installation_readiness=BLOCKED\n' >> "$PACKET_EVIDENCE"
+  printf 'oma1=NOT_RUN\n' >> "$PACKET_EVIDENCE"
+  printf 'oma2=NOT_RUN\n' >> "$PACKET_EVIDENCE"
+  printf 'readiness_failure_count=%d\n' "${#readiness_failures[@]}" >> "$PACKET_EVIDENCE"
+  printf '%s\n' "${readiness_failures[@]}" | sed 's/^/readiness_failure=/' >> "$PACKET_EVIDENCE"
+  printf '\nsummary=BLOCKED\n' >> "$PACKET_EVIDENCE"
+  printf '[BLOCKED] Installation readiness failed; O.M.A.-1 and O.M.A.-2 were not run. This packet did not start or repair services.\n' >&2
+  printf 'Evidence: %s\n' "$PACKET_EVIDENCE" >&2
+  printf 'Evidence SHA-256: %s.sha256\n' "$PACKET_EVIDENCE.sha256" >&2
+  exit 2
+fi
+
+printf 'installation_readiness=PASS\n' >> "$PACKET_EVIDENCE"
+
 printf '\n[oma1]\n' >> "$PACKET_EVIDENCE"
 if "$ROOT/tests/oma/run-oma1.sh" >"$PACKET_TMP" 2>&1; then
   printf 'oma1=PASS\n' >> "$PACKET_EVIDENCE"

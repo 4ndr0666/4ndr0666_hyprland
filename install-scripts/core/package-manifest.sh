@@ -17,6 +17,7 @@ CORE_PACKAGES=(
   bc
   cliphist
   curl
+  dbus
   grim
   gvfs
   gvfs-mtp
@@ -40,8 +41,11 @@ CORE_PACKAGES=(
   swappy
   swaync
   waybar
+  psmisc
   wl-clipboard
   wlogout
+  xdg-desktop-portal
+  xdg-desktop-portal-hyprland
   xdg-user-dirs
   xdg-utils
   yad

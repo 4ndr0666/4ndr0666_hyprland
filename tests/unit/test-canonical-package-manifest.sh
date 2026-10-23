@@ -25,6 +25,20 @@ bash -n "$FINAL_CHECK"
 grep -Fqx '  awww' <(sed -n '/^AUR_PACKAGES=(/,/^)/p' "$MANIFEST")
 ! grep -Fq 'swww' "$MANIFEST"
 
+# The graphical initializer owns these mandatory runtime dependencies; they
+# must be installed by the core path, not hidden behind an optional selection.
+CORE_SECTION="$(sed -n '/^CORE_PACKAGES=(/,/^)/p' "$MANIFEST")"
+for package in dbus psmisc waybar xdg-desktop-portal xdg-desktop-portal-hyprland; do
+  grep -Fqx "  $package" <<< "$CORE_SECTION" ||
+    { printf '[FAIL] Mandatory graphical runtime package is not in CORE_PACKAGES: %s\n' "$package" >&2; exit 1; }
+done
+
+XDPH="$ROOT/install-scripts/xdph.sh"
+OPTIONAL_PORTAL_SECTION="$(sed -n '/^XDG_PORTAL_PACKAGES=(/,/^)/p' "$XDPH")"
+! grep -Fqx '  xdg-desktop-portal-hyprland' <<< "$OPTIONAL_PORTAL_SECTION"
+grep -Fqx '  xdg-desktop-portal-gtk' <<< "$OPTIONAL_PORTAL_SECTION"
+grep -Fq "xdph 'Install GTK portal integration and test support' OFF" "$ROOT/install.sh"
+
 # Mandatory package modules must consume the single manifest rather than
 # carrying independent copies of the canonical package inventory.
 for file in "$INSTALLER" "$BASE" "$PIPEWIRE" "$FONTS" "$HYPRLAND" "$FINAL_CHECK"; do
