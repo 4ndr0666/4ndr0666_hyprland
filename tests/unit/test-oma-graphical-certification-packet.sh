@@ -23,6 +23,28 @@ grep -Fq 'summary=BLOCKED' "$PACKET"
 grep -Fq 'oma2=NOT_RUN' "$PACKET"
 grep -Fq 'oma2_destructive=NOT_RUN' "$PACKET"
 grep -Fq 'system_mutation=NONE_BY_THIS_PACKET' "$PACKET"
+
+# Installation readiness must be a read-only gate before O.M.A.-1, and it must not
+# launch daemons or weaken the existing O.M.A.-1 -> O.M.A.-2 gate.
+grep -Fq 'installation_readiness=BLOCKED' "$PACKET"
+grep -Fq 'installation_readiness=PASS' "$PACKET"
+grep -Fq 'oma1=NOT_RUN' "$PACKET"
+grep -Fq 'oma2=NOT_RUN' "$PACKET"
+grep -Fq 'deployed_initializer_hook' "$PACKET"
+grep -Fq 'deployed_startup_loader' "$PACKET"
+grep -Fq 'runtime_command_awww-daemon' "$PACKET"
+grep -Fq 'hyprland_portal_binary' "$PACKET"
+grep -Fq 'generic_portal_binary' "$PACKET"
+grep -Fq 'Installation readiness failed; O.M.A.-1 and O.M.A.-2 were not run.' "$PACKET"
+! grep -Fq 'systemctl --user start' "$PACKET"
+! grep -Fq 'awww-daemon --format xrgb' "$PACKET"
+! grep -Fq 'waybar &' "$PACKET"
+
+readiness_line="$(grep -nF 'printf '\\''\\n[installation_readiness]\\n'\\'' >> "$PACKET_EVIDENCE"' "$PACKET" | cut -d: -f1)"
+oma1_line="$(grep -nF 'printf '\\''\\n[oma1]\\n'\\'' >> "$PACKET_EVIDENCE"' "$PACKET" | cut -d: -f1)"
+[[ -n "$readiness_line" && -n "$oma1_line" && "$readiness_line" -lt "$oma1_line" ]]
+
+
 grep -Fq 'packet_exit()' "$PACKET"
 grep -Fq 'sha256sum "$PACKET_EVIDENCE" > "$PACKET_EVIDENCE.sha256"' "$PACKET"
 
