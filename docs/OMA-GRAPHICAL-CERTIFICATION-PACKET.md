@@ -10,10 +10,12 @@ It is deliberately fail-closed:
 2. Verify an actual Hyprland compositor process exists for the current user.
 3. Reconcile compositor session context with the Hyprland instance record and its authoritative Wayland socket.
 4. Run the Golden Unit gate.
-5. Run O.M.A.-1.
-6. Only if O.M.A.-1 passes, run O.M.A.-2 in `--safe` mode.
-7. Never improvise remediation between probes.
-8. Never run destructive O.M.A.-2 from this packet.
+5. Verify installation readiness without starting or repairing services: the deployed `4ndr0init.sh`, its active Lua startup hook/loader, required runtime commands, and portal binaries must exist.
+6. If installation readiness is blocked, record the missing deployment/prerequisite evidence and stop before O.M.A.-1.
+7. Run O.M.A.-1 only after installation readiness passes.
+8. Only if O.M.A.-1 passes, run O.M.A.-2 in `--safe` mode.
+9. Never improvise remediation between probes.
+10. Never run destructive O.M.A.-2 from this packet.
 
 The packet itself performs no system mutation. O.M.A.-2 safe mode exercises only its existing safe lifecycle/concurrency/interruption/recovery checks.
 
@@ -134,7 +136,19 @@ Stop. Do not bypass the gate and do not run O.M.A.-2 manually.
 
 The packet evidence contains the Golden Unit output. Return to the repository-side GUP workflow with that evidence.
 
-### C. O.M.A.-1 fails
+### C. Installation readiness is blocked
+
+Expected packet result:
+
+```text
+[BLOCKED] Installation readiness failed; O.M.A.-1 and O.M.A.-2 were not run. This packet did not start or repair services.
+```
+
+Inspect the packet evidence section named `[installation_readiness]`. A `FAIL` identifies a missing deployed runtime file, a missing startup connection, or an unavailable required prerequisite. This is not an O.M.A.-1 runtime failure: the installation boundary has not been established yet.
+
+Complete the supported package-installation and dotfiles-deployment workflows, then start a fresh normal Hyprland session before rerunning the packet. Do not manually launch daemons to satisfy this gate. The gate is read-only and does not attempt remediation.
+
+### D. O.M.A.-1 fails
 
 Expected packet result:
 
@@ -155,7 +169,7 @@ cat "$latest1.sha256"
 
 Do not restart Waybar, awww, PipeWire, Hyprland, or other services solely to manufacture a PASS. A runtime failure must remain observable evidence.
 
-### D. O.M.A.-2 safe fails
+### E. O.M.A.-2 safe fails
 
 Expected packet result:
 
@@ -174,7 +188,7 @@ cat "$latest2.sha256"
 
 Do not rerun with `--destructive`. Do not bypass a failed safe-mode prerequisite.
 
-### E. Packet command itself fails before producing packet evidence
+### F. Packet command itself fails before producing packet evidence
 
 Run only this diagnostic collection:
 
