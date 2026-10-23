@@ -49,6 +49,8 @@ awk '
 
 grep -Fq 'packet_exit()' "$PACKET"
 grep -Fq 'sha256sum "$PACKET_EVIDENCE" > "$PACKET_EVIDENCE.sha256"' "$PACKET"
+grep -Fq "printf 'Evidence SHA-256: %s\\\\n' \"\\$PACKET_EVIDENCE.sha256\"" "$PACKET"
+! grep -Fq "Evidence SHA-256: %s.sha256\\\\n' \"\\$PACKET_EVIDENCE.sha256\"" "$PACKET"
 
 grep -Fq 'bash tests/oma/run-graphical-certification-packet.sh' "$DOC"
 grep -Fq 'O.M.A.-1 = PASS' "$DOC"
