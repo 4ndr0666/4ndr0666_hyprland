@@ -137,7 +137,7 @@ options_command+=(
   bluetooth 'Configure Bluetooth' OFF
   thunar 'Install Thunar' OFF
   quickshell 'Install Quickshell' OFF
-  xdph 'Install XDG desktop portal for Hyprland' OFF
+  xdph 'Install GTK portal integration and test support' OFF
   zsh 'Install zsh with Oh-My-Zsh' OFF
   pokemon 'Install Pokemon color scripts' OFF
   rog 'Install ASUS ROG packages' OFF
