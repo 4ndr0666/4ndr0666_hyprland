@@ -17,6 +17,7 @@ CORE_PACKAGES=(
   bc
   cliphist
   curl
+  dbus
   grim
   gvfs
   gvfs-mtp
