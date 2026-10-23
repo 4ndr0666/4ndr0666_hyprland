@@ -278,7 +278,7 @@ else
   readiness_failures+=("deployed hyprland.lua does not load configs.Startup_Apps")
 fi
 
-for runtime_command in dbus-send dbus-update-activation-environment systemctl killall awww-daemon awww waybar; do
+for runtime_command in dbus-send dbus-launch dbus-update-activation-environment systemctl killall awww-daemon awww waybar; do
   check_runtime_command "$runtime_command"
 done
 check_binary_candidates "hyprland_portal_binary" \
