@@ -44,6 +44,8 @@ CORE_PACKAGES=(
   psmisc
   wl-clipboard
   wlogout
+  xdg-desktop-portal
+  xdg-desktop-portal-hyprland
   xdg-user-dirs
   xdg-utils
   yad
