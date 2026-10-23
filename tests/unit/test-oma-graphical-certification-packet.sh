@@ -40,9 +40,11 @@ grep -Fq 'Installation readiness failed; O.M.A.-1 and O.M.A.-2 were not run.' "$
 ! grep -Fq 'awww-daemon --format xrgb' "$PACKET"
 ! grep -Fq 'waybar &' "$PACKET"
 
-readiness_line="$(grep -nF 'printf '\\''\\n[installation_readiness]\\n'\\'' >> "$PACKET_EVIDENCE"' "$PACKET" | cut -d: -f1)"
-oma1_line="$(grep -nF 'printf '\\''\\n[oma1]\\n'\\'' >> "$PACKET_EVIDENCE"' "$PACKET" | cut -d: -f1)"
-[[ -n "$readiness_line" && -n "$oma1_line" && "$readiness_line" -lt "$oma1_line" ]]
+awk '
+  /installation_readiness/ && !readiness { readiness=NR }
+  /\[oma1\]/ && !oma1 { oma1=NR }
+  END { exit !(readiness && oma1 && readiness < oma1) }
+' "$PACKET"
 
 
 grep -Fq 'packet_exit()' "$PACKET"
