@@ -41,6 +41,7 @@ CORE_PACKAGES=(
   swappy
   swaync
   waybar
+  psmisc
   wl-clipboard
   wlogout
   xdg-user-dirs
