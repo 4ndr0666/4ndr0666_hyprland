@@ -4,7 +4,8 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DEPLOY="$ROOT/install-scripts/graphical-runtime.sh"
 TMP_HOME="$(mktemp -d)"
-trap 'rm -rf -- "$TMP_HOME"' EXIT
+MISSING_HOME="$(mktemp -d)"
+trap 'rm -rf -- "$TMP_HOME" "$MISSING_HOME"' EXIT
 
 mkdir -p "$TMP_HOME/.config/hypr/configs"
 cat > "$TMP_HOME/.config/hypr/hyprland.lua" <<'LUA'
