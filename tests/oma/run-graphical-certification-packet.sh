@@ -208,7 +208,7 @@ else
   printf '\nsummary=BLOCKED\n' >> "$PACKET_EVIDENCE"
   printf '[FAIL] Golden Unit gate failed; O.M.A. runtime certification was not attempted.\n' >&2
   printf 'Evidence: %s\n' "$PACKET_EVIDENCE" >&2
-  printf 'Evidence SHA-256: %s.sha256\n' "$PACKET_EVIDENCE.sha256" >&2
+  printf 'Evidence SHA-256: %s\n' "$PACKET_EVIDENCE.sha256" >&2
   exit 1
 fi
 
@@ -295,7 +295,7 @@ if (("${#readiness_failures[@]}" > 0)); then
   printf '\nsummary=BLOCKED\n' >> "$PACKET_EVIDENCE"
   printf '[BLOCKED] Installation readiness failed; O.M.A.-1 and O.M.A.-2 were not run. This packet did not start or repair services.\n' >&2
   printf 'Evidence: %s\n' "$PACKET_EVIDENCE" >&2
-  printf 'Evidence SHA-256: %s.sha256\n' "$PACKET_EVIDENCE.sha256" >&2
+  printf 'Evidence SHA-256: %s\n' "$PACKET_EVIDENCE.sha256" >&2
   exit 2
 fi
 
@@ -314,7 +314,7 @@ else
   printf '\nsummary=BLOCKED\n' >> "$PACKET_EVIDENCE"
   printf '[FAIL] O.M.A.-1 baseline failed; O.M.A.-2 was intentionally not run.\n' >&2
   printf 'Evidence: %s\n' "$PACKET_EVIDENCE" >&2
-  printf 'Evidence SHA-256: %s.sha256\n' "$PACKET_EVIDENCE.sha256" >&2
+  printf 'Evidence SHA-256: %s\n' "$PACKET_EVIDENCE.sha256" >&2
   exit 1
 fi
 
@@ -328,7 +328,7 @@ else
   printf '\nsummary=FAIL\n' >> "$PACKET_EVIDENCE"
   printf '[FAIL] O.M.A.-2 safe certification failed. No destructive run was attempted.\n' >&2
   printf 'Evidence: %s\n' "$PACKET_EVIDENCE" >&2
-  printf 'Evidence SHA-256: %s.sha256\n' "$PACKET_EVIDENCE.sha256" >&2
+  printf 'Evidence SHA-256: %s\n' "$PACKET_EVIDENCE.sha256" >&2
   exit 1
 fi
 
