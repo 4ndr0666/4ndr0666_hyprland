@@ -42,4 +42,19 @@ HOME="$TMP_HOME" XDG_STATE_HOME="$TMP_HOME/.local/state" bash "$DEPLOY"
 [[ "$(grep -Fc 'source("configs.Startup_Apps")' "$ENTRYPOINT")" -eq 1 ]]
 [[ "$(grep -Fc 'hl.exec_cmd(UserScripts .. "/4ndr0init.sh")' "$STARTUP")" -eq 1 ]]
 
-printf '%s\n' 'PASS: mandatory graphical runtime deployment preserves user startup entries and is idempotent'
+# A clean profile without Startup_Apps.lua receives the repository module.
+mkdir -p "$MISSING_HOME/.config/hypr"
+cat > "$MISSING_HOME/.config/hypr/hyprland.lua" <<'LUA'
+local function source(module_name)
+    return require(module_name)
+end
+source("UserConfigs.01-UserDefaults")
+source("configs.Keybinds")
+LUA
+HOME="$MISSING_HOME" XDG_STATE_HOME="$MISSING_HOME/.local/state" bash "$DEPLOY"
+[[ -x "$MISSING_HOME/.config/hypr/UserScripts/4ndr0init.sh" ]]
+grep -Fq 'hl.on("hyprland.start"' "$MISSING_HOME/.config/hypr/configs/Startup_Apps.lua"
+grep -Fq 'hl.exec_cmd(UserScripts .. "/4ndr0init.sh")' "$MISSING_HOME/.config/hypr/configs/Startup_Apps.lua"
+grep -Fq 'source("configs.Startup_Apps")' "$MISSING_HOME/.config/hypr/hyprland.lua"
+
+printf '%s\n' 'PASS: mandatory graphical runtime deployment preserves user startup entries, initializes clean profiles, and is idempotent'
