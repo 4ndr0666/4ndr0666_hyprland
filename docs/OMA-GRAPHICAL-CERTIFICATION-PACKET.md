@@ -146,7 +146,7 @@ Expected packet result:
 
 Inspect the packet evidence section named `[installation_readiness]`. A `FAIL` identifies a missing deployed runtime file, a missing startup connection, or an unavailable required prerequisite. This is not an O.M.A.-1 runtime failure: the installation boundary has not been established yet.
 
-Complete the supported package-installation and dotfiles-deployment workflows, then start a fresh normal Hyprland session before rerunning the packet. Do not manually launch daemons to satisfy this gate. The gate is read-only and does not attempt remediation.
+From the repository root, run `bash install-scripts/graphical-runtime.sh` to deploy the mandatory initializer and startup connection without replacing optional styling or existing user startup entries. If this reports an incompatible or missing `hyprland.lua` entrypoint, resolve that configuration boundary explicitly rather than bypassing the gate. Then start a fresh normal Hyprland session before rerunning the packet. Do not manually launch daemons to satisfy this gate. The certification packet is read-only and does not attempt remediation.
 
 ### D. O.M.A.-1 fails
 
