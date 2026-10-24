@@ -28,7 +28,7 @@ mkdir -p "$HYPR_HOME/configs" "$HYPR_HOME/UserScripts"
 
 # Replace only the owned initializer when its contents differ. Existing
 # versions are backed up through the canonical file-state manifest.
-if ! cmp -s -- "$CONFIG_ROOT/UserScripts/4ndr0init.sh" "$INITIALIZER" 2>/dev/null; then
+if [[ -L "$INITIALIZER" ]] || ! cmp -s -- "$CONFIG_ROOT/UserScripts/4ndr0init.sh" "$INITIALIZER" 2>/dev/null; then
   file_state_atomic_replace "$CONFIG_ROOT/UserScripts/4ndr0init.sh" "$INITIALIZER"
 fi
 chmod +x -- "$INITIALIZER"
@@ -102,6 +102,8 @@ if ! grep -Fq 'source("configs.Startup_Apps")' "$ENTRYPOINT"; then
   rm -f -- "$entry_tmp"
 fi
 
+grep -Fq 'hl.on("hyprland.start"' "$STARTUP" ||
+  fail "Startup_Apps.lua does not register the Hyprland start hook after deployment"
 grep -Fq 'hl.exec_cmd(UserScripts .. "/4ndr0init.sh")' "$STARTUP" ||
   fail "Startup_Apps.lua does not contain the mandatory initializer command after deployment"
 grep -Fq 'source("configs.Startup_Apps")' "$ENTRYPOINT" ||
