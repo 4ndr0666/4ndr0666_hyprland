@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DEPLOY="$ROOT/install-scripts/graphical-runtime.sh"
+grep -Fq "run_module graphical-runtime.sh" "$ROOT/install.sh"
 TMP_HOME="$(mktemp -d)"
 MISSING_HOME="$(mktemp -d)"
 trap 'rm -rf -- "$TMP_HOME" "$MISSING_HOME"' EXIT
