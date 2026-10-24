@@ -14,7 +14,7 @@ if [[ "${1:-}" == --dry-run ]]; then
     00-base.sh pacman.sh yay.sh 01-hypr-pkgs.sh pipewire.sh fonts.sh hyprland.sh
     sddm.sh nvidia.sh nvidia_nouveau.sh gtk_themes.sh InputGroup.sh quickshell.sh
     xdph.sh bluetooth.sh thunar.sh thunar_default.sh sddm_theme.sh zsh.sh
-    zsh_pokemon.sh rog.sh dotfiles-main.sh 02-Final-Check.sh
+    zsh_pokemon.sh rog.sh dotfiles-main.sh graphical-runtime.sh 02-Final-Check.sh
   )
   for module in "${required_modules[@]}"; do
     path="$SCRIPT_DIR/$module"
@@ -197,6 +197,7 @@ if [[ ! -f "$HOME/.config/fastfetch/arch.png" ]]; then
   cp -a -- "$ROOT/assets/fastfetch" "$HOME/.config/"
 fi
 
+run_module graphical-runtime.sh
 run_module 02-Final-Check.sh
 
 if package_is_installed hyprland || package_is_installed hyprland-git; then
