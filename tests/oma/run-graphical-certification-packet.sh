@@ -271,7 +271,8 @@ else
 fi
 check_deployed_file "$HYPR_CONFIG/hyprland.lua" "deployed_hyprland_entrypoint"
 if [[ -r "$HYPR_CONFIG/hyprland.lua" ]] &&
-   grep -Fq 'source("configs.Startup_Apps")' "$HYPR_CONFIG/hyprland.lua"; then
+   { grep -Fq 'source("configs.Startup_Apps")' "$HYPR_CONFIG/hyprland.lua" ||
+     grep -Fq 'dofile(os.getenv("HOME") .. "/.config/hypr/configs/Startup_Apps.lua")' "$HYPR_CONFIG/hyprland.lua"; }; then
   printf 'deployed_startup_loader=PASS\n' >> "$PACKET_EVIDENCE"
 else
   printf 'deployed_startup_loader=FAIL\n' >> "$PACKET_EVIDENCE"
