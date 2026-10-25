@@ -34,15 +34,39 @@ def tree(root: Path, commit: str, scope: str) -> list[dict[str,str]]:
         if kind=="blob": rows.append({"path":path.decode("utf-8","surrogateescape"),"mode":mode,"oid":oid})
     return rows
 
-def metadata(root: Path, commits: list[str]) -> list[dict[str,Any]]:
+def metadata(root: Path) -> list[dict[str,Any]]:
+    # One Git traversal replaces two subprocesses per commit. Record separators
+    # are control bytes, so commit subjects cannot ambiguously split records.
+    raw=git(root,"log","--topo-order","--full-history","--exclude=refs/stash","--all",
+            "--format=%H%x00%T%x00%P%x00%ct%x00%s%x1e")
     rows=[]
-    for oid in commits:
-        raw=git(root,"show","-s","--format=%H%x00%P%x00%ct%x00%s",oid).decode("utf-8","surrogateescape").rstrip("\n")
-        f=raw.split("\0",3)
-        if len(f)!=4 or f[0]!=oid: raise ValueError(f"cannot reconstruct commit metadata: {oid}")
-        tree_oid=git(root,"rev-parse",f"{oid}^{{tree}}").decode("ascii").strip()
-        rows.append({"commit":f[0],"tree_object_id":tree_oid,"parents":f[1].split() if f[1] else [],"timestamp":int(f[2]),"subject":f[3]})
+    for record in raw.split(b"\x1e"):
+        if not record.strip(): continue
+        fields=record.strip(b"\n").split(b"\0",4)
+        if len(fields)!=5: raise ValueError("cannot parse batched commit metadata")
+        commit_oid,tree_oid,parents,timestamp,subject=(x.decode("utf-8","surrogateescape") for x in fields)
+        rows.append({"commit":commit_oid,"tree_object_id":tree_oid,"parents":parents.split() if parents else [],
+                     "timestamp":int(timestamp),"subject":subject})
+    if not rows: raise ValueError("no reachable commits; continuity cannot be established")
     return rows
+
+def object_payloads(root: Path, object_ids: list[str]) -> dict[str,tuple[str,bytes]]:
+    """Read exact object bytes in one cat-file process, preserving binary payloads."""
+    if not object_ids: return {}
+    raw=git(root,"cat-file","--batch",input_bytes=("\n".join(object_ids)+"\n").encode("ascii"))
+    cursor=0; result={}
+    for expected in object_ids:
+        newline=raw.find(b"\n",cursor)
+        if newline<0: raise ValueError(f"truncated cat-file header for {expected}")
+        fields=raw[cursor:newline].split(); cursor=newline+1
+        if len(fields)!=3: raise ValueError(f"missing or malformed Git object response for {expected}")
+        actual,kind,size=(x.decode("ascii") for x in fields)
+        if actual!=expected: raise ValueError(f"cat-file object order mismatch: expected {expected}, got {actual}")
+        end=cursor+int(size)
+        if end>=len(raw) or raw[end:end+1]!=b"\n": raise ValueError(f"truncated Git object payload: {expected}")
+        result[actual]=(kind,raw[cursor:end]); cursor=end+1
+    if cursor!=len(raw): raise ValueError("unexpected trailing bytes in cat-file batch output")
+    return result
 
 def renames(root: Path, commits: list[dict[str,Any]], scope: str) -> list[dict[str,str]]:
     events=[]
@@ -125,18 +149,37 @@ def main() -> int:
         refs=git(root,"for-each-ref","--format=%(refname)%09%(objectname)","refs/heads","refs/tags","refs/remotes").decode("utf-8","replace").splitlines()
         commit_ids=git(root,"rev-list","--topo-order","--exclude=refs/stash","--all","HEAD").decode("ascii").splitlines()
         if not commit_ids: raise ValueError("no reachable commits; continuity cannot be established")
-        commits=metadata(root,commit_ids); versions:dict[str,list[dict[str,str]]]={}; blob_ids=set()
-        for cid in commit_ids:
+        commits=metadata(root)
+        if {row["commit"] for row in commits}!=set(commit_ids):
+            raise ValueError("batched commit metadata does not match the reachable Git ref universe")
+        if scope==".":
+            scope_commit_ids=commit_ids
+        else:
+            scope_commit_ids=git(root,"rev-list","--topo-order","--full-history","--exclude=refs/stash","--all","HEAD","--",scope).decode("ascii").splitlines()
+        if not set(scope_commit_ids).issubset(set(commit_ids)):
+            raise ValueError("scope history includes commits outside the accepted Git ref universe")
+        scope_commit_set=set(scope_commit_ids)
+        scope_commits=[row for row in commits if row["commit"] in scope_commit_set]
+        versions:dict[str,list[dict[str,str]]]={}; blob_ids=set()
+        # A scoped path state can change only in a commit that touches the
+        # selected scope. Snapshot those commits only; metadata and Git object
+        # pins still cover the complete reachable ref universe.
+        for cid in scope_commit_ids:
             for item in tree(root,cid,scope):
                 pin={"commit":cid,"path":item["path"],"mode":item["mode"],"git_object_id":item["oid"],"git_show_spec":f"{cid}:{item['path']}"}
                 versions.setdefault(item["path"],[]).append(pin); blob_ids.add(item["oid"])
-        object_types={cid:"commit" for cid in commit_ids}
+        object_types={row["commit"]:"commit" for row in commits}
         object_types.update({item["tree_object_id"]:"tree" for item in commits})
         object_types.update({oid:"blob" for oid in blob_ids})
+        object_ids=sorted(object_types)
+        object_data=object_payloads(root,object_ids)
+        object_format=git(root,"rev-parse","--show-object-format").decode().strip()
         object_pins={}
-        for oid,kind in sorted(object_types.items()):
-            content=git(root,"cat-file",kind,oid)
-            recomputed=git(root,"hash-object","-t",kind,"--stdin",input_bytes=content).decode("ascii").strip()
+        for oid in object_ids:
+            kind,content=object_data[oid]
+            if kind!=object_types[oid]: raise ValueError(f"Git object type mismatch for {oid}: expected {object_types[oid]}, got {kind}")
+            framed=f"{kind} {len(content)}\0".encode("ascii")+content
+            recomputed=hashlib.new(object_format,framed).hexdigest()
             if recomputed!=oid: raise ValueError(f"Git {kind} hash mismatch: {oid} recomputed as {recomputed}")
             object_pins[oid]={"git_object_id":oid,"git_object_type":kind,"byte_length":len(content),"sha256":hashlib.sha256(content).hexdigest(),"git_object_id_recomputed":recomputed,"content_recomputable":True}
         blob_pins={oid:pin for oid,pin in object_pins.items() if pin["git_object_type"]=="blob"}
@@ -149,10 +192,12 @@ def main() -> int:
             elif present: status="present-path"
             else: status="unresolved-missing"
             records.append({"path":path,"scope_class":"active","status":status,"present_at_head":present,"historical_commit_count":len(rows),"historical_blob_ids":sorted({x["git_object_id"] for x in rows}),"versions":rows,"disposition":item})
-        unresolved=[x for x in records if x["status"]=="unresolved-missing"]; rename_rows=renames(root,commits,scope)
-        report = {"schema_version": 1,"protocol":"GUP","evidence_kind":"repository-derived-rehydration-verification","scope":scope,"head":head,
+        unresolved=[x for x in records if x["status"]=="unresolved-missing"]; rename_rows=renames(root,scope_commits,scope)
+        report = {"schema_version": 2,"protocol":"GUP","evidence_kind":"repository-derived-rehydration-verification","scope":scope,"head":head,
+                "scope_snapshot_policy":"path states are recorded for every reachable commit that changes the selected scope; metadata and object pins cover all reachable commits",
                 "object_format":git(root,"rev-parse","--show-object-format").decode().strip(),"shallow_repository":shallow,"refs":refs,
-                "reachable_commit_count":len(commits),"commits":commits,"historical_path_count":len(historical),"current_path_count":len(current),"authorized_retired_count":sum(1 for x in records if x["status"]=="authorized-retired"),
+                "reachable_commit_count":len(commits),"commits":commits,"scope_state_commit_count":len(scope_commit_ids),"scope_state_commits":scope_commit_ids,
+                "historical_path_count":len(historical),"current_path_count":len(current),"authorized_retired_count":sum(1 for x in records if x["status"]=="authorized-retired"),
                 "historical_path_version_count":sum(map(len,versions.values())),"rename_event_count":len(rename_rows),"rename_events":rename_rows,
                 "git_object_count":len(object_pins),"object_pins":object_pins,"blob_count":len(blob_pins),"blob_pins":blob_pins,"path_records":records,"dispositions_manifest":manifest_pin,"unresolved_missing_count":len(unresolved),
                 "verification":{"all_git_object_ids_recomputed":all(x["git_object_id"]==x["git_object_id_recomputed"] for x in object_pins.values()),
