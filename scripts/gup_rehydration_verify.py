@@ -5,8 +5,8 @@ import argparse, hashlib, json, os, subprocess, sys, tempfile
 from pathlib import Path
 from typing import Any
 
-def git(root: Path, *args: str, input_bytes: bytes | None = None) -> bytes:
-    p = subprocess.run(["git", "-C", str(root), *args], input=input_bytes, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, timeout=180)
+def git(root: Path, *args: str) -> bytes:
+    p = subprocess.run(["git", "-C", str(root), *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, timeout=180)
     if p.returncode:
         raise RuntimeError(p.stderr.decode("utf-8", "replace").strip() or f"git {' '.join(args)} failed")
     return p.stdout
@@ -50,23 +50,122 @@ def metadata(root: Path) -> list[dict[str,Any]]:
     if not rows: raise ValueError("no reachable commits; continuity cannot be established")
     return rows
 
-def object_payloads(root: Path, object_ids: list[str]) -> dict[str,tuple[str,bytes]]:
-    """Read exact object bytes in one cat-file process, preserving binary payloads."""
-    if not object_ids: return {}
-    raw=git(root,"cat-file","--batch",input_bytes=("\n".join(object_ids)+"\n").encode("ascii"))
-    cursor=0; result={}
-    for expected in object_ids:
-        newline=raw.find(b"\n",cursor)
-        if newline<0: raise ValueError(f"truncated cat-file header for {expected}")
-        fields=raw[cursor:newline].split(); cursor=newline+1
-        if len(fields)!=3: raise ValueError(f"missing or malformed Git object response for {expected}")
-        actual,kind,size=(x.decode("ascii") for x in fields)
-        if actual!=expected: raise ValueError(f"cat-file object order mismatch: expected {expected}, got {actual}")
-        end=cursor+int(size)
-        if end>=len(raw) or raw[end:end+1]!=b"\n": raise ValueError(f"truncated Git object payload: {expected}")
-        result[actual]=(kind,raw[cursor:end]); cursor=end+1
-    if cursor!=len(raw): raise ValueError("unexpected trailing bytes in cat-file batch output")
-    return result
+def reachable_object_ids(root: Path, refs: list[str]) -> list[str]:
+    """Enumerate objects reachable from accepted refs, excluding refs/stash.
+
+    rev-list supplies commits, trees, and blobs across every accepted ref.
+    Direct ref targets are added separately so annotated tag objects are not
+    omitted by revision traversal. Nested annotated tags are followed until
+    their target is no longer a tag.
+    """
+    raw = git(root, "rev-list", "--objects", "--exclude=refs/stash", "--all", "HEAD")
+    object_ids = {line.split(None, 1)[0].decode("ascii") for line in raw.splitlines() if line.strip()}
+    ref_rows = []
+    for line in refs:
+        name, separator, oid = line.partition("\t")
+        if not separator or not name.startswith(("refs/heads/", "refs/tags/", "refs/remotes/")):
+            raise ValueError(f"malformed accepted ref record: {line!r}")
+        ref_rows.append((name, oid))
+        object_ids.add(oid)
+
+    # Annotated tag objects are themselves reachable objects. Revision walks
+    # peel tags for commit traversal, so retain every tag object and any tag
+    # object it directly references. The chain is cycle-guarded defensively.
+    pending = [oid for name, oid in ref_rows if name.startswith("refs/tags/")]
+    visited_tags: set[str] = set()
+    while pending:
+        oid = pending.pop()
+        if oid in visited_tags:
+            continue
+        kind = git(root, "cat-file", "-t", oid).decode("ascii").strip()
+        if kind != "tag":
+            continue
+        visited_tags.add(oid)
+        payload = git(root, "cat-file", "tag", oid)
+        first_line = payload.split(b"\n", 1)[0]
+        if not first_line.startswith(b"object "):
+            raise ValueError(f"malformed annotated tag object: {oid}")
+        target = first_line[len(b"object "):].decode("ascii")
+        object_ids.add(target)
+        pending.append(target)
+
+    return sorted(object_ids)
+
+def pin_objects(root: Path, object_ids: list[str], object_format: str, expected_types: dict[str, str]) -> dict[str, dict[str, Any]]:
+    """Stream exact object payloads and recompute native IDs plus SHA-256 pins.
+
+    The temporary input file avoids a stdin/stdout pipe deadlock while Git
+    emits a large batch. Payloads are hashed incrementally and never retained
+    in memory, keeping the full reachable object graph practical to verify.
+    """
+    if not object_ids:
+        raise ValueError("no reachable Git objects; continuity cannot be established")
+    pins: dict[str, dict[str, Any]] = {}
+    with tempfile.TemporaryFile() as request:
+        request.write(("\n".join(object_ids) + "\n").encode("ascii"))
+        request.seek(0)
+        process = subprocess.Popen(
+            ["git", "-C", str(root), "cat-file", "--batch"],
+            stdin=request, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        assert process.stdout is not None
+        try:
+            for expected_oid in object_ids:
+                header = process.stdout.readline()
+                if not header:
+                    raise ValueError(f"truncated cat-file header for {expected_oid}")
+                fields = header.rstrip(b"\n").split()
+                if len(fields) != 3:
+                    raise ValueError(f"missing or malformed Git object response for {expected_oid}")
+                actual_oid, kind_bytes, size_bytes = fields
+                actual = actual_oid.decode("ascii")
+                kind = kind_bytes.decode("ascii")
+                if actual != expected_oid:
+                    raise ValueError(f"cat-file object order mismatch: expected {expected_oid}, got {actual}")
+                size = int(size_bytes)
+                if size < 0:
+                    raise ValueError(f"negative Git object size for {expected_oid}")
+                expected_kind = expected_types.get(expected_oid)
+                if expected_kind is not None and kind != expected_kind:
+                    raise ValueError(f"Git object type mismatch for {expected_oid}: expected {expected_kind}, got {kind}")
+                native = hashlib.new(object_format)
+                native.update(f"{kind} {size}\0".encode("ascii"))
+                content_sha = hashlib.sha256()
+                remaining = size
+                while remaining:
+                    chunk = process.stdout.read(min(1024 * 1024, remaining))
+                    if not chunk:
+                        raise ValueError(f"truncated Git object payload: {expected_oid}")
+                    native.update(chunk)
+                    content_sha.update(chunk)
+                    remaining -= len(chunk)
+                delimiter = process.stdout.read(1)
+                if delimiter != b"\n":
+                    raise ValueError(f"missing cat-file payload delimiter: {expected_oid}")
+                recomputed = native.hexdigest()
+                if recomputed != expected_oid:
+                    raise ValueError(f"Git {kind} hash mismatch: {expected_oid} recomputed as {recomputed}")
+                pins[expected_oid] = {
+                    "git_object_id": expected_oid, "git_object_type": kind,
+                    "byte_length": size, "sha256": content_sha.hexdigest(),
+                    "git_object_id_recomputed": recomputed, "content_recomputable": True,
+                }
+            if process.stdout.read(1):
+                raise ValueError("unexpected trailing bytes in cat-file batch output")
+            stderr = process.stderr.read() if process.stderr is not None else b""
+            return_code = process.wait(timeout=180)
+            if return_code:
+                raise RuntimeError(stderr.decode("utf-8", "replace").strip() or "git cat-file --batch failed")
+        except BaseException:
+            process.kill()
+            process.wait()
+            raise
+        finally:
+            if process.stdout is not None:
+                process.stdout.close()
+            if process.stderr is not None:
+                process.stderr.close()
+    return pins
 
 def renames(root: Path, commits: list[dict[str,Any]], scope: str) -> list[dict[str,str]]:
     events=[]
@@ -168,21 +267,15 @@ def main() -> int:
             for item in tree(root,cid,scope):
                 pin={"commit":cid,"path":item["path"],"mode":item["mode"],"git_object_id":item["oid"],"git_show_spec":f"{cid}:{item['path']}"}
                 versions.setdefault(item["path"],[]).append(pin); blob_ids.add(item["oid"])
-        object_types={row["commit"]:"commit" for row in commits}
-        object_types.update({item["tree_object_id"]:"tree" for item in commits})
-        object_types.update({oid:"blob" for oid in blob_ids})
-        object_ids=sorted(object_types)
-        object_data=object_payloads(root,object_ids)
+        expected_types={row["commit"]:"commit" for row in commits}
+        expected_types.update({item["tree_object_id"]:"tree" for item in commits})
+        expected_types.update({oid:"blob" for oid in blob_ids})
+        object_ids=reachable_object_ids(root,refs)
         object_format=git(root,"rev-parse","--show-object-format").decode().strip()
-        object_pins={}
-        for oid in object_ids:
-            kind,content=object_data[oid]
-            if kind!=object_types[oid]: raise ValueError(f"Git object type mismatch for {oid}: expected {object_types[oid]}, got {kind}")
-            framed=f"{kind} {len(content)}\0".encode("ascii")+content
-            recomputed=hashlib.new(object_format,framed).hexdigest()
-            if recomputed!=oid: raise ValueError(f"Git {kind} hash mismatch: {oid} recomputed as {recomputed}")
-            object_pins[oid]={"git_object_id":oid,"git_object_type":kind,"byte_length":len(content),"sha256":hashlib.sha256(content).hexdigest(),"git_object_id_recomputed":recomputed,"content_recomputable":True}
-        blob_pins={oid:pin for oid,pin in object_pins.items() if pin["git_object_type"]=="blob"}
+        object_pins=pin_objects(root,object_ids,object_format,expected_types)
+        blob_pins={oid:object_pins[oid] for oid in blob_ids}
+        reachable_type_counts={kind:sum(1 for pin in object_pins.values() if pin["git_object_type"]==kind)
+                               for kind in ("commit","tree","blob","tag")}
         head=git(root,"rev-parse","HEAD").decode().strip(); current={x["path"] for x in tree(root,head,scope)}
         historical=set(versions); disp, manifest_pin=dispositions(root,a.dispositions,scope,historical,current); records=[]
         for path in sorted(historical|current):
@@ -193,14 +286,16 @@ def main() -> int:
             else: status="unresolved-missing"
             records.append({"path":path,"scope_class":"active","status":status,"present_at_head":present,"historical_commit_count":len(rows),"historical_blob_ids":sorted({x["git_object_id"] for x in rows}),"versions":rows,"disposition":item})
         unresolved=[x for x in records if x["status"]=="unresolved-missing"]; rename_rows=renames(root,scope_commits,scope)
-        report = {"schema_version": 2,"protocol":"GUP","evidence_kind":"repository-derived-rehydration-verification","scope":scope,"head":head,
+        report = {"schema_version": 3,"protocol":"GUP","evidence_kind":"repository-derived-rehydration-verification","scope":scope,"head":head,
                 "scope_snapshot_policy":"path states are recorded for every reachable commit that changes the selected scope; metadata and object pins cover all reachable commits",
                 "object_format":git(root,"rev-parse","--show-object-format").decode().strip(),"shallow_repository":shallow,"refs":refs,
                 "reachable_commit_count":len(commits),"commits":commits,"scope_state_commit_count":len(scope_commit_ids),"scope_state_commits":scope_commit_ids,
                 "historical_path_count":len(historical),"current_path_count":len(current),"authorized_retired_count":sum(1 for x in records if x["status"]=="authorized-retired"),
                 "historical_path_version_count":sum(map(len,versions.values())),"rename_event_count":len(rename_rows),"rename_events":rename_rows,
-                "git_object_count":len(object_pins),"object_pins":object_pins,"blob_count":len(blob_pins),"blob_pins":blob_pins,"path_records":records,"dispositions_manifest":manifest_pin,"unresolved_missing_count":len(unresolved),
+                "git_object_count":len(object_pins),"reachable_object_count":len(object_pins),"reachable_object_type_counts":reachable_type_counts,
+                "object_pins":object_pins,"blob_count":len(blob_pins),"blob_pins":blob_pins,"path_records":records,"dispositions_manifest":manifest_pin,"unresolved_missing_count":len(unresolved),
                 "verification":{"all_git_object_ids_recomputed":all(x["git_object_id"]==x["git_object_id_recomputed"] for x in object_pins.values()),
+                                "all_reachable_objects_pinned":set(object_pins)==set(object_ids),
                                 "all_git_objects_sha256_pinned":all(len(x["sha256"])==64 for x in object_pins.values()),
                                 "all_blob_git_ids_recomputed":all(x["git_object_id"]==x["git_object_id_recomputed"] for x in blob_pins.values()),
                                 "all_blob_sha256_pinned":all(len(x["sha256"])==64 for x in blob_pins.values()),
@@ -208,8 +303,8 @@ def main() -> int:
         encoded=(json.dumps(report,indent=2,sort_keys=True,ensure_ascii=True)+"\n").encode()
         if a.output: atomic_write(Path(a.output),encoded)
         else: sys.stdout.buffer.write(encoded)
-        if a.strict and (unresolved or shallow):
-            print(f"GUP rehydration verification: FAIL — unresolved paths={len(unresolved)}, shallow_history={shallow}",file=sys.stderr); return 1
+        if a.strict and (unresolved or shallow or not report["verification"]["all_reachable_objects_pinned"]):
+            print(f"GUP rehydration verification: FAIL — unresolved paths={len(unresolved)}, shallow_history={shallow}, all_reachable_objects_pinned={report['verification']['all_reachable_objects_pinned']}",file=sys.stderr); return 1
         print(f"GUP rehydration verification: {'FAIL' if shallow else 'PASS'} — commits={len(commits)}, paths={len(historical)}, blobs={len(blob_pins)}, unresolved={len(unresolved)}",file=sys.stderr)
         return 1 if shallow else 0
     except (OSError,ValueError,RuntimeError,subprocess.SubprocessError,json.JSONDecodeError) as exc:
