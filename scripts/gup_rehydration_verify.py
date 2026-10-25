@@ -91,7 +91,7 @@ def reachable_object_ids(root: Path, refs: list[str]) -> list[str]:
 
     return sorted(object_ids)
 
-def pin_objects(root: Path, object_ids: list[str], object_format: str, expected_types: dict[str, str]) -> dict[str, dict[str, Any]]:
+def object_payloads(root: Path, object_ids: list[str], object_format: str, expected_types: dict[str, str]) -> dict[str, dict[str, Any]]:
     """Stream exact object payloads and recompute native IDs plus SHA-256 pins.
 
     The temporary input file avoids a stdin/stdout pipe deadlock while Git
@@ -272,7 +272,7 @@ def main() -> int:
         expected_types.update({oid:"blob" for oid in blob_ids})
         object_ids=reachable_object_ids(root,refs)
         object_format=git(root,"rev-parse","--show-object-format").decode().strip()
-        object_pins=pin_objects(root,object_ids,object_format,expected_types)
+        object_pins=object_payloads(root,object_ids,object_format,expected_types)
         blob_pins={oid:object_pins[oid] for oid in blob_ids}
         reachable_type_counts={kind:sum(1 for pin in object_pins.values() if pin["git_object_type"]==kind)
                                for kind in ("commit","tree","blob","tag")}
