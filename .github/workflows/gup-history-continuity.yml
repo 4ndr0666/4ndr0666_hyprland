@@ -43,6 +43,8 @@ jobs:
               "## GUP historical continuity inventory\n\n"
               f"- HEAD: {report['head']}\n"
               f"- Worktree clean: {report['worktree_clean']}\n"
+              f"- Accepted source refs: {len(report['refs'])}\n"
+              f"- Excluded operational/non-source refs: {len(report['excluded_refs'])}\n"
               f"- Historical file paths: {report['historical_path_count']}\n"
               f"- Current tracked paths: {report['current_path_count']}\n"
               f"- Explicitly authorized-retired historical paths: {report['authorized_retired_count']}\n"
@@ -83,6 +85,8 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
               stream.write(summary)
           if (report["shallow_repository"]
+              or not report.get("ref_universe_policy")
+              or not isinstance(report.get("excluded_refs"), list)
               or not report["verification"]["all_reachable_objects_pinned"]
               or not report["verification"]["all_git_object_ids_recomputed"]
               or not report["verification"]["all_git_objects_sha256_pinned"]):

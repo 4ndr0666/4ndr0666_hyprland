@@ -165,6 +165,42 @@ class RehydrationVerificationTests(unittest.TestCase):
         self.assertIn("overlapping subtree retirement",result.stderr)
 
 
+    def test_suk_operational_refs_are_excluded_but_remote_refs_are_included(self):
+        folder=self.root/"config/hypr"; folder.mkdir(parents=True); (folder/"current.lua").write_text("return true\n")
+        main_commit=commit(self.root,"main source history")
+        main_branch=git(self.root,"branch","--show-current")
+
+        git(self.root,"checkout","-b","accepted-side")
+        (folder/"side-only.conf").write_text("accepted remote branch history\n")
+        side_commit=commit(self.root,"accepted remote branch history")
+        side_blob=git(self.root,"rev-parse","HEAD:config/hypr/side-only.conf")
+        git(self.root,"checkout",main_branch)
+        git(self.root,"branch","-D","accepted-side")
+        git(self.root,"update-ref","refs/remotes/origin/accepted-side",side_commit)
+
+        git(self.root,"checkout","-b","suk-wip-fixture")
+        (folder/"wip-only.conf").write_text("operational backup only\n")
+        wip_commit=commit(self.root,"SUK operational WIP backup")
+        wip_blob=git(self.root,"rev-parse","HEAD:config/hypr/wip-only.conf")
+        git(self.root,"checkout",main_branch)
+        git(self.root,"branch","-D","suk-wip-fixture")
+        git(self.root,"update-ref","refs/suk/wip-backups/test",wip_commit)
+
+        result=self.invoke(); self.assertEqual(result.returncode,0,result.stderr); report=json.loads(result.stdout)
+        commit_ids={row["commit"] for row in report["commits"]}
+        self.assertIn(main_commit,commit_ids)
+        self.assertIn(side_commit,commit_ids,"accepted remote-tracking refs must be included")
+        self.assertNotIn(wip_commit,commit_ids,"SUK operational refs must not become source history")
+        self.assertIn(side_blob,report["object_pins"])
+        self.assertNotIn(wip_blob,report["object_pins"])
+        paths={row["path"] for row in report["path_records"]}
+        self.assertIn("config/hypr/side-only.conf",paths)
+        self.assertNotIn("config/hypr/wip-only.conf",paths)
+        self.assertIn("refs/remotes/origin/accepted-side",{line.split("\t",1)[0] for line in report["refs"]})
+        excluded={row["ref"]:row["reason"] for row in report["excluded_refs"]}
+        self.assertIn("refs/suk/wip-backups/test",excluded)
+        self.assertIn("SUK operational",excluded["refs/suk/wip-backups/test"])
+
     def test_stash_ref_is_excluded_from_historical_inventory(self):
         folder=self.root/"config/hypr"; folder.mkdir(parents=True)
         (folder/"current.lua").write_text("return true\\n")
@@ -183,6 +219,8 @@ class RehydrationVerificationTests(unittest.TestCase):
         self.assertEqual(result.returncode,0,result.stderr)
         report=json.loads(result.stdout)
         self.assertNotIn(stash_commit,{item["commit"] for item in report["commits"]})
+        self.assertIn("refs/stash",{item["ref"] for item in report["excluded_refs"]})
+        self.assertNotIn("refs/stash",{line.split("\t",1)[0] for line in report["refs"]})
         self.assertNotIn(stash_commit,report["object_pins"])
         self.assertNotIn(stash_blob,report["object_pins"])
         self.assertNotIn("config/hypr/stash-only.conf",{item["path"] for item in report["path_records"]})

@@ -122,12 +122,13 @@ def read_dispositions(root: Path, manifest: str | None, scope: str,
     return dispositions
 
 
-def history_events(root: Path, scope: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    # Keep commit metadata separate from diff paths. Line-oriented --name-status output
-    # corrupts filenames containing tabs/newlines; diff-tree -z preserves path boundaries.
+def history_events(root: Path, scope: str, accepted_ref_names: list[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    # Traverse the same explicit source refs as the rehydration verifier. SUK
+    # backup/incoming refs are operational preservation state, not source history.
+    # Keep commit metadata separate from diff paths; diff-tree -z preserves path boundaries.
     raw = git(
-        root, "log", "--exclude=refs/stash", "--all", "--full-history",
-        "--format=%H%x09%ct%x09%P%x09%s", "--", scope,
+        root, "log", "--full-history", "--format=%H%x09%ct%x09%P%x09%s",
+        "HEAD", *accepted_ref_names, "--", scope,
     ).decode("utf-8", "replace")
     commits: list[dict[str, Any]] = []
     parent_map: dict[str, list[str]] = {}
@@ -205,11 +206,35 @@ def atomic_write(path: Path, data: bytes) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def ref_inventory(root: Path) -> tuple[list[str], list[dict[str, str]]]:
+    """Return accepted source refs and explicit evidence for excluded refs."""
+    lines = git(root, "for-each-ref", "--format=%(refname)%09%(objectname)").decode("utf-8", "replace").splitlines()
+    accepted: list[str] = []
+    excluded: list[dict[str, str]] = []
+    for line in lines:
+        name, separator, oid = line.partition("\t")
+        if not separator or not name or not oid:
+            raise ValueError(f"malformed Git ref inventory record: {line!r}")
+        if name.startswith(("refs/heads/", "refs/tags/", "refs/remotes/")):
+            accepted.append(line)
+            continue
+        if name == "refs/stash":
+            reason = "working-tree stash is preservation state, not source history"
+        elif name.startswith("refs/suk/"):
+            reason = "SUK operational backup/incoming ref is not source history"
+        else:
+            reason = "outside accepted source ref namespaces (heads, tags, remotes)"
+        excluded.append({"ref": name, "object_id": oid, "reason": reason})
+    return accepted, excluded
+
+
 def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]:
     root = root.resolve()
     scope = validate_scope(scope)
     head = git(root, "rev-parse", "--verify", "HEAD").decode("ascii").strip()
-    commits_raw = git(root, "log", "--exclude=refs/stash", "--all", "--full-history", "--format=%H", "--", scope)
+    refs, excluded_refs = ref_inventory(root)
+    accepted_ref_names = [line.partition("\t")[0] for line in refs]
+    commits_raw = git(root, "log", "--full-history", "--format=%H", "HEAD", *accepted_ref_names, "--", scope)
     commits_in_scope = list(dict.fromkeys(
         line.decode("ascii") for line in commits_raw.splitlines() if line
     ))
@@ -230,7 +255,7 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
             "sha256": hashlib.sha256(manifest_bytes).hexdigest(),
             "source": "HEAD Git object",
         }
-    commits, renames = history_events(root, scope)
+    commits, renames = history_events(root, scope, accepted_ref_names)
     records: list[dict[str, Any]] = []
     for path in sorted(set(historical) | current):
         present = path in current
@@ -260,7 +285,9 @@ def build_report(root: Path, scope: str, manifest: str | None) -> dict[str, Any]
         "head": head,
         "worktree_clean": not status,
         "worktree_status": status,
-        "refs": git(root, "for-each-ref", "--format=%(refname):%(objectname)", "refs/heads", "refs/tags", "refs/remotes").decode("utf-8", "replace").splitlines(),
+        "refs": [line.replace("\t", ":", 1) for line in refs],
+        "excluded_refs": excluded_refs,
+        "ref_universe_policy": "HEAD plus refs/heads, refs/tags, and refs/remotes; refs/stash and refs/suk operational refs are excluded and recorded",
         "dispositions_manifest": manifest_pin,
         "historical_path_count": len(historical),
         "current_path_count": len(current),

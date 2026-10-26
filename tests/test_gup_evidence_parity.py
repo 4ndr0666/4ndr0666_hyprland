@@ -30,13 +30,17 @@ def reports():
     }
     rename = {"commit": "commit-1", "parent": "commit-0", "similarity": "100", "previous_path": "config/hypr/a.conf", "path": "config/hypr/b.conf"}
     rename_rehydration = {**rename, "parent": "commit-0", "status": "R100"}
+    policy="HEAD plus refs/heads, refs/tags, and refs/remotes; refs/stash and refs/suk operational refs are excluded and recorded"
+    excluded=[{"ref":"refs/suk/wip-backups/test","object_id":"wip-oid","reason":"SUK operational backup/incoming ref is not source history"}]
     common = {
         "head": "head-1", "scope": "config/hypr", "historical_path_count": 1,
         "current_path_count": 0, "authorized_retired_count": 0,
         "unresolved_missing_count": 0, "rename_events": [rename], "rename_event_count": 1,
     }
-    a = {**common, "records": [path], "record_count": 1}
-    b = {**common, "path_records": [rehydration_path]}
+    a = {**common, "records": [path], "record_count": 1,
+         "refs":["refs/heads/main:head-1"],"excluded_refs":copy.deepcopy(excluded),"ref_universe_policy":policy}
+    b = {**common, "path_records": [rehydration_path],
+         "refs":["refs/heads/main\thead-1"],"excluded_refs":copy.deepcopy(excluded),"ref_universe_policy":policy}
     b["rename_events"] = [rename_rehydration]
     return a, b
 
@@ -81,6 +85,27 @@ class EvidenceParityTests(unittest.TestCase):
         a, b = reports()
         b["rename_events"][0]["parent"] = "different-parent"
         with self.assertRaisesRegex(module.EvidenceMismatch, "rename evidence mismatch"):
+            module.compare(a, b)
+
+    def test_accepted_ref_mismatch_fails(self):
+        module = load_module()
+        a, b = reports()
+        b["refs"] = ["refs/heads/main\thead-1", "refs/remotes/origin/other\toid"]
+        with self.assertRaisesRegex(module.EvidenceMismatch, "ref universe"):
+            module.compare(a, b)
+
+    def test_excluded_operational_ref_mismatch_fails(self):
+        module = load_module()
+        a, b = reports()
+        b["excluded_refs"][0]["object_id"] = "different-wip-oid"
+        with self.assertRaisesRegex(module.EvidenceMismatch, "ref universe"):
+            module.compare(a, b)
+
+    def test_one_report_missing_ref_universe_fails(self):
+        module = load_module()
+        a, b = reports()
+        del b["excluded_refs"]
+        with self.assertRaisesRegex(module.EvidenceMismatch, "incomplete ref-universe"):
             module.compare(a, b)
 
     def test_one_missing_disposition_manifest_pin_fails(self):

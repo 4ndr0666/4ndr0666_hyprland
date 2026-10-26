@@ -76,6 +76,40 @@ class GUPToolTests(unittest.TestCase):
             strict=run(PYTHON,str(ROOT/"scripts/gup_history_continuity.py"),"--root",str(root),"--strict")
             self.assertEqual(strict.returncode,1)
 
+    def test_history_inventory_excludes_suk_backup_refs_but_includes_remote_refs(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); init_repo(root); folder=root/"config/hypr"; folder.mkdir(parents=True)
+            (folder/"current.lua").write_text("return true\n"); main_commit=commit(root,"main source history")
+            main_branch=run("git","-C",str(root),"branch","--show-current",check=True).stdout.strip()
+
+            run("git","-C",str(root),"checkout","-b","accepted-side",check=True)
+            (folder/"side-only.conf").write_text("accepted remote branch history\n")
+            side_commit=commit(root,"accepted remote branch history")
+            run("git","-C",str(root),"checkout",main_branch,check=True)
+            run("git","-C",str(root),"branch","-D","accepted-side",check=True)
+            run("git","-C",str(root),"update-ref","refs/remotes/origin/accepted-side",side_commit,check=True)
+
+            run("git","-C",str(root),"checkout","-b","suk-wip-fixture",check=True)
+            (folder/"wip-only.conf").write_text("operational backup only\n")
+            wip_commit=commit(root,"SUK operational WIP backup")
+            run("git","-C",str(root),"checkout",main_branch,check=True)
+            run("git","-C",str(root),"branch","-D","suk-wip-fixture",check=True)
+            run("git","-C",str(root),"update-ref","refs/suk/wip-backups/test",wip_commit,check=True)
+
+            result=run(PYTHON,str(ROOT/"scripts/gup-history-continuity.py"),"--root",str(root))
+            self.assertEqual(result.returncode,0,result.stderr)
+            data=json.loads(result.stdout); paths={row["path"]:row for row in data["records"]}
+            commits={row["sha"] for row in data["commits"]}
+            self.assertIn(main_commit,commits); self.assertIn(side_commit,commits)
+            self.assertNotIn(wip_commit,commits)
+            self.assertIn("config/hypr/side-only.conf",paths)
+            self.assertNotIn("config/hypr/wip-only.conf",paths)
+            accepted_refs={ref.split(":",1)[0] for ref in data["refs"]}
+            self.assertIn("refs/remotes/origin/accepted-side",accepted_refs)
+            excluded={row["ref"]:row["reason"] for row in data["excluded_refs"]}
+            self.assertIn("refs/suk/wip-backups/test",excluded)
+            self.assertIn("SUK operational",excluded["refs/suk/wip-backups/test"])
+
     def test_validator_passes_only_complete_committed_evidence(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); init_repo(root); unit=root/"unit.txt"; unit.write_text("one\n"); baseline=commit(root,"baseline")

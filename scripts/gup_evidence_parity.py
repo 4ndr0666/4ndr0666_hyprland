@@ -112,6 +112,39 @@ def validate_report(report: dict[str, Any], records_key: str, path_key: str, cur
     return records
 
 
+def normalized_ref_universe(report: dict[str, Any], label: str, delimiter: str) -> tuple[list[tuple[str, str]], list[tuple[str, str, str]], str] | None:
+    """Normalize the accepted/excluded ref inventory across report schemas."""
+    keys=("refs","excluded_refs","ref_universe_policy")
+    present=[key in report for key in keys]
+    if not any(present):
+        return None  # compatibility for older synthetic/report fixtures
+    if not all(present):
+        raise EvidenceMismatch(f"{label} report has incomplete ref-universe evidence")
+    refs=report.get("refs"); excluded=report.get("excluded_refs"); policy=report.get("ref_universe_policy")
+    if not isinstance(refs,list) or not isinstance(excluded,list) or not isinstance(policy,str) or not policy.strip():
+        raise EvidenceMismatch(f"{label} report has malformed ref-universe evidence")
+    normalized_refs=[]
+    for row in refs:
+        if not isinstance(row,str) or delimiter not in row:
+            raise EvidenceMismatch(f"{label} report has malformed accepted ref: {row!r}")
+        name,oid=row.split(delimiter,1)
+        if not name or not oid:
+            raise EvidenceMismatch(f"{label} report has empty accepted ref name/object ID: {row!r}")
+        normalized_refs.append((name,oid))
+    if len(normalized_refs)!=len(set(normalized_refs)) or len({name for name,_ in normalized_refs})!=len(normalized_refs):
+        raise EvidenceMismatch(f"{label} report has duplicate accepted refs")
+    normalized_excluded=[]
+    for row in excluded:
+        if not isinstance(row,dict):
+            raise EvidenceMismatch(f"{label} report has malformed excluded ref: {row!r}")
+        fields=(row.get("ref"),row.get("object_id"),row.get("reason"))
+        if not all(isinstance(value,str) and value.strip() for value in fields):
+            raise EvidenceMismatch(f"{label} report has incomplete excluded ref: {row!r}")
+        normalized_excluded.append(fields)
+    if len(normalized_excluded)!=len(set(normalized_excluded)) or len({name for name,_,_ in normalized_excluded})!=len(normalized_excluded):
+        raise EvidenceMismatch(f"{label} report has duplicate excluded refs")
+    return sorted(normalized_refs),sorted(normalized_excluded),policy
+
 def rename_keys(report: dict[str, Any]) -> list[tuple[str, str, str, str, str]]:
     rows = report.get("rename_events")
     if not isinstance(rows, list):
@@ -170,6 +203,13 @@ def compare(continuity: dict[str, Any], rehydration: dict[str, Any]) -> dict[str
             f"rename evidence mismatch: missing_from_rehydration={sorted(left_set-right_set)[:10]!r}, "
             f"extra_in_rehydration={sorted(right_set-left_set)[:10]!r}"
         )
+
+    left_refs=normalized_ref_universe(continuity,"continuity",":")
+    right_refs=normalized_ref_universe(rehydration,"rehydration","\t")
+    if (left_refs is None) != (right_refs is None):
+        raise EvidenceMismatch("one report omits ref-universe evidence")
+    if left_refs is not None and right_refs is not None and left_refs != right_refs:
+        raise EvidenceMismatch("accepted/excluded Git ref universe differs between reports")
 
     continuity_manifest = continuity.get("dispositions_manifest")
     rehydration_manifest = rehydration.get("dispositions_manifest")

@@ -34,11 +34,13 @@ def tree(root: Path, commit: str, scope: str) -> list[dict[str,str]]:
         if kind=="blob": rows.append({"path":path.decode("utf-8","surrogateescape"),"mode":mode,"oid":oid})
     return rows
 
-def metadata(root: Path) -> list[dict[str,Any]]:
-    # One Git traversal replaces two subprocesses per commit. Record separators
-    # are control bytes, so commit subjects cannot ambiguously split records.
-    raw=git(root,"log","--topo-order","--full-history","--exclude=refs/stash","--all",
-            "--format=%H%x00%T%x00%P%x00%ct%x00%s%x1e")
+def metadata(root: Path, accepted_ref_names: list[str]) -> list[dict[str,Any]]:
+    # One Git traversal replaces two subprocesses per commit. Pass only the
+    # accepted source refs plus HEAD: SUK backup/incoming refs and other
+    # operational namespaces must not silently become historical source.
+    # Record separators are control bytes, so subjects cannot ambiguously split.
+    raw=git(root,"log","--topo-order","--full-history",
+            "--format=%H%x00%T%x00%P%x00%ct%x00%s%x1e","HEAD",*accepted_ref_names)
     rows=[]
     for record in raw.split(b"\x1e"):
         if not record.strip(): continue
@@ -51,14 +53,14 @@ def metadata(root: Path) -> list[dict[str,Any]]:
     return rows
 
 def reachable_object_ids(root: Path, refs: list[str]) -> list[str]:
-    """Enumerate objects reachable from accepted refs, excluding refs/stash.
+    """Enumerate objects reachable from accepted refs and HEAD only.
 
     rev-list supplies commits, trees, and blobs across every accepted ref.
     Direct ref targets are added separately so annotated tag objects are not
     omitted by revision traversal. Nested annotated tags are followed until
     their target is no longer a tag.
     """
-    raw = git(root, "rev-list", "--objects", "--exclude=refs/stash", "--all", "HEAD")
+    raw = git(root, "rev-list", "--objects", "HEAD", *[line.partition("\t")[0] for line in refs])
     object_ids = {line.split(None, 1)[0].decode("ascii") for line in raw.splitlines() if line.strip()}
     ref_rows = []
     for line in refs:
@@ -239,22 +241,43 @@ def atomic_write(target: Path, data: bytes) -> None:
         finally: os.close(dfd)
     finally: tmp.unlink(missing_ok=True)
 
+def ref_inventory(root: Path) -> tuple[list[str], list[dict[str, str]]]:
+    """Return the accepted source refs and explicit excluded-ref evidence."""
+    lines=git(root,"for-each-ref","--format=%(refname)%09%(objectname)").decode("utf-8","replace").splitlines()
+    accepted=[]; excluded=[]
+    for line in lines:
+        name,separator,oid=line.partition("\t")
+        if not separator or not name or not oid:
+            raise ValueError(f"malformed Git ref inventory record: {line!r}")
+        if name.startswith(("refs/heads/","refs/tags/","refs/remotes/")):
+            accepted.append(line)
+            continue
+        if name == "refs/stash":
+            reason="working-tree stash is preservation state, not source history"
+        elif name.startswith("refs/suk/"):
+            reason="SUK operational backup/incoming ref is not source history"
+        else:
+            reason="outside accepted source ref namespaces (heads, tags, remotes)"
+        excluded.append({"ref":name,"object_id":oid,"reason":reason})
+    return accepted, excluded
+
 def main() -> int:
     p=argparse.ArgumentParser(description=__doc__); p.add_argument("--root",default="."); p.add_argument("--scope",default="config/hypr")
     p.add_argument("--dispositions"); p.add_argument("--strict",action="store_true"); p.add_argument("--output"); a=p.parse_args(); root=Path(a.root).resolve()
     try:
         scope=validate_scope(a.scope)
         shallow=git(root,"rev-parse","--is-shallow-repository").decode().strip()=="true"
-        refs=git(root,"for-each-ref","--format=%(refname)%09%(objectname)","refs/heads","refs/tags","refs/remotes").decode("utf-8","replace").splitlines()
-        commit_ids=git(root,"rev-list","--topo-order","--exclude=refs/stash","--all","HEAD").decode("ascii").splitlines()
+        refs, excluded_refs=ref_inventory(root)
+        accepted_ref_names=[line.partition("\t")[0] for line in refs]
+        commit_ids=git(root,"rev-list","--topo-order","HEAD",*accepted_ref_names).decode("ascii").splitlines()
         if not commit_ids: raise ValueError("no reachable commits; continuity cannot be established")
-        commits=metadata(root)
+        commits=metadata(root,accepted_ref_names)
         if {row["commit"] for row in commits}!=set(commit_ids):
             raise ValueError("batched commit metadata does not match the reachable Git ref universe")
         if scope==".":
             scope_commit_ids=commit_ids
         else:
-            scope_commit_ids=git(root,"rev-list","--topo-order","--full-history","--exclude=refs/stash","--all","HEAD","--",scope).decode("ascii").splitlines()
+            scope_commit_ids=git(root,"rev-list","--topo-order","--full-history","HEAD",*accepted_ref_names,"--",scope).decode("ascii").splitlines()
         if not set(scope_commit_ids).issubset(set(commit_ids)):
             raise ValueError("scope history includes commits outside the accepted Git ref universe")
         scope_commit_set=set(scope_commit_ids)
@@ -288,7 +311,8 @@ def main() -> int:
         unresolved=[x for x in records if x["status"]=="unresolved-missing"]; rename_rows=renames(root,scope_commits,scope)
         report = {"schema_version": 3,"protocol":"GUP","evidence_kind":"repository-derived-rehydration-verification","scope":scope,"head":head,
                 "scope_snapshot_policy":"path states are recorded for every reachable commit that changes the selected scope; metadata and object pins cover all reachable commits",
-                "object_format":git(root,"rev-parse","--show-object-format").decode().strip(),"shallow_repository":shallow,"refs":refs,
+                "object_format":git(root,"rev-parse","--show-object-format").decode().strip(),"shallow_repository":shallow,"refs":refs,"excluded_refs":excluded_refs,
+                "ref_universe_policy":"HEAD plus refs/heads, refs/tags, and refs/remotes; refs/stash and refs/suk operational refs are excluded and recorded",
                 "reachable_commit_count":len(commits),"commits":commits,"scope_state_commit_count":len(scope_commit_ids),"scope_state_commits":scope_commit_ids,
                 "historical_path_count":len(historical),"current_path_count":len(current),"authorized_retired_count":sum(1 for x in records if x["status"]=="authorized-retired"),
                 "historical_path_version_count":sum(map(len,versions.values())),"rename_event_count":len(rename_rows),"rename_events":rename_rows,
