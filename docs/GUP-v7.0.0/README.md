@@ -13,8 +13,8 @@ This directory versions the repository-owned GUP v7 protocol contracts for proje
 - `golden_unit_hash.py` — AST/lexical unit inventory and structural hash comparison engine (Python, JS/TS, Bash, plus `--manual-units`).
 - `scripts/gup_init.py` — idempotent Git + `.gup/project.json` bootstrap.
 - `scripts/gup_inventory.py` — tracked worktree SHA-256 inventory and cleanliness gate.
-- `scripts/gup_history_continuity.py` and `scripts/gup-history-continuity.py` — historical Git path continuity and disposition gates.
-- `scripts/gup_rehydration_verify.py` — repository-derived commit/path/blob history, recomputed Git object IDs and SHA-256 pins, rename evidence, and fail-closed active-path continuity verification.
+- `scripts/gup_history_continuity.py` and `scripts/gup-history-continuity.py` — historical Git path continuity and disposition gates using the same explicit source-ref policy; `refs/stash`, `refs/suk/*`, and other operational/non-source refs are recorded as excluded rather than traversed as source history.
+- `scripts/gup_rehydration_verify.py` — repository-derived commit/path/blob history, the complete accepted reachable Git object graph with recomputed native IDs and SHA-256 pins, rename evidence, and fail-closed active-path continuity verification.
 - `scripts/gup_alignment.py` — bidirectional declaration/observation and provider/consumer alignment verifier (`schemas/gup-alignment.schema.json`).
 - `scripts/gup_validate.py` — fail-closed release evidence validator (`schemas/gup-evidence.schema.json`).
 - `tests/test_gup_tools.py`, `tests/test_gup_rehydration_verify.py`, and `tests/unit/test-gup-v7-toolchain.sh` — automated synthetic Git, rehydration integrity, and toolchain integration regression suites.

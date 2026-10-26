@@ -9,8 +9,22 @@ def git(root:Path,*args:str)->bytes:
     if p.returncode: raise RuntimeError(p.stderr.decode("utf-8","replace").strip() or f"git {' '.join(args)} failed")
     return p.stdout
 
-def history_events(root:Path,scope:str):
-    raw=git(root,"log","--all","HEAD","--full-history","--find-renames","--name-status","--format=%H%x09%ct%x09%s","--",scope).decode("utf-8","replace")
+def ref_inventory(root:Path):
+    lines=git(root,"for-each-ref","--format=%(refname)%09%(objectname)").decode("utf-8","replace").splitlines()
+    accepted=[]; excluded=[]
+    for line in lines:
+        name,separator,oid=line.partition("\t")
+        if not separator or not name or not oid: raise ValueError(f"malformed Git ref inventory record: {line!r}")
+        if name.startswith(("refs/heads/","refs/tags/","refs/remotes/")):
+            accepted.append(line); continue
+        if name=="refs/stash": reason="working-tree stash is preservation state, not source history"
+        elif name.startswith("refs/suk/"): reason="SUK operational backup/incoming ref is not source history"
+        else: reason="outside accepted source ref namespaces (heads, tags, remotes)"
+        excluded.append({"ref":name,"object_id":oid,"reason":reason})
+    return accepted,excluded
+
+def history_events(root:Path,scope:str,accepted_ref_names:list[str]):
+    raw=git(root,"log","--full-history","--find-renames","--name-status","--format=%H%x09%ct%x09%s","HEAD",*accepted_ref_names,"--",scope).decode("utf-8","replace")
     commits=[]; renames=[]; current=None
     for line in raw.splitlines():
         if not line: continue
@@ -27,7 +41,9 @@ def main()->int:
         scope_path=PurePosixPath(scope)
         if scope != "." and (scope_path.is_absolute() or any(part in {"", ".", ".."} for part in scope_path.parts)):
             raise ValueError("scope must be repository-relative and cannot contain parent traversal")
-        commit_ids=git(root,"rev-list","--topo-order","--all","HEAD").decode("ascii").splitlines()
+        refs,excluded_refs=ref_inventory(root)
+        accepted_ref_names=[line.partition("\t")[0] for line in refs]
+        commit_ids=git(root,"rev-list","--topo-order","HEAD",*accepted_ref_names).decode("ascii").splitlines()
         if not commit_ids: raise ValueError("no reachable commits; continuity cannot be established")
         historical={}
         for commit_id in commit_ids:
@@ -101,12 +117,15 @@ def main()->int:
                     raise ValueError(f"retirement requires user_authorization=true: {path}")
                 if path in dispositions: raise ValueError(f"overlapping subtree and individual dispositions: {path!r}")
                 dispositions[path]=item
-        commits,renames=history_events(root,scope); records=[]
+        commits,renames=history_events(root,scope,accepted_ref_names); records=[]
         for path in sorted(set(historical)|current):
             present=path in current; status="present-path" if present else dispositions.get(path,{}).get("status","unresolved-missing")
             records.append({"path":path,"status":status,"current":present,"historical_object_ids":sorted(historical.get(path,set())),"disposition":dispositions.get(path)})
         unresolved=[r for r in records if r["status"]=="unresolved-missing"]
-        report={"schema_version":1,"protocol":"GUP","scope":scope,"head":git(root,"rev-parse","HEAD").decode().strip(),"refs":git(root,"for-each-ref","--format=%(refname):%(objectname)").decode().splitlines(),"commit_count":len(commits),"commits":commits,"rename_event_count":len(renames),"rename_events":renames,"historical_path_count":len(historical),"current_path_count":len(current),"record_count":len(records),"unresolved_missing_count":len(unresolved),"records":records}
+        report={"schema_version":1,"protocol":"GUP","scope":scope,"head":git(root,"rev-parse","HEAD").decode().strip(),
+                "refs":[line.replace("\t",":",1) for line in refs],"excluded_refs":excluded_refs,
+                "ref_universe_policy":"HEAD plus refs/heads, refs/tags, and refs/remotes; refs/stash and refs/suk operational refs are excluded and recorded",
+                "commit_count":len(commits),"commits":commits,"rename_event_count":len(renames),"rename_events":renames,"historical_path_count":len(historical),"current_path_count":len(current),"record_count":len(records),"unresolved_missing_count":len(unresolved),"records":records}
         encoded=(json.dumps(report,indent=2,sort_keys=True)+"\n").encode()
         if a.output:
             target=Path(a.output); target.parent.mkdir(parents=True,exist_ok=True); fd,name=tempfile.mkstemp(prefix=f".{target.name}.",suffix=".tmp",dir=target.parent); temp=Path(name)

@@ -110,6 +110,18 @@ class GUPToolTests(unittest.TestCase):
             self.assertIn("refs/suk/wip-backups/test",excluded)
             self.assertIn("SUK operational",excluded["refs/suk/wip-backups/test"])
 
+            # The older GUP v7 toolchain entry point must obey the same ref policy.
+            legacy=run(PYTHON,str(ROOT/"scripts/gup_history_continuity.py"),"--root",str(root))
+            self.assertEqual(legacy.returncode,0,legacy.stderr)
+            legacy_data=json.loads(legacy.stdout)
+            legacy_paths={row["path"]:row for row in legacy_data["records"]}
+            legacy_commits={row["sha"] for row in legacy_data["commits"]}
+            self.assertIn(main_commit,legacy_commits); self.assertIn(side_commit,legacy_commits)
+            self.assertNotIn(wip_commit,legacy_commits)
+            self.assertIn("config/hypr/side-only.conf",legacy_paths)
+            self.assertNotIn("config/hypr/wip-only.conf",legacy_paths)
+            self.assertIn("refs/suk/wip-backups/test",{row["ref"] for row in legacy_data["excluded_refs"]})
+
     def test_validator_passes_only_complete_committed_evidence(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); init_repo(root); unit=root/"unit.txt"; unit.write_text("one\n"); baseline=commit(root,"baseline")
