@@ -25,6 +25,21 @@ bash -n "$FINAL_CHECK"
 grep -Fqx '  awww' <(sed -n '/^AUR_PACKAGES=(/,/^)/p' "$MANIFEST")
 ! grep -Fq 'swww' "$MANIFEST"
 
+# Packages absent from official Arch Linux ARM repositories must use the AUR helper.
+AUR_SECTION="$(sed -n '/^AUR_PACKAGES=(/,/^)/p' "$MANIFEST")"
+FONT_AUR_SECTION="$(sed -n '/^FONT_AUR_PACKAGES=(/,/^)/p' "$MANIFEST")"
+FONT_SECTION="$(sed -n '/^FONT_PACKAGES=(/,/^)/p' "$MANIFEST")"
+grep -Fqx '  wlogout' <<< "$AUR_SECTION"
+! grep -Fqx '  wlogout' <(sed -n '/^CORE_PACKAGES=(/,/^)/p' "$MANIFEST")
+grep -Fqx '  ttf-victor-mono' <<< "$FONT_AUR_SECTION"
+! grep -Fqx '  ttf-victor-mono' <<< "$FONT_SECTION"
+grep -Fq 'package_install_aur "${FONT_AUR_PACKAGES[@]}"' "$FONTS"
+grep -Fq 'package_install_aur "${AUR_PACKAGES[@]}"' "$INSTALLER"
+source "$MANIFEST"
+for package in wlogout ttf-victor-mono; do
+  printf '%s\n' "${CANONICAL_BASELINE_AUR_PACKAGES[@]}" | grep -Fqx -- "$package"
+done
+
 # The graphical initializer owns these mandatory runtime dependencies; they
 # must be installed by the core path, not hidden behind an optional selection.
 CORE_SECTION="$(sed -n '/^CORE_PACKAGES=(/,/^)/p' "$MANIFEST")"

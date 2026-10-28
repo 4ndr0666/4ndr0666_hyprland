@@ -43,7 +43,6 @@ CORE_PACKAGES=(
   waybar
   psmisc
   wl-clipboard
-  wlogout
   xdg-desktop-portal
   xdg-desktop-portal-hyprland
   xdg-user-dirs
@@ -54,6 +53,7 @@ CORE_PACKAGES=(
 AUR_PACKAGES=(
   awww
   wallust
+  wlogout
 )
 
 PIPEWIRE_PACKAGES=(
@@ -80,7 +80,6 @@ FONT_PACKAGES=(
   ttf-fantasque-nerd
   ttf-jetbrains-mono
   ttf-jetbrains-mono-nerd
-  ttf-victor-mono
   noto-fonts
 )
 
@@ -95,6 +94,12 @@ CANONICAL_BASELINE_PACKAGES=(
 )
 
 # shellcheck disable=SC2034 # Sourced contract consumers inspect the canonical AUR package superset.
+FONT_AUR_PACKAGES=(
+  ttf-victor-mono
+)
+
+# shellcheck disable=SC2034 # Sourced contract consumers inspect the canonical AUR package superset.
 CANONICAL_BASELINE_AUR_PACKAGES=(
   "${AUR_PACKAGES[@]}"
+  "${FONT_AUR_PACKAGES[@]}"
 )

@@ -17,5 +17,6 @@ source "$SCRIPT_DIR/core/packages.sh"
 
 printf '[INFO] Installing necessary fonts...\n'
 package_install "${FONT_PACKAGES[@]}"
+package_install_aur "${FONT_AUR_PACKAGES[@]}"
 
 printf '\n%.0s' {1..2}

@@ -65,12 +65,17 @@ cat > "$FAKEBIN/yay" <<'EOF'
 set -u
 state="${FAKE_PACMAN_STATE:?}"
 if [[ "${1:-}" == -S ]]; then
+  if [[ "${FAKE_YAY_FAIL:-0}" == 1 ]]; then
+    exit 29
+  fi
   shift
   while (($#)); do
     [[ "$1" == -- ]] && { shift; break; }
     shift
   done
-  printf '%s\n' "$@" >> "$state"
+  if [[ "${FAKE_YAY_SKIP_INSTALL:-0}" != 1 ]]; then
+    printf '%s\n' "$@" >> "$state"
+  fi
   exit 0
 fi
 if [[ "${1:-}" == -Q ]]; then
@@ -135,8 +140,29 @@ package_install_aur aurpkg
 assert_contains aurpkg "$STATE"
 assert_contains aurpkg "$MANIFEST"
 
-# A paru-only environment must fail closed rather than silently selecting paru.
+# An AUR transaction failure must propagate and must not claim ownership.
+: > "$MANIFEST"
+export FAKE_YAY_FAIL=1
+if package_install_aur aurbroken; then
+  fail "failed AUR transaction returned success"
+fi
+assert_not_contains aurbroken "$MANIFEST"
+unset FAKE_YAY_FAIL
+
+# A zero exit status is insufficient when the package is not installed.
+: > "$MANIFEST"
+export FAKE_YAY_SKIP_INSTALL=1
+if package_install_aur aurmissing; then
+  fail "AUR transaction succeeded without installing the requested package"
+fi
+assert_not_contains aurmissing "$MANIFEST"
+unset FAKE_YAY_SKIP_INSTALL
+
+# Empty AUR requests are successful no-ops even when yay is unavailable.
 rm -f "$FAKEBIN/yay"
+package_install_aur
+
+# A paru-only environment must fail closed rather than silently selecting paru.
 cat > "$FAKEBIN/paru" <<'EOF'
 #!/bin/bash
 exit 99
