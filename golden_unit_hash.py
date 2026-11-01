@@ -730,6 +730,18 @@ def scan_bash(source: str) -> dict:
                 if ch == "\\":
                     i += 2
                     continue
+                if kind in ("dq", "locale") and source.startswith("$(", i):
+                    # Command substitution starts a fresh quote scope even
+                    # inside double quotes. Retain the outer quote frame and
+                    # restore it only when this substitution's parens close.
+                    k = i + 1
+                    while k < n and source[k] == "(":
+                        k += 1
+                    substack.append(k - i - 1)
+                    stack.append(("quoted-substitution", len(substack)))
+                    tok("sub")
+                    i = k
+                    continue
                 closer = {"dq": '"', "bt": "`", "ansi": "'", "locale": '"'}[kind]
                 if ch == closer:
                     stack.pop()
@@ -910,6 +922,12 @@ def scan_bash(source: str) -> dict:
             if substack:
                 substack[-1] -= 1
                 if substack[-1] == 0:
+                    if (
+                        stack
+                        and stack[-1][0] == "quoted-substitution"
+                        and stack[-1][1] == len(substack)
+                    ):
+                        stack.pop()
                     substack.pop()
                     tok("sub")
             else:
@@ -990,6 +1008,8 @@ def scan_bash(source: str) -> dict:
             warnings.append("unterminated brace group")
         elif frame[0] == "dbracket":
             warnings.append("unterminated [[ ]] compound")
+        elif frame[0] == "quoted-substitution":
+            warnings.append("unterminated quoted command substitution")
     return {"functions": functions, "warnings": warnings}
 
 
@@ -1397,6 +1417,31 @@ def run_selftest() -> int:
     check(
         "bash: $(…) / $((…)) never create phantom functions",
         got == exp,
+    )
+
+    # Quoted command substitutions have their own quoting scope. Inner double
+    # quotes must not close the outer assignment, exposing quotes in sed code.
+    bash_quoted_substitution = r'''mode() {
+  current="$(sed -nE 's/^EFFECT_TYPE="?([^"]*)"?$/\1/p' "$ACTIVE" | head -n1)"
+}
+after() { return 0; }
+'''
+    check(
+        "bash: quoted command substitution restores the surrounding quote scope",
+        set(extract_bash_units(bash_quoted_substitution)) == {"mode", "after"}
+        and not scan_bash(bash_quoted_substitution)["warnings"],
+    )
+    bash_nested_substitution = r'''nested() {
+  value="$(printf '%s' "$(printf '%s' '"}')")"
+  arithmetic="$((1 + (2 * 3)))"
+  literal="\$(not a substitution)"
+}
+after() { return 0; }
+'''
+    check(
+        "bash: nested quoted substitutions, arithmetic, and escaped dollars stay scoped",
+        set(extract_bash_units(bash_nested_substitution)) == {"nested", "after"}
+        and not scan_bash(bash_nested_substitution)["warnings"],
     )
 
     # ---- Bash: `function name {` alternative declaration form ----------

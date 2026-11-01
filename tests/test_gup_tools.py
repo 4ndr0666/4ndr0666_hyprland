@@ -19,6 +19,27 @@ def commit(path:Path,message:str):
     return run("git","-C",str(path),"rev-parse","HEAD",check=True).stdout.strip()
 
 class GUPToolTests(unittest.TestCase):
+    def test_atomizer_tracks_quoted_substitution_body_changes(self):
+        helper=ROOT/"config/hypr/scripts/RainbowBordersToggle.sh"
+        self.assertEqual(run("bash","-n",str(helper)).returncode,0)
+        baseline=run(PYTHON,str(ROOT/"golden_unit_hash.py"),"--baseline",str(helper),"--manifest-only")
+        self.assertEqual(baseline.returncode,0,baseline.stderr)
+        self.assertNotIn("warning",baseline.stderr)
+        units={row["unit"]:row for row in json.loads(baseline.stdout)["manifest"]}
+        self.assertEqual(set(units),{"fail","refresh_borders","disable_borders","enable_borders","set_mode"})
+        with tempfile.TemporaryDirectory() as td:
+            candidate=Path(td)/"RainbowBordersToggle.sh"
+            original=helper.read_text()
+            changed=original.replace("RainbowBorders.sh has no readable EFFECT_TYPE assignment.","RainbowBorders.sh has no valid EFFECT_TYPE assignment.")
+            self.assertNotEqual(changed,original)
+            candidate.write_text(changed)
+            result=run(PYTHON,str(ROOT/"golden_unit_hash.py"),"--baseline",str(helper),"--candidate",str(candidate))
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertNotIn("warning",result.stderr)
+            differences={row["unit"]:row["verdict"] for row in json.loads(result.stdout)["diff"]}
+            self.assertEqual(differences["set_mode"],"CHANGED")
+            self.assertTrue(all(verdict=="UNCHANGED" for name,verdict in differences.items() if name!="set_mode"))
+
     def test_init_is_idempotent_and_does_not_overwrite(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)/"project"; root.mkdir()
