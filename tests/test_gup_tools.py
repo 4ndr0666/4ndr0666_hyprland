@@ -19,6 +19,67 @@ def commit(path:Path,message:str):
     return run("git","-C",str(path),"rev-parse","HEAD",check=True).stdout.strip()
 
 class GUPToolTests(unittest.TestCase):
+    def test_shebang_selects_actual_interpreter_before_extension(self):
+        with tempfile.TemporaryDirectory() as td:
+            fixtures={
+                "python.sh":("#!/usr/bin/env python3\ndef actual():\n    return 1\n","actual"),
+                "shell.py":("#!/usr/bin/env bash\nactual() { :; }\n","actual"),
+                "node.sh":("#!/usr/bin/env node\nfunction actual() { return 1; }\n","actual"),
+            }
+            for name,(source,unit) in fixtures.items():
+                with self.subTest(name=name):
+                    path=Path(td)/name;path.write_text(source)
+                    result=run(PYTHON,str(ROOT/"golden_unit_hash.py"),"--baseline",str(path),"--manifest-only")
+                    self.assertEqual(result.returncode,0,result.stderr)
+                    self.assertEqual({row["unit"] for row in json.loads(result.stdout)["manifest"]},{unit})
+            actual=ROOT/"config/hypr/UserScripts/RofiNetwork.sh"
+            result=run(PYTHON,str(ROOT/"golden_unit_hash.py"),"--baseline",str(actual),"--manifest-only")
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertIn("cli_args",{row["unit"] for row in json.loads(result.stdout)["manifest"]})
+            override=run(PYTHON,str(ROOT/"golden_unit_hash.py"),"--baseline",str(Path(td)/"shell.py"),"--language","python","--manifest-only")
+            self.assertEqual(override.returncode,1)
+            self.assertEqual(override.stdout,"")
+
+    def test_unit_hash_preserves_literal_source_newlines(self):
+        source=b"def literal():\r\n    return 1\r\n"
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/"literal.py";path.write_bytes(source)
+            result=run(PYTHON,str(ROOT/"golden_unit_hash.py"),"--baseline",str(path),"--manifest-only")
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual(json.loads(result.stdout)["manifest"],[{"unit":"literal","hash":hashlib.sha256(source).hexdigest()}])
+
+    def test_atomizer_rejects_ambiguous_or_unverified_manifests(self):
+        sources={
+            "duplicate.py":"def same():\n    return 1\ndef same():\n    return 2\n",
+            "duplicate.js":"function same() { return 1; }\nfunction same() { return 2; }\n",
+            "duplicate.sh":"same() { echo first; }\nsame() { echo second; }\n",
+            "unterminated.sh":"broken() {\n  echo 'unterminated\n",
+            "unterminated.js":"function broken() {\n  const value = 'unterminated\n",
+        }
+        with tempfile.TemporaryDirectory() as td:
+            for name,source in sources.items():
+                with self.subTest(name=name):
+                    path=Path(td)/name; path.write_text(source)
+                    result=run(PYTHON,str(ROOT/"golden_unit_hash.py"),"--baseline",str(path),"--manifest-only")
+                    self.assertEqual(result.returncode,1,result.stderr)
+                    self.assertEqual(result.stdout,"")
+                    self.assertIn("duplicate stable unit identity" if name.startswith("duplicate") else "lexical scan",result.stderr)
+            manual=Path(td)/"manual.json"
+            manual.write_text(json.dumps([{"name":"same","content":"one"},{"name":"same","content":"two"}]))
+            result=run(PYTHON,str(ROOT/"golden_unit_hash.py"),"--manual-units",str(manual),"--manifest-only")
+            self.assertEqual(result.returncode,1,result.stderr)
+            self.assertEqual(result.stdout,"")
+            self.assertIn("duplicate stable unit identity",result.stderr)
+
+    def test_bash_deeply_nested_units_keep_full_qualification(self):
+        source="outer() {\n middle() {\n  leaf() { :; }\n }\n}\n"
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/"nested.sh";path.write_text(source)
+            self.assertEqual(run("bash","-n",str(path)).returncode,0)
+            result=run(PYTHON,str(ROOT/"golden_unit_hash.py"),"--baseline",str(path),"--manifest-only")
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual({row["unit"] for row in json.loads(result.stdout)["manifest"]},{"outer","outer.middle","outer.middle.leaf"})
+
     def test_bash_lexical_contexts_preserve_complete_units(self):
         bodies=[
             '  local value="$((1<<2))"\n',

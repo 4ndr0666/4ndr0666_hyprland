@@ -132,7 +132,8 @@ verdict list. The model reads this and fills in digest, class, and the §4 gate
 
 Exit codes:
   0  — no MISSING units (NEW units present but not a hard-fail at script level)
-  1  — one or more MISSING units detected (hard fail), or selftest failure
+  1  — MISSING units, duplicate identities, an incomplete lexical scan,
+       invalid input, or a selftest failure (no partial manifest on input errors)
 
 Note: NEW units exit 0 because whether a NEW unit is acceptable depends on the
 §4 architectural gate, which requires model judgment. They are surfaced to
@@ -165,6 +166,15 @@ def ensure_unique_unit_ids(units: Dict[str, str], side: str) -> None:
         raise ValueError(f"duplicate stable unit identity in {side} manifest")
 
 
+def record_unit(units: Dict[str, str], name: str, content: str) -> None:
+    """Reject ambiguity before a dictionary insertion can discard a unit."""
+    if not isinstance(name, str) or not name.strip() or not isinstance(content, str):
+        raise ValueError("stable unit identity and literal source must be strings")
+    if name in units:
+        raise ValueError(f"duplicate stable unit identity: {name}")
+    units[name] = content
+
+
 # ---------------------------------------------------------------------------
 # Python extraction — uses the real ast module, so names are exact and spans
 # are taken from the original source via line numbers (no re-serialization,
@@ -190,11 +200,11 @@ def extract_python_units(source: str) -> Dict[str, str]:
         for child in ast.iter_child_nodes(node):
             if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 name = qualified_name(child, prefix)
-                units[name] = span_text(child)
+                record_unit(units, name, span_text(child))
                 walk(child, prefix=f"{name}.")
             elif isinstance(child, ast.ClassDef):
                 name = qualified_name(child, prefix)
-                units[name] = span_text(child)
+                record_unit(units, name, span_text(child))
                 walk(child, prefix=f"{name}.")
             else:
                 walk(child, prefix=prefix)
@@ -565,9 +575,7 @@ def extract_js_units(source: str) -> Dict[str, str]:
             open_idx = next_open_brace(offsets[line_no] + class_m.end())
             if open_idx is not None and open_idx in brace_pairs:
                 qualified = f"{current_class}.{name}" if current_class else name
-                units.setdefault(
-                    qualified, source[offsets[line_no]:brace_pairs[open_idx] + 1]
-                )
+                record_unit(units, qualified, source[offsets[line_no]:brace_pairs[open_idx] + 1])
                 class_stack.append((qualified, depth))
             depth += line_delta[line_no]
             continue
@@ -612,7 +620,7 @@ def extract_js_units(source: str) -> Dict[str, str]:
                 if (is_method_shorthand and current_class)
                 else name
             )
-            units.setdefault(qualified, unit_text)
+            record_unit(units, qualified, unit_text)
             matched = True
             break
 
@@ -625,8 +633,7 @@ def extract_js_units(source: str) -> Dict[str, str]:
             class_stack.pop()
 
     if warnings:
-        for w in warnings:
-            print(f"[gup atomizer] warning: {w}", file=sys.stderr)
+        raise ValueError("unverified JS lexical scan: " + "; ".join(warnings))
 
     return units
 
@@ -693,8 +700,8 @@ def scan_bash(source: str) -> dict:
       * ${…} parameter expansion and {a,b} / {1..n} brace expansion —
         self-contained; braces inert.
       * <<, <<- and <<'DELIM' heredocs — body consumed whole (fully inert).
-      * $( … ) and $(( … )) substitution — contents follow ordinary rules;
-        their parens never impersonate a `name()` declaration.
+      * $( … ) uses a separate quote scope; arithmetic shifts are not redirects.
+        Case-pattern delimiters never close command substitutions.
       * [[ … =~ regex ]] — the unquoted regex body is consumed per
         regex/escape rules: quotes and braces inert, nothing leaks.
       * { cmd; } brace groups — consumed as self-contained groups; only a
@@ -1107,6 +1114,8 @@ def extract_bash_units(source: str) -> Dict[str, str]:
     bodies, parameter expansions and regex literals inside a body can never
     corrupt its boundary."""
     scan = scan_bash(source)
+    if scan["warnings"]:
+        raise ValueError("unverified Bash lexical scan: " + "; ".join(scan["warnings"]))
     lines, offsets = _line_offsets(source)
     units: Dict[str, str] = {}
     ordered = sorted(scan["functions"], key=lambda t: t[1])
@@ -1116,11 +1125,9 @@ def extract_bash_units(source: str) -> Dict[str, str]:
             open_stack.pop()
         qualified = f"{open_stack[-1][0]}.{name}" if open_stack else name
         line_no = _line_of(offsets, open_idx)
-        units.setdefault(qualified, source[offsets[line_no]:close_idx + 1])
-        open_stack.append((name, open_idx, close_idx))
+        record_unit(units, qualified, source[offsets[line_no]:close_idx + 1])
+        open_stack.append((qualified, open_idx, close_idx))
     ensure_unique_unit_ids(units, "bash")
-    for w in scan["warnings"]:
-        print(f"[gup atomizer] warning: {w}", file=sys.stderr)
     return units
 
 
@@ -1135,11 +1142,22 @@ def build_manifest(units: Dict[str, str]) -> List[dict]:
     ]
 
 
-def extract_units(path: str, language: Optional[str]) -> Dict[str, str]:
-    with open(path, "r", encoding="utf-8") as f:
-        source = f.read()
-
+def detect_language(path: str, source: str, language: Optional[str] = None) -> str:
+    """An explicit override wins; a recognized shebang outranks a suffix."""
     lang = language
+    first = source.split("\n", 1)[0]
+    if lang is None and first.startswith("#!"):
+        for token in first[2:].split():
+            interpreter = token.rsplit("/", 1)[-1]
+            if re.fullmatch(r"python(?:[0-9]+(?:\.[0-9]+)*)?", interpreter):
+                lang = "python"
+                break
+            if interpreter in {"bash", "sh", "dash", "zsh"}:
+                lang = "bash"
+                break
+            if interpreter in {"node", "nodejs"}:
+                lang = "js"
+                break
     if lang is None:
         if path.endswith(".py"):
             lang = "python"
@@ -1147,16 +1165,6 @@ def extract_units(path: str, language: Optional[str]) -> Dict[str, str]:
             lang = "js"
         elif path.endswith((".sh", ".bash")):
             lang = "bash"
-        else:
-            # Fall back to the shebang, if any.
-            first = source.split("\n", 1)[0]
-            if first.startswith("#!"):
-                if "bash" in first or first.endswith("sh") or "zsh" in first:
-                    lang = "bash"
-                elif "python" in first:
-                    lang = "python"
-                elif "node" in first:
-                    lang = "js"
     if lang is None:
         raise ValueError(
             f"Cannot auto-detect language for '{path}'. Pass --language "
@@ -1165,6 +1173,13 @@ def extract_units(path: str, language: Optional[str]) -> Dict[str, str]:
             f"script only parses Python, JS/TS and Bash automatically."
         )
 
+    return lang
+
+
+def extract_units(path: str, language: Optional[str]) -> Dict[str, str]:
+    with open(path, "r", encoding="utf-8", newline="") as f:
+        source = f.read()
+    lang = detect_language(path, source, language)
     if lang == "python":
         return extract_python_units(source)
     elif lang == "js":
@@ -1180,7 +1195,7 @@ def load_manual_units(path: str) -> Dict[str, str]:
         data = json.load(f)
     units: Dict[str, str] = {}
     for entry in data:
-        units[entry["name"]] = entry["content"]
+        record_unit(units, entry["name"], entry["content"])
     return units
 
 
@@ -1722,4 +1737,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (ValueError, SyntaxError, OSError) as exc:
+        print(f"[HARD FAIL] {exc}", file=sys.stderr)
+        sys.exit(1)
