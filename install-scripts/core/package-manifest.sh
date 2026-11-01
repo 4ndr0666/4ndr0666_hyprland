@@ -31,6 +31,7 @@ CORE_PACKAGES=(
   pamixer
   pavucontrol
   playerctl
+  python-gobject
   python-requests
   python-pyquery
   qt5ct
