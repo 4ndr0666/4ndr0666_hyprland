@@ -707,7 +707,8 @@ def scan_bash(source: str) -> dict:
     n = len(source)
     i = 0
     stack: list = []          # frames: sq/dq/bt/ansi/locale/heredoc/expansion/group/function/dbracket
-    substack: List[int] = []  # $() / $(()) nesting depth counters
+    substack: List[int] = []  # command-substitution nesting depth counters
+    cases: list = []         # case subject/pattern/body state per substitution
     tokens: list = []         # recent significant tokens
 
     def tok(t):
@@ -734,17 +735,36 @@ def scan_bash(source: str) -> dict:
                     # Command substitution starts a fresh quote scope even
                     # inside double quotes. Retain the outer quote frame and
                     # restore it only when this substitution's parens close.
-                    k = i + 1
-                    while k < n and source[k] == "(":
-                        k += 1
-                    substack.append(k - i - 1)
-                    stack.append(("quoted-substitution", len(substack)))
+                    if source.startswith("$((", i):
+                        stack.append(("arithmetic", 2))
+                        k = i + 3
+                    else:
+                        substack.append(1)
+                        stack.append(("quoted-substitution", len(substack)))
+                        k = i + 2
                     tok("sub")
                     i = k
                     continue
                 closer = {"dq": '"', "bt": "`", "ansi": "'", "locale": '"'}[kind]
                 if ch == closer:
                     stack.pop()
+                i += 1
+                continue
+            if kind == "arithmetic":
+                # Shifts are arithmetic operators, never heredoc redirects.
+                # Quote frames still protect literal parentheses in operands.
+                if ch in "'\"`":
+                    stack.append(({"'": "sq", '"': "dq", "`": "bt"}[ch],))
+                elif ch == "\\":
+                    i += 2
+                    continue
+                elif ch == "(":
+                    stack[-1] = ("arithmetic", top[1] + 1)
+                elif ch == ")":
+                    if top[1] == 1:
+                        stack.pop()
+                    else:
+                        stack[-1] = ("arithmetic", top[1] - 1)
                 i += 1
                 continue
             if kind == "heredoc":
@@ -784,6 +804,48 @@ def scan_bash(source: str) -> dict:
             i = n if j == -1 else j
             continue
 
+        case = cases[-1] if cases and cases[-1]["depth"] == len(substack) else None
+        subject_start = bool(case and case["phase"] == "subject" and not ch.isspace())
+        if subject_start:
+            case["phase"] = "await-in"
+        if case and case["phase"] == "pattern":
+            if case["start"] and source.startswith("esac", i) and (
+                i + 4 == n or not (source[i + 4].isalnum() or source[i + 4] == "_")
+            ):
+                cases.pop()
+                tok("sep")
+                i += 4
+                continue
+            if ch.isspace():
+                i += 1
+                continue
+            if ch == "(" and case["start"]:
+                # Optional leading '(' belongs to the case pattern syntax.
+                case["start"] = False
+                i += 1
+                continue
+            case["start"] = False
+            if ch == "(":
+                case["parens"] += 1
+            elif ch == ")":
+                if case["parens"]:
+                    case["parens"] -= 1
+                else:
+                    case["phase"] = "body"
+                    tok("sep")
+                i += 1
+                continue
+            if ch not in "'\"`$\\":
+                i += 1
+                continue
+        if case and case["phase"] == "body":
+            terminator = next((s for s in (";;&", ";;", ";&") if source.startswith(s, i)), None)
+            if terminator:
+                case.update(phase="pattern", start=True, parens=0)
+                tok("sep")
+                i += len(terminator)
+                continue
+
         if ch == "'":
             stack.append(("sq",))
             i += 1
@@ -812,10 +874,12 @@ def scan_bash(source: str) -> dict:
                 i += 2
                 continue
             if nxt == "(":
-                k = i + 1
-                while k < n and source[k] == "(":
-                    k += 1
-                substack.append(k - i - 1)
+                if source.startswith("$((", i):
+                    stack.append(("arithmetic", 2))
+                    k = i + 3
+                else:
+                    substack.append(1)
+                    k = i + 2
                 tok("sub")
                 i = k
                 continue
@@ -888,6 +952,8 @@ def scan_bash(source: str) -> dict:
             if j < n and source[j] == "-":
                 dash = True
                 j += 1
+            while j < n and source[j] in " \t":
+                j += 1
             quote = None
             if j < n and source[j] in "'\"":
                 quote = source[j]
@@ -912,6 +978,11 @@ def scan_bash(source: str) -> dict:
             continue
 
         if ch == "(":
+            if source.startswith("((", i):
+                stack.append(("arithmetic", 2))
+                tok("sub")
+                i += 2
+                continue
             if substack:
                 substack[-1] += 1
             else:
@@ -989,7 +1060,19 @@ def scan_bash(source: str) -> dict:
             j = i
             while j < n and (source[j].isalnum() or source[j] in "_-"):
                 j += 1
-            tok(("w", source[i:j]))
+            word = source[i:j]
+            command_position = not tokens or tokens[-1] in ("sep", "sub") or (
+                isinstance(tokens[-1], tuple) and tokens[-1] in (
+                    ("w", "then"), ("w", "do"), ("w", "else"), ("w", "elif"), ("w", "if"),
+                )
+            )
+            if case and case["phase"] == "await-in" and word == "in" and not subject_start:
+                case.update(phase="pattern", start=True, parens=0)
+            elif case and case["phase"] == "body" and word == "esac" and command_position:
+                cases.pop()
+            elif word == "case" and command_position:
+                cases.append({"phase": "subject", "depth": len(substack)})
+            tok(("w", word))
             i = j
             continue
 
@@ -1010,6 +1093,10 @@ def scan_bash(source: str) -> dict:
             warnings.append("unterminated [[ ]] compound")
         elif frame[0] == "quoted-substitution":
             warnings.append("unterminated quoted command substitution")
+        elif frame[0] == "arithmetic":
+            warnings.append("unterminated arithmetic expression")
+    if cases:
+        warnings.append("unterminated case statement")
     return {"functions": functions, "warnings": warnings}
 
 

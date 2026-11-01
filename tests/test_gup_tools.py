@@ -19,6 +19,36 @@ def commit(path:Path,message:str):
     return run("git","-C",str(path),"rev-parse","HEAD",check=True).stdout.strip()
 
 class GUPToolTests(unittest.TestCase):
+    def test_bash_lexical_contexts_preserve_complete_units(self):
+        bodies=[
+            '  local value="$((1<<2))"\n',
+            '  local value=$((1<<2))\n',
+            '  ((1<<2))\n',
+            '''  local value="$(case "$x" in a) printf '%s' '"}';; *) printf ok;; esac)"\n''',
+            '''  case "$x" in (a|b) printf '%s' '"}';; *) :;; esac\n''',
+            '''  case in in in) : ;;& other) : ;& last) : ;; esac\n''',
+            '''  local value="$(case "$x" in a) case "$y" in b) printf '%s' '"}';; esac ;; esac)"\n''',
+            '''  local value="$( (printf '%s' '"}';) )"\n''',
+            '''  local value="$(cat <<'END_TEXT'\n ' " } ) (\nEND_TEXT\n)"\n''',
+            '''  cat << 'END_TEXT'\n ' " } ) (\nEND_TEXT\n''',
+            '''  cat <<- 'END_TEXT'\n\t ' " } ) (\n\tEND_TEXT\n''',
+            '''  local value="$(printf '%s' "$(printf '%s' '"}')")"\n''',
+        ]
+        with tempfile.TemporaryDirectory() as td:
+            fixture=Path(td)/"fixture.sh"
+            for index,body in enumerate(bodies):
+                with self.subTest(case=index):
+                    target="target() {\n"+body+"}"
+                    fixture.write_text(target+"\nafter() { :; }\n")
+                    syntax=run("bash","-n",str(fixture))
+                    self.assertEqual(syntax.returncode,0,syntax.stderr)
+                    result=run(PYTHON,str(ROOT/"golden_unit_hash.py"),"--baseline",str(fixture),"--manifest-only")
+                    self.assertEqual(result.returncode,0,result.stderr)
+                    self.assertNotIn("warning",result.stderr)
+                    units={row["unit"]:row["hash"] for row in json.loads(result.stdout)["manifest"]}
+                    self.assertEqual(set(units),{"target","after"})
+                    self.assertEqual(units["target"],hashlib.sha256(target.encode()).hexdigest())
+
     def test_atomizer_tracks_quoted_substitution_body_changes(self):
         helper=ROOT/"config/hypr/scripts/RainbowBordersToggle.sh"
         self.assertEqual(run("bash","-n",str(helper)).returncode,0)
