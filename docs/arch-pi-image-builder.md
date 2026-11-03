@@ -20,7 +20,7 @@ cmdline.txt/boot.txt layouts; each exact model/rootfs still needs a boot test.
 
 ## Settings and credentials
 
-Settings saves Wi-Fi, storage, image size and source profile. Wi-Fi passwords
+Settings saves Wi-Fi, storage and image size, and displays download sources. Wi-Fi passwords
 are private mode0600 files, reused on subsequent burns. Blank password entry
 keeps the saved password only for the same SSID, without creating another copy.
 The session JSON stores paths, not plaintext passwords. Ethernet-only clears
@@ -29,27 +29,24 @@ are not silently deleted. Images also contain credentials and are mode0600.
 
 The revised tool uses `~/.local/state/arch-pi` (XDG_STATE_HOME for a normal-user
 launch). It imports a previous `gup-pi4/session.json` once by copying settings,
-preserving the old tool's settings, credentials and selected profile. Choose
-Settings → Image profile → Arch Linux ARM to switch an imported GUP profile.
+preserving the old tool's settings and credentials. The general menu always
+uses plain Arch regardless of a recovery profile in imported metadata.
 The old tool/file is not overwritten or invoked by this file.
 
 ## Optional source recovery
 
-Settings offers GUP R6/R7 as optional source-recovery profiles. A conventional
-local bundle or complete known split pair is used when available. Otherwise
-the tool fetches the exact pinned commit from the HTTPS GitHub repository,
-verifies commit, tree and full object integrity, and makes an offline cache
-automatically. A later run reuses its recorded cache hash. No moving branch
-tip can substitute for a missing pin. A failed fetch offers a local bundle
-picker or returns to the menu. `--plan` stays read-only and requires local
-inputs rather than fetching or creating credentials.
+Project recovery revisions are not part of the general TUI. Explicit scripted
+`--baseline r6` or `--baseline r7` modes retain the offline `--bundle` interface
+for specialized recovery. `--plan` stays read-only and requires local inputs.
+For current project work, the separate [Pi R7 readiness step](pi-r7-readiness.md)
+fetches and verifies the pinned repository source directly; no transferred
+bundle or recovery-menu selection is required.
 
 R6 is commit `8dbe1e8219c45a4bd00c26425e4867da901e88eb`, tree
-`ec8e797f4387db48c3c6669ed1d83f2d08b41a0b`. It was not published when this
-candidate was prepared. Publishing the separate recovery/r6 ref requires owner
-authorization. R7 remains an unpublished source-tested candidate, with runtime
-and backend alignment still open. This utility's publication does not publish
-R7. Offline bundles remain optional recovery media, not normal-user chores.
+`ec8e797f4387db48c3c6669ed1d83f2d08b41a0b`, published on `recovery/r6`.
+R7 is published on `gup/r7-bash-quote-scope` as a source-tested
+candidate, with runtime and backend alignment still open. Offline bundles remain
+optional recovery media, not normal-user chores.
 
 ## Effects and rollback
 
