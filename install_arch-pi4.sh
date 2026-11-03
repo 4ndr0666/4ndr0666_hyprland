@@ -822,6 +822,11 @@ class TerminalUI:
                 require(loaded.get('baseline', 'r6') in {'arch', 'r6', 'r7'}, 'Invalid saved baseline.')
                 require(type(loaded.get('size_gib', 16)) is int and 8 <= loaded.get('size_gib', 16) <= 512, 'Invalid saved image size.')
                 require(type(loaded.get('autologin', False)) is bool, 'Invalid saved autologin setting.')
+                cache = loaded.get('source_cache_hashes', {})
+                require(isinstance(cache, dict) and all(
+                    isinstance(key, str) and re.fullmatch('[0-9a-f]{40}', key) and
+                    isinstance(value, str) and re.fullmatch('[0-9a-f]{64}', value)
+                    for key, value in cache.items()), 'Invalid saved source cache pins.')
                 for field in ['rootfs', 'rootfs_sha256', 'bundle', 'ssh_key', 'password_hash_file',
                               'root_password_hash_file', 'wifi_ssid', 'wifi_password_file', 'image_directory']:
                     require(loaded.get(field) is None or isinstance(loaded[field], str), 'Invalid saved field: ' + field)

@@ -5,6 +5,7 @@ import io
 import os
 from pathlib import Path
 import stat
+import shutil
 import subprocess
 import tempfile
 import types
@@ -116,6 +117,26 @@ class FlashIdentityTests(unittest.TestCase):
                 app.flash_copy(self.image, str(self.device), self.expected, self.report)
         self.assertEqual(self.device.read_bytes(), self.original)
         self.assertEqual(self.report['commands'][0]['exit_status'], 124)
+
+    @unittest.skipUnless(shutil.which('mkswap') and shutil.which('wipefs'), 'regular-file signature tools unavailable')
+    def test_real_wipefs_accepts_inherited_descriptor_on_regular_file(self):
+        # Real subprocess/signature behavior, confined to a disposable file.
+        # Block-device exclusivity and ioctls remain simulated.
+        with self.device.open('wb') as stream:
+            stream.truncate(2 * 1024**2)
+        self.device.chmod(0o600)
+        subprocess.run(['mkswap', '--', str(self.device)], capture_output=True, check=True, timeout=30)
+        before = subprocess.run(['wipefs', '--no-act', '--', str(self.device)],
+                                capture_output=True, check=True, timeout=30)
+        self.assertIn(b'swap', before.stdout)
+        with patch.object(app.os, 'fstat', return_value=types.SimpleNamespace(st_mode=stat.S_IFBLK, st_rdev=1234)), \
+             patch.object(app.fcntl, 'ioctl'), patch.object(app, 'run', return_value=''), \
+             contextlib.redirect_stdout(io.StringIO()):
+            app.flash_copy(self.image, str(self.device), self.expected, self.report)
+        self.assertEqual(self.report['commands'][0]['exit_status'], 0)
+        after = subprocess.run(['wipefs', '--no-act', '--', str(self.device)],
+                               capture_output=True, check=True, timeout=30)
+        self.assertNotIn(b'swap', after.stdout)
 
 
 if __name__ == '__main__':
