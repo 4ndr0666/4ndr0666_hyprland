@@ -26,9 +26,18 @@ BRANCH = 'gup/r7-bash-quote-scope'
 GROUPS = ['BASE_PACKAGES', 'INSTALLER_RUNTIME_PACKAGES', 'CORE_PACKAGES',
           'PIPEWIRE_PACKAGES', 'HYPRLAND_PACKAGES', 'FONT_PACKAGES',
           'AUR_PACKAGES', 'FONT_AUR_PACKAGES']
-ENV = dict(os.environ, LC_ALL='C', GIT_OPTIONAL_LOCKS='0', GIT_NO_LAZY_FETCH='1',
-           GIT_TERMINAL_PROMPT='0', GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL='/dev/null',
-           PYTHONDONTWRITEBYTECODE='1')
+def probe_environment(values):
+    # Public-source probes must not inherit GIT_DIR/WORK_TREE/INDEX/config
+    # redirects that could make checkout act on the caller's existing work.
+    # Preserve ordinary proxy and system-trust settings, including Git CA paths.
+    env = {key: value for key, value in values.items()
+           if not key.startswith('GIT_') or key in {'GIT_SSL_CAINFO', 'GIT_SSL_CAPATH'}}
+    env.update(LC_ALL='C', GIT_OPTIONAL_LOCKS='0', GIT_NO_LAZY_FETCH='1',
+               GIT_TERMINAL_PROMPT='0', GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL='/dev/null',
+               GIT_NO_REPLACE_OBJECTS='1', PYTHONDONTWRITEBYTECODE='1')
+    return env
+
+ENV = probe_environment(os.environ)
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()

@@ -19,6 +19,21 @@ def manifest(core='curl',aur=''):
                    for name in app.GROUPS)
 
 class ReadinessTests(unittest.TestCase):
+    def test_inherited_git_context_cannot_redirect_private_checkout(self):
+        original={'GIT_DIR':'/unrelated/repo.git','GIT_WORK_TREE':'/unrelated/work',
+                  'GIT_INDEX_FILE':'/unrelated/index','GIT_CONFIG_COUNT':'1',
+                  'GIT_CONFIG_KEY_0':'core.worktree','GIT_CONFIG_VALUE_0':'/unrelated/work',
+                  'HTTPS_PROXY':'http://example.invalid:8080','GIT_SSL_CAINFO':'/trusted/ca.pem'}
+        isolated=app.probe_environment(original)
+        self.assertNotIn('GIT_DIR',isolated)
+        self.assertNotIn('GIT_WORK_TREE',isolated)
+        self.assertNotIn('GIT_INDEX_FILE',isolated)
+        self.assertNotIn('GIT_CONFIG_COUNT',isolated)
+        self.assertEqual(isolated['HTTPS_PROXY'],original['HTTPS_PROXY'])
+        self.assertEqual(isolated['GIT_SSL_CAINFO'],original['GIT_SSL_CAINFO'])
+        self.assertEqual(isolated['GIT_NO_REPLACE_OBJECTS'],'1')
+        self.assertIn('GIT_DIR',original)
+
     def test_literal_manifest_and_injection_refusal(self):
         self.assertEqual(app.parse_manifest(manifest('curl curl dbus','wallust')),(['curl','dbus'],['wallust']))
         with self.assertRaises(RuntimeError): app.parse_manifest(manifest('"${UNKNOWN[@]}"'))

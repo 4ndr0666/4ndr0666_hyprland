@@ -14,6 +14,9 @@ published source candidate branch `gup/r7-bash-quote-scope`, detaches at
 `ef92e2c255b74a0ddde2cb293b4c0a1f7dc3bcdb`, full object integrity and clean state.
 No existing checkout, refs, stash or user configuration is altered. The reviewed
 candidate remains source-only; publication is not Pi runtime certification.
+Git routing/configuration environment is isolated from the invoking shell, so
+an exported GIT_DIR, worktree or index cannot redirect the private checkout.
+Ordinary proxy settings and Git CA trust paths are preserved.
 
 The installer is invoked only with `--dry-run`, whose pinned early exit performs
 syntax/module checks. The normal installer is not invoked: it can change packages
