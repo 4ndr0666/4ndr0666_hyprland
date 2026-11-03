@@ -5,11 +5,13 @@ on:
     branches: [main, 'tooling/**']
     paths:
       - install_arch-pi4.sh
+      - scripts/pi-*.py
       - tests/pi-image/**
       - .github/workflows/pi-image-builder.yml
   pull_request:
     paths:
       - install_arch-pi4.sh
+      - scripts/pi-*.py
       - tests/pi-image/**
       - .github/workflows/pi-image-builder.yml
 

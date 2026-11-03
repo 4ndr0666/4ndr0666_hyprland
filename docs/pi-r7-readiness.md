@@ -51,3 +51,7 @@ gates return1; interruption130; wrong host/root invocation20.
 Hardware, boot, graphical runtime, complete package/provider alignment and full
 GUP certification remain separate evidence boundaries. No self-applying update
 kit or system-changing installation is issued by this script.
+
+For the reviewed `predeploy-uhpsixb2` capture, continue with the separate
+[native provider build step](pi-r7-provider-builds.md). That step can install
+build dependencies through pacman and must not be described as read-only.
