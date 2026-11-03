@@ -14,8 +14,9 @@ import tempfile
 import platform
 import tomllib
 
-PIN = 'f752274a78ff3dcd9482ee75704bfc6c2b8b3470'
-TREE = '1d348e7ed4d98e29d661811315060824330ba70c'
+PIN = '4aa7b09ef44af0a98b4772be9ff2625318241029'
+TREE = '15d0d36d295aeffab8f6e3f271bfca225616a329'
+SOURCE_URL = 'https://github.com/4ndr0666/4ndr0666_hyprland.git'
 UNITS = ['systemd-networkd', 'systemd-resolved', 'wpa_supplicant@wlan0', 'NetworkManager']
 
 def require(condition, message):
@@ -125,8 +126,16 @@ def collect(probe, state, user_home, report):
         if probe.git(candidate, 'source-head-' + str(index), 'rev-parse', 'HEAD') == PIN:
             source = candidate
             break
-    require(source is not None, 'Pinned integration checkout not found; previous captures preserved.')
+    if source is None:
+        # A corrected candidate never checks out over the previous capture's
+        # source. Acquire it in this new owned staging workspace instead.
+        source = probe.work / 'source'
+        probe.run('clone-corrected-source', ['git', '-c', 'core.hooksPath=/dev/null', 'clone', '--quiet',
+                  '--no-checkout', '--single-branch', '--branch', 'gup/r7-pi-integration', '--', SOURCE_URL, source], timeout=900)
+        probe.git(source, 'checkout-corrected-source', 'checkout', '--detach', PIN)
+        require(probe.git(source, 'corrected-source-commit', 'rev-parse', 'HEAD') == PIN, 'Corrected source commit mismatch.')
     require(probe.git(source, 'source-tree', 'rev-parse', 'HEAD^{tree}') == TREE, 'Source tree mismatch.')
+    probe.git(source, 'source-fsck', 'fsck', '--full', '--strict')
     require(not probe.git(source, 'source-clean-before', 'status', '--porcelain=v1', '--untracked-files=all'), 'Source has changes; preserved and held.')
     refs = probe.git(source, 'refs-before', 'show-ref', '--head')
     before = probe.run('network-before', ['systemctl', 'show', '--property=Id,ActiveState,UnitFileState', *UNITS])

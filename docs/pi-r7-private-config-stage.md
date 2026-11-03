@@ -17,6 +17,21 @@ renders Wallust colors using the installed native binary, and invokes the
 installed compositor's real verifier. It does not mock hl APIs or treat a Lua
 syntax check as proof of API compatibility.
 
+The first Pi stage `config-yttaccup` stopped at the real renderer: Wallust 3.5.2
+rejects the legacy palette name `salience`. Hyprland verification was not reached;
+the original Hyprland inventory stayed identical. The corrected source candidate
+is `4aa7b09ef44af0a98b4772be9ff2625318241029`, tree
+`15d0d36d295aeffab8f6e3f271bfca225616a329`. It selects the supported dark salience
+palette `saliencedark` without changing templates. A real host Wallust 3.5.2 test
+now renders all seven outputs and rejects the old palette as a negative control.
+That host evidence does not substitute for the Pi's native rerun.
+
+The revised stager automatically clones the corrected candidate into its new
+private workspace when previous captures contain the earlier source. It verifies
+commit/tree and strict object integrity; it never resets or checks out over a
+previous capture. No manual Git checkout, file edit, bundle or reinstallation is
+required. Previous failed profile/evidence remain intact.
+
 HOME and all XDG configuration/cache/data/state locations point into that private
 profile for renderer/verifier commands. Absolute, dangling and escaping source
 symlinks are refused. Wallust targets must stay under the profile's `.config`.

@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -35,11 +36,14 @@ class Fixture:
         original.write_text('retain my settings')
         self.env = stage.profile_environment(self.work)
         self.calls, self.fail, self.validator_output = [], None, ''
+        self.responses = {}
 
     def run(self, label, argv, **kwargs):
         self.calls.append((label, [str(a) for a in argv]))
         if label == self.fail:
             raise RuntimeError(label + ' failed')
+        if label == 'clone-corrected-source':
+            shutil.copytree(self.source, Path(argv[-1]))
         value = self.validator_output if label == 'hyprland-verify-config' else ''
         (self.work / 'logs' / (label + '.stdout')).write_text(value)
         (self.work / 'logs' / (label + '.stderr')).write_text('')
@@ -47,9 +51,22 @@ class Fixture:
 
     def git(self, source, label, *args):
         self.calls.append((label, ['git', *args]))
-        return {'source-head-0': stage.PIN, 'source-tree': stage.TREE, 'refs-before': 'stable', 'refs-after': 'stable'}.get(label, '')
+        return self.responses.get(label, {'source-head-0': stage.PIN, 'corrected-source-commit': stage.PIN,
+            'source-tree': stage.TREE, 'refs-before': 'stable', 'refs-after': 'stable'}.get(label, ''))
 
 class ConfigStageTests(unittest.TestCase):
+    def test_corrected_source_is_acquired_without_checking_out_over_old_capture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Fixture(Path(directory))
+            fixture.responses['source-head-0'] = 'old-source-commit'
+            original = stage.inventory_hash(fixture.source)
+            self.collect(fixture, {})
+            self.assertEqual(original, stage.inventory_hash(fixture.source))
+            checkout = [(label, argv) for label, argv in fixture.calls if label == 'checkout-corrected-source']
+            self.assertEqual(len(checkout), 1)
+            self.assertEqual(checkout[0][1][-3:], ['checkout', '--detach', stage.PIN])
+            self.assertTrue((fixture.work / 'source').is_dir())
+
     def collect(self, fixture, report):
         with patch.object(stage.shutil, 'disk_usage', return_value=type('Disk', (), {'free': 2 * 1024**3})()):
             stage.collect(fixture, fixture.state, fixture.user_home, report)
