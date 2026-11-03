@@ -29,7 +29,7 @@ import tarfile
 import tempfile
 import time
 
-VERSION = '3.2.0'
+VERSION = '3.2.1'
 SCRIPT_PATH = Path(os.environ.get('GUP_PROVISION_SCRIPT', 'install_arch-pi4.sh')).absolute()
 SOURCE_URL = 'https://github.com/4ndr0666/4ndr0666_hyprland.git'
 ROOTFS_NAME = 'ArchLinuxARM-rpi-aarch64-latest.tar.gz'
@@ -90,6 +90,9 @@ def run(argv, *, data=None, timeout=120, records=None):
 
 def executable_tools(names):
     missing = [name for name in names if not shutil.which(name)]
+    if 'mkimage' in missing:
+        raise Refusal('mkimage is the U-Boot boot-script compiler. On an Arch host, install its package with: '
+                      'sudo pacman -S --needed uboot-tools\nPackage source: https://archlinux.org/packages/extra/x86_64/uboot-tools/')
     require(not missing, 'Missing host tools (not installed automatically): ' + ', '.join(missing))
 
 def private_text(path):
@@ -183,15 +186,14 @@ WHAT THE MENU DOES
   Create image -> locate/download rootfs -> prepare
   SSH access/password hashes -> validate -> build -> optionally pick/write card.
   Existing inputs/settings are reused. Choose Settings for Wi-Fi, storage,
-  image size or optional GUP source profile. Downloads enforce HTTPS. Card writes still require
+  image size or download-source information. Downloads enforce HTTPS. Card writes still require
   typing the exact erase confirmation; mounted system/data disks are excluded.
   fzf provides search/navigation when installed; a numbered menu works without it.
 
 PROFILES AND SAVED WI-FI
-  Plain Arch Linux ARM is the default; it needs no Git bundle. Settings offers
-  optional GUP R6/R7 profiles, fetching the exact source from GitHub when no
-  offline bundle is found. Unpublished commits fail closed. Previously saved
-  profile selections remain available; choose plain Arch in Settings to switch.
+  The general menu creates plain Arch Linux ARM; it needs no Git bundle.
+  GUP recovery revisions are available only through explicit scripted options.
+  Settings -> Show download sources lists the rootfs mirrors and host tools.
   Settings -> Wi-Fi saves the password privately and reuses it for every burn.
   Leave the password blank to keep the saved password for the same SSID.
   This builder supports compatible Raspberry Pi AArch64 rootfs/boot layouts;
@@ -1181,6 +1183,9 @@ def prepared_args(ui):
                  'password_hash_file', 'root_password_hash_file', 'wifi_ssid', 'wifi_password_file', 'autologin']:
         if name in ui.saved:
             setattr(a, name, ui.saved[name])
+    # The general image menu never inherits a project recovery profile.
+    # Explicit --baseline remains available for existing scripted recovery jobs.
+    a.baseline = 'arch'
     if not a.rootfs or not Path(a.rootfs).is_file():
         a.rootfs, a.rootfs_sha256, trust = select_rootfs(ui)
         ui.saved.update(rootfs=a.rootfs, rootfs_sha256=a.rootfs_sha256, rootfs_trust=trust); ui.save()
@@ -1293,7 +1298,7 @@ def guided_flash(ui, receipt):
 def settings_menu(ui):
     choice = ui.choose('Settings (saved for later runs)', [
         ('wifi', 'Configure or remove Wi-Fi'), ('directory', 'Change image storage folder'),
-        ('size', 'Change image size'), ('source', 'Image profile: plain Arch / optional GUP'),
+        ('size', 'Change image size'), ('sources', 'Show download sources'),
         ('inputs', 'Choose rootfs and source bundle again'), ('back', 'Back')])
     if choice == 'wifi':
         action = ui.choose('Networking', [('ethernet', 'Ethernet only'), ('wifi', 'Ethernet plus Wi-Fi')])
@@ -1313,10 +1318,12 @@ def settings_menu(ui):
         ui.saved['image_directory'] = ui.ask('Image folder', str(default_image_directory(ui, ui.saved.get('size_gib', 16))))
     elif choice == 'size':
         ui.saved['size_gib'] = ui.choose('Image size', [(n, f'{n} GiB') for n in [16, 32, 64]])
-    elif choice == 'source':
-        baseline = ui.choose('Source baseline', [('arch', 'Arch Linux ARM — customized OS, no GUP source required'), ('r6', 'GUP R6 — recovery source baseline'), ('r7', 'GUP R7 — source-tested candidate; runtime still open')])
-        if baseline != ui.saved.get('baseline', 'arch'):
-            ui.saved.update(baseline=baseline, bundle=None)
+    elif choice == 'sources':
+        ui.say('Official Pi AArch64 rootfs mirrors:')
+        for url in ROOTFS_URLS:
+            ui.say(url)
+        ui.say('Image builder: https://github.com/4ndr0666/4ndr0666_hyprland/tree/tooling/arch-pi-image')
+        ui.say('U-Boot host tools: https://archlinux.org/packages/extra/x86_64/uboot-tools/')
     elif choice == 'inputs':
         ui.saved.update(rootfs=None, rootfs_sha256=None, bundle=None)
     ui.save()
@@ -1333,7 +1340,7 @@ def interactive():
         while True:
             action = None
             try:
-                baseline = ui.saved.get('baseline', 'arch').upper()
+                baseline = 'ARCH'
                 options = [('build', 'Create a Pi image — ' + baseline + ' (find inputs, prepare credentials, build)'),
                     ('settings', 'Settings — Wi-Fi, storage, image size, source'), ('quit', 'Exit')]
                 if ui.saved.get('last_image'):
