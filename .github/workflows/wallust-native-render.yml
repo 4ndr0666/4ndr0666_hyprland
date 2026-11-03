@@ -1,0 +1,38 @@
+name: Wallust native renderer
+
+on:
+  push:
+    branches: [main, 'gup/**']
+    paths:
+      - config/wallust/**
+      - config/hypr/wallpaper_effects/.wallpaper_current
+      - tests/integration/test-wallust-native-render.py
+      - .github/workflows/wallust-native-render.yml
+  pull_request:
+    paths:
+      - config/wallust/**
+      - config/hypr/wallpaper_effects/.wallpaper_current
+      - tests/integration/test-wallust-native-render.py
+      - .github/workflows/wallust-native-render.yml
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Acquire checksum-pinned host renderer
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          install -d "$RUNNER_TEMP/wallust-native"
+          curl --proto '=https' --proto-redir '=https' -fL --retry 2 --max-time 120 \
+            https://codeberg.org/explosion-mental/wallust/releases/download/3.5.2/wallust-3.5.2-x86_64-unknown-linux-musl.tar.gz \
+            -o "$RUNNER_TEMP/wallust-native/renderer.tar.gz"
+          printf '%s  %s\n' 92e11a841827ea6c2af28290d2cf4908db07dff4aee8dec1b7f1133cbf72c6e2 "$RUNNER_TEMP/wallust-native/renderer.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/wallust-native/renderer.tar.gz" -C "$RUNNER_TEMP/wallust-native" wallust
+      - name: Render every active template with the actual pinned CLI
+        run: python3 -B tests/integration/test-wallust-native-render.py --binary "$RUNNER_TEMP/wallust-native/wallust"
