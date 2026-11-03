@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# GUP Pi4 image builder v3. Python3 orchestration is embedded: one runtime file.
+# Arch Pi image builder. Paradigm: synchronous image-file orchestrator;
+# privileged filesystem work is confined to a new image and explicit card write.
 # Default: guided TUI. --plan is read-only. --build creates a NEW image file only.
 # --flash is a separate, destructive operation with target checks and a TTY prompt.
 # No target chroot, downloaded-code execution, default passwords or auto-upgrades.
@@ -28,8 +29,9 @@ import tarfile
 import tempfile
 import time
 
-VERSION = '3.1.2'
-SCRIPT_PATH = Path(os.environ.get('GUP_PROVISION_SCRIPT', 'provision-gup-pi4.sh')).absolute()
+VERSION = '3.2.0'
+SCRIPT_PATH = Path(os.environ.get('GUP_PROVISION_SCRIPT', 'install_arch-pi4.sh')).absolute()
+SOURCE_URL = 'https://github.com/4ndr0666/4ndr0666_hyprland.git'
 ROOTFS_NAME = 'ArchLinuxARM-rpi-aarch64-latest.tar.gz'
 # Direct project mirror hostnames have usable HTTPS endpoints; the os.* alias
 # is deliberately excluded because its certificate does not cover that name.
@@ -187,7 +189,8 @@ WHAT THE MENU DOES
 
 PROFILES AND SAVED WI-FI
   Plain Arch Linux ARM is the default; it needs no Git bundle. Settings offers
-  optional GUP R6/R7 profiles for existing recovery workflows. Previously saved
+  optional GUP R6/R7 profiles, fetching the exact source from GitHub when no
+  offline bundle is found. Unpublished commits fail closed. Previously saved
   profile selections remain available; choose plain Arch in Settings to switch.
   Settings -> Wi-Fi saves the password privately and reuses it for every burn.
   Leave the password blank to keep the saved password for the same SSID.
@@ -220,7 +223,7 @@ ADVANCED / SCRIPTED USE (optional)
     p.add_argument('--wifi-ssid', default='', help='optional SSID; Wi-Fi password comes from a file, never argv')
     p.add_argument('--wifi-password-file', help='private file containing the Wi-Fi password or raw PSK')
     p.add_argument('--autologin', action='store_true', help='explicitly opt into local tty1 alarm autologin')
-    p.add_argument('--version', action='version', version='provision-gup-pi4 ' + VERSION)
+    p.add_argument('--version', action='version', version=SCRIPT_PATH.name + ' ' + VERSION)
     a = p.parse_args(argv)
     if not (a.plan or a.build or a.flash):
         a.interactive = True
@@ -262,7 +265,7 @@ def discover_inputs(a):
         ('password_hash_file', defaults['password_hash_file'], '--password-hash-file FILE')]
         if not getattr(a, name) and (name != 'bundle' or a.baseline != 'arch')]
     require(not missing, 'Missing setup files:\n  - ' + '\n  - '.join(missing) +
-            '\nRun bash ./provision-gup-pi4.sh --help for the common commands and one-time setup.')
+            '\nRun bash ' + str(SCRIPT_PATH) + ' --help for common commands and setup.')
 
 def checked_rootfs(a):
     """Reuse a scan within one workflow; invalidate it if the archive changes."""
@@ -292,7 +295,7 @@ def plan(a):
     require(inventory['boot_txt'] or inventory['cmdline'], 'Unrecognized boot layout: no boot.txt or cmdline.txt.')
     key = Path(a.ssh_key).read_text().strip()
     require('\n' not in key and '\r' not in key and re.match(r'^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp\d+|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com) [A-Za-z0-9+/=]+(?: .*)?$', key), 'Expected one OpenSSH public key, not a private key or authorized_keys options.')
-    executable_tools(['git', 'ssh-keygen'])
+    executable_tools((['git'] if bundle else []) + ['ssh-keygen'])
     run(['ssh-keygen', '-lf', a.ssh_key])
     pw = private_text(a.password_hash_file)
     require(valid_password_hash(pw), 'Expected a complete SHA512-crypt or yescrypt password hash, not plaintext.')
@@ -496,13 +499,21 @@ def configure(root, a, report, root_id, boot_id):
         require(not auto.is_dir(), 'Unexpected autologin path.'); auto.unlink()
     if a.autologin:
         write(root, 'etc/systemd/system/getty@tty1.service.d/autologin.conf', '[Service]\nExecStart=\nExecStart=-/sbin/agetty --autologin alarm --noclear %I $TERM\n')
-    write(root, 'usr/local/lib/gup/firstboot.sh', FIRSTBOOT, 0o755)
-    write(root, 'usr/local/sbin/gup-upgrade-base', UPGRADE, 0o755)
+    profile = 'arch-pi' if a.baseline == 'arch' else 'gup'
+    firstboot = FIRSTBOOT if profile == 'gup' else FIRSTBOOT.replace('gup-firstboot', 'arch-pi-firstboot').replace(
+        'PENDING: approved full upgrade, source tests, deployment and live graphical evidence.',
+        'PENDING: Pi boot, sign-in and network acceptance; no desktop configuration installed.')
+    write(root, 'usr/local/lib/' + profile + '/firstboot.sh', firstboot, 0o755)
+    upgrade = UPGRADE if profile == 'gup' else UPGRADE.replace('python-gobject libnm ', '').replace('gup', 'arch-pi')
+    write(root, 'usr/local/sbin/' + profile + '-upgrade-base', upgrade, 0o755)
     for name, payload in ([] if a.baseline == 'arch' else [('gup-validate-source', SOURCE_CHECK), ('gup-runtime-check', RUNTIME_CHECK)]):
         write(root, 'usr/local/bin/' + name, payload.replace('EXPECTED_COMMIT', report['commit']).replace('EXPECTED_TREE', report['tree']), 0o755)
-    write(root, 'etc/systemd/system/gup-firstboot.service', '[Unit]\nDescription=Local GUP first-boot initialization (no upgrade)\nAfter=local-fs.target\nConditionPathExists=!/var/lib/gup-firstboot/complete\n[Service]\nType=oneshot\nExecStart=/usr/local/lib/gup/firstboot.sh\nRemainAfterExit=yes\n[Install]\nWantedBy=multi-user.target\n')
-    enable(root, 'gup-firstboot.service'); enable(root, 'sshd.service')
-    write(root, 'etc/gup-provisioning.json', json.dumps(report, indent=2) + '\n')
+    write(root, 'etc/systemd/system/' + profile + '-firstboot.service',
+          '[Unit]\nDescription=Local image first-boot initialization (no upgrade)\nAfter=local-fs.target\nConditionPathExists=!/var/lib/' +
+          profile + '-firstboot/complete\n[Service]\nType=oneshot\nExecStart=/usr/local/lib/' + profile +
+          '/firstboot.sh\nRemainAfterExit=yes\n[Install]\nWantedBy=multi-user.target\n')
+    enable(root, profile + '-firstboot.service'); enable(root, 'sshd.service')
+    write(root, 'etc/' + profile + '-provisioning.json', json.dumps(report, indent=2) + '\n')
     return uid, gid
 
 def patch_boot(root, root_id, records):
@@ -525,7 +536,8 @@ def patch_boot(root, root_id, records):
 
 def build(a, *, guided=False):
     require(os.geteuid() == 0, '--build needs root for loop devices and mounts; --plan does not.')
-    executable_tools(['git', 'ssh-keygen', 'bsdtar', 'losetup', 'sfdisk', 'udevadm',
+    executable_tools((['git'] if a.baseline != 'arch' else []) +
+                     ['ssh-keygen', 'bsdtar', 'losetup', 'sfdisk', 'udevadm',
                       'mkfs.vfat', 'mkfs.ext4', 'mount', 'umount', 'blkid', 'sync'])
     report = plan(a)
     output = Path(report['output'])
@@ -764,7 +776,7 @@ class TerminalUI:
         user = pwd.getpwnam(name) if name else pwd.getpwuid(os.getuid())
         self.home, self.uid, self.gid = Path(user.pw_dir), user.pw_uid, user.pw_gid
         base = Path(os.environ.get('XDG_STATE_HOME') or self.home / '.local/state') if not name else self.home / '.local/state'
-        self.folder = base / 'gup-pi4'
+        self.folder = base / 'arch-pi'
         self.use_fzf = bool(shutil.which('fzf'))
         # Change ownership only on newly created application directories/files.
         missing = []; parent = self.folder
@@ -777,6 +789,13 @@ class TerminalUI:
         require(self.folder.is_dir() and not self.folder.is_symlink(), 'Invalid application state directory.')
         self.profile = self.folder / 'session.json'
         require(not self.profile.is_symlink(), 'Saved session must not be a symlink.')
+        # Import paths once, without editing the old tool's settings or secrets.
+        legacy = base / 'gup-pi4/session.json'
+        if not self.profile.exists() and legacy.is_file() and not legacy.is_symlink():
+            with open(self.profile, 'x', opener=lambda path, flags: os.open(path, flags, 0o600)) as stream:
+                stream.write(legacy.read_text())
+            if os.geteuid() == 0:
+                os.chown(self.profile, self.uid, self.gid)
         self.saved = {}
         if self.profile.is_file():
             try:
@@ -960,8 +979,65 @@ def select_source_bundle(ui, baseline):
         joined = assemble_supplied_bundle(ui, baseline)
         if joined:
             return joined
+        try:
+            return fetch_source_bundle(ui, baseline)
+        except Refusal as exc:
+            ui.say(str(exc))
+            choice = ui.choose('Pinned source unavailable', [
+                ('offline', 'Use a local offline source bundle'), ('cancel', 'Back')])
+            if choice != 'offline':
+                raise Cancelled()
+            return ui.file_picker('Offline source bundle', ['*.bundle'])
     return ui.file_picker('Source bundle for ' + baseline.upper(),
                           ['gup-source-' + baseline + '.bundle'])
+
+def fetch_source_bundle(ui, baseline):
+    """Fetch exact pinned GUP history; never substitute a branch tip."""
+    executable_tools(['git'])
+    commit, tree = R6 if baseline == 'r6' else R7
+    destination = ui.folder / ('source-' + commit + '.bundle')
+    if destination.is_file():
+        expected = ui.saved.get('source_cache_hashes', {}).get(commit)
+        if expected:
+            require(digest(destination) == expected, 'Cached source integrity mismatch: ' + str(destination))
+            return str(destination)
+        raise Refusal('Unrecorded source cache preserved; select an offline input or use another cache directory.')
+    records = []
+    ui.say('Fetching pinned ' + baseline.upper() + ' source from GitHub…')
+    try:
+        with tempfile.TemporaryDirectory(prefix='source-fetch.', dir=ui.folder) as temporary:
+            repo = Path(temporary) / 'source.git'
+            run(['git', 'init', '--bare', repo], records=records)
+            # Protocol and hooks restrictions apply to every network operation.
+            run(['git', '-C', repo, '-c', 'core.hooksPath=/dev/null',
+                 '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always',
+                 'fetch', '--no-tags', '--no-recurse-submodules', '--', SOURCE_URL, commit],
+                timeout=900, records=records)
+            require(run(['git', '-C', repo, 'rev-parse', 'FETCH_HEAD^{commit}'], records=records) == commit,
+                    'Fetched source commit mismatch.')
+            require(run(['git', '-C', repo, 'rev-parse', commit + '^{tree}'], records=records) == tree,
+                    'Fetched source tree mismatch.')
+            run(['git', '-C', repo, 'fsck', '--full', '--strict'], timeout=600, records=records)
+            ref = 'refs/heads/recovery-' + baseline
+            run(['git', '-C', repo, 'update-ref', ref, commit], records=records)
+            bundle = Path(temporary) / 'source.bundle'
+            run(['git', '-C', repo, 'bundle', 'create', bundle, ref], timeout=600, records=records)
+            run(['git', '-C', repo, 'bundle', 'verify', bundle], records=records)
+            checksum = digest(bundle)
+            # Hard-link publication refuses an existing or concurrently created cache.
+            os.link(bundle, destination)
+            if os.geteuid() == 0:
+                os.chown(destination, ui.uid, ui.gid)
+            ui.saved.setdefault('source_cache_hashes', {})[commit] = checksum
+            ui.save()
+            return str(destination)
+    except Refusal as exc:
+        raise Refusal('Pinned source could not be acquired. The recovery commit must be published first, '
+                      'or an offline bundle selected. No branch-tip fallback occurred.\n' + str(exc)) from exc
+    finally:
+        ui.saved['last_source_fetch_evidence'] = ui.private_file('source-fetch', json.dumps({
+            'url': SOURCE_URL, 'commit': commit, 'tree': tree, 'commands': records}, indent=2))
+        ui.save()
 
 def download_rootfs(ui):
     executable_tools(['curl'])
@@ -1073,8 +1149,8 @@ def choose_ssh_key(ui):
 def default_image_directory(ui, size_gib):
     for base in [Path('/sto2'), Path('/Nas'), ui.home]:
         if base.is_dir() and (base == ui.home or base.is_mount()) and shutil.disk_usage(base).free > (size_gib + 1) * 1024**3:
-            return base / 'gup-images'
-    return ui.home / 'gup-images'
+            return base / 'arch-pi-images'
+    return ui.home / 'arch-pi-images'
 
 def prepared_args(ui):
     a = parse(['--interactive'])
@@ -1090,6 +1166,8 @@ def prepared_args(ui):
     if a.baseline != 'arch' and (not a.bundle or not Path(a.bundle).is_file()):
         a.bundle = select_source_bundle(ui, a.baseline)
         ui.saved['bundle'] = a.bundle; ui.save()
+    if a.baseline == 'arch':
+        a.bundle = None
     if not a.ssh_key or not Path(a.ssh_key).is_file():
         a.ssh_key = choose_ssh_key(ui); ui.saved['ssh_key'] = a.ssh_key; ui.save()
     if not a.password_hash_file or not Path(a.password_hash_file).is_file():
@@ -1203,6 +1281,9 @@ def settings_menu(ui):
             password = getpass.getpass('Wi-Fi password (blank keeps saved password for this SSID): ', stream=ui.tty)
             if not password and ssid == ui.saved.get('wifi_ssid') and ui.saved.get('wifi_password_file'):
                 password = private_text(ui.saved['wifi_password_file'])
+                wifi_config(ssid, password)
+                ui.say('Saved Wi-Fi credentials kept for future burns.')
+                return
             wifi_config(ssid, password)
             ui.saved.update(wifi_ssid=ssid, wifi_password_file=ui.private_file('wifi', password))
     elif choice == 'directory':

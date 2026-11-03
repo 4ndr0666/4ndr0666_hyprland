@@ -353,16 +353,35 @@ class ProvisionTests(unittest.TestCase):
             app.configure(root, args, report, '12345678-02', '12345678-01')
         self.assertEqual((root / 'etc/hostname').read_text(), 'archpi\n')
         self.assertFalse((root / 'usr/local/bin/gup-validate-source').exists())
+        self.assertFalse((root / 'usr/local/sbin/gup-upgrade-base').exists())
+        self.assertNotIn('python-gobject', (root / 'usr/local/sbin/arch-pi-upgrade-base').read_text())
+        self.assertNotIn('libnm', (root / 'usr/local/sbin/arch-pi-upgrade-base').read_text())
+        self.assertIn('/usr/local/lib/arch-pi/firstboot.sh',
+                      (root / 'etc/systemd/system/arch-pi-firstboot.service').read_text())
+
+    def test_legacy_settings_import_preserves_original(self):
+        legacy = self.root / 'state/gup-pi4/session.json'
+        legacy.parent.mkdir(parents=True)
+        data = json.dumps({'baseline': 'r6', 'wifi_ssid': 'saved', 'wifi_password_file': str(self.pw)})
+        legacy.write_text(data)
+        ui = self.make_ui()
+        self.assertEqual(ui.saved['wifi_ssid'], 'saved')
+        self.assertEqual(legacy.read_text(), data)
+        ui.saved['baseline'] = 'arch'; ui.save()
+        self.assertEqual(legacy.read_text(), data)
+        self.assertEqual(ui.profile.stat().st_mode & 0o777, 0o600)
 
     def test_wifi_saved_password_survives_settings_and_next_burn(self):
         ui = self.make_ui()
         secret = ui.private_file('wifi', 'remember-this-password')
         ui.saved = {'wifi_ssid': 'My Network', 'wifi_password_file': secret}
+        ui.save()
         with patch.object(ui, 'choose', side_effect=['wifi', 'wifi']), \
              patch.object(ui, 'ask', return_value='My Network'), \
              patch.object(app.getpass, 'getpass', return_value=''):
             app.settings_menu(ui)
         self.assertEqual(app.private_text(ui.saved['wifi_password_file']), 'remember-this-password')
+        self.assertEqual(ui.saved['wifi_password_file'], secret)
         self.assertEqual(Path(ui.saved['wifi_password_file']).stat().st_mode & 0o777, 0o600)
         self.assertNotIn('remember-this-password', ui.profile.read_text())
 
@@ -675,6 +694,34 @@ class ProvisionTests(unittest.TestCase):
         self.assertEqual(manifest['image_sha256'], app.digest(image))
         self.assertTrue(json.loads((work / 'build-commands.json').read_text())['completed'])
         self.assertTrue(any('fsck' in call for call in calls))
+
+    def test_simulated_plain_arch_build_never_uses_source_git(self):
+        args = self.args(baseline='arch', bundle=None)
+        report = dict(app.plan(args), image_bytes=1024 * 1024)
+        calls = []
+        def fake_run(argv, **kwargs):
+            calls.append([str(x) for x in argv])
+            if argv[0] == 'git':
+                raise AssertionError('plain Arch unexpectedly used Git')
+            if argv[0] == 'losetup' and '--find' in argv:
+                return '/dev/loop123'
+            if argv[0] == 'bsdtar':
+                root = Path(argv[-1]); self.make_root(root)
+                (root / 'boot/cmdline.txt').write_text('root=/dev/mmcblk0p2 rw\n')
+            if argv[0] == 'blkid':
+                return '12345678-01' if str(argv[-1]).endswith('p1') else '12345678-02'
+            return ''
+        with patch.object(app.os, 'geteuid', return_value=0), patch.object(app, 'executable_tools'), \
+             patch.object(app, 'plan', return_value=report), patch.object(app, 'run', side_effect=fake_run), \
+             patch.object(Path, 'is_block_device', return_value=True), patch.object(app.os, 'chown'), \
+             patch.object(app.os, 'lchown'), contextlib.redirect_stdout(io.StringIO()):
+            app.build(args)
+        self.assertEqual((self.root / 'new.img').stat().st_size, 1024 * 1024)
+        work = next(self.root.glob('.gup-pi4-build.*'))
+        manifest = json.loads((work / 'image-manifest.json').read_text())
+        self.assertIsNone(manifest['commit'])
+        self.assertEqual(manifest['hostname'], 'archpi')
+        self.assertEqual(app.private_text(self.pw), '$6$testsalt$' + 'A' * 86)
 
     def test_cleanup_failure_preserves_loop_and_work_tree(self):
         calls = []
