@@ -26,6 +26,18 @@ main() {
     record services systemctl --no-pager is-active systemd-networkd systemd-resolved wpa_supplicant@wlan0 NetworkManager
     record user-manager systemctl --user --no-pager is-system-running
     record space df -h / /boot
+    # Reconcile the running kernel with the installed package and U-Boot path.
+    # These are observations only: never repair boot files or reboot here.
+    record boot-mount findmnt --target /boot --output SOURCE,TARGET,FSTYPE,OPTIONS
+    record boot-files ls -lh /boot
+    record kernel-packages pacman -Q linux-aarch64 raspberrypi-bootloader uboot-raspberrypi
+    record kernel-owned-files pacman -Ql linux-aarch64
+    record kernel-file-check pacman -Qkk linux-aarch64
+    record kernel-command-line cat /proc/cmdline
+    local bootfile
+    for bootfile in /boot/boot.txt /boot/config.txt /boot/cmdline.txt /boot/extlinux/extlinux.conf; do
+        [[ ! -f "$bootfile" ]] || record "boot-${bootfile##*/}" cat "$bootfile"
+    done
     {
         printf 'session_type=%s\n' "${XDG_SESSION_TYPE:-unset}"
         [[ -z ${WAYLAND_DISPLAY:-} ]] || printf 'wayland_display_present=yes\n'
