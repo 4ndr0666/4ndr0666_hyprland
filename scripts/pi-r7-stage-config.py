@@ -116,6 +116,18 @@ if pgrep -u "$UID" -x 'Hyprland|sway|niri|kwin_wayland|gnome-shell|weston' >/dev
 fi
 ''' + 'exec env ' + shlex.join(assignments) + ' dbus-run-session -- Hyprland --config ' + shlex.quote(str(config)) + '\n'
 
+def verifier_diagnostics(output):
+    plain = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output)
+    runtime = []
+    errors = []
+    for line in plain.splitlines():
+        if re.search(r'(?i)(?:\bERR(?:OR)?\b\s*\]|(?:config(?:uration)?|lua) (?:has errors|error)|failed to (?:load|parse))', line):
+            if "Couldn't bind the Hyprland Socket 2" in line:
+                runtime.append(line.strip())
+            else:
+                errors.append(line.strip())
+    return plain, errors, runtime
+
 def collect(probe, state, user_home, report):
     original = user_home / '.config/hypr'
     original_hash = inventory_hash(original)
@@ -159,8 +171,11 @@ def collect(probe, state, user_home, report):
     probe.run('wallust-render', ['wallust', 'run', '-s', image], timeout=600)
     probe.run('hyprland-verify-config', ['Hyprland', '--verify-config', '--config', entry], timeout=120)
     output = ''.join((probe.work / 'logs' / ('hyprland-verify-config.' + s)).read_text(errors='replace') for s in ['stdout', 'stderr'])
-    require(not re.search(r'(?im)\[ERR(?:OR)?\]|(?:config(?:uration)?|lua) (?:has errors|error)|failed to (?:load|parse)', output),
+    plain, config_errors, runtime_diagnostics = verifier_diagnostics(output)
+    report['config_only_runtime_diagnostics'] = runtime_diagnostics
+    require(not config_errors,
             'Native validator reported errors despite its exit code; profile held for review.')
+    require(re.search(r'(?m)^config ok\s*$', plain), 'Native verifier did not report the expected explicit config verdict.')
     after = probe.run('network-after', ['systemctl', 'show', '--property=Id,ActiveState,UnitFileState', *UNITS])
     require(before == after, 'Network unit state changed; hold graphical trial.')
     require(not probe.git(source, 'source-clean-after', 'status', '--porcelain=v1', '--untracked-files=all'), 'Source changed during staging.')

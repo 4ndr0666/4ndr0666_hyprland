@@ -35,7 +35,7 @@ class Fixture:
         original.parent.mkdir(parents=True)
         original.write_text('retain my settings')
         self.env = stage.profile_environment(self.work)
-        self.calls, self.fail, self.validator_output = [], None, ''
+        self.calls, self.fail, self.validator_output = [], None, 'config ok\n'
         self.responses = {}
 
     def run(self, label, argv, **kwargs):
@@ -112,6 +112,16 @@ class ConfigStageTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'reported errors'):
                 self.collect(fixture, {})
             self.assertFalse((fixture.work / 'launch-trial.sh').exists())
+
+    def test_ansi_colored_error_is_not_hidden_from_native_verdict(self):
+        _, errors, _ = stage.verifier_diagnostics('\x1b[1;31mERR \x1b[0m]: Lua error: bad API\nconfig ok\n')
+        self.assertEqual(len(errors), 1)
+
+    def test_config_only_socket_warning_is_separate_from_parse_acceptance(self):
+        plain, errors, runtime = stage.verifier_diagnostics("\x1b[1;31mERR \x1b[0m]: Couldn't bind the Hyprland Socket 2. (3) IPC will not work.\nconfig ok\n")
+        self.assertFalse(errors)
+        self.assertEqual(len(runtime), 1)
+        self.assertIn('config ok', plain)
 
     def test_template_escape_is_rejected_before_renderer(self):
         with tempfile.TemporaryDirectory() as directory:
