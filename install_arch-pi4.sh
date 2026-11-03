@@ -669,13 +669,14 @@ def validate_target(device, image_bytes, inventory, swaps):
 
 def flash(a):
     require(os.geteuid() == 0, '--flash requires root.')
-    executable_tools(['lsblk', 'swapon', 'udevadm', 'wipefs', 'blockdev'])
+    executable_tools(['lsblk', 'swapon', 'udevadm', 'wipefs'])
     image = Path(a.flash).resolve(strict=True)
     require(image.is_file() and image.stat().st_size > 1024**3, 'Expected a regular full image file larger than1GiB.')
     require(re.fullmatch('[a-fA-F0-9]{64}', a.image_sha256 or ''), 'Expected external image SHA256.')
     require(digest(image) == a.image_sha256.lower(), 'Image hash mismatch; no target opened for writing.')
     device = str(Path(a.device).resolve(strict=True))
-    require(stat.S_ISBLK(os.stat(device).st_mode), 'Not a block device.')
+    authorized_device = os.stat(device)
+    require(stat.S_ISBLK(authorized_device.st_mode), 'Not a block device.')
     def inspect():
         inventory = json.loads(run(['lsblk', '--json', '--bytes', '--paths', '--output', 'PATH,TYPE,SIZE,RO,MOUNTPOINTS,MODEL,SERIAL', device]))
         swaps = set(run(['swapon', '--show', '--noheadings', '--raw', '--output', 'NAME']).splitlines())
@@ -690,11 +691,13 @@ def flash(a):
         require(tty.readline().strip() == 'ERASE ' + device, 'Confirmation did not match; target unchanged.')
     inventory2, disk2 = inspect()
     require(disk == disk2, 'Target identity/state changed after confirmation.')
+    require(os.stat(device).st_rdev == authorized_device.st_rdev, 'Target device changed after confirmation.')
     flash_work = Path(tempfile.mkdtemp(prefix='.gup-flash.', dir=image.parent))
     flash_work.chmod(0o700)
     print('Flash evidence: ' + str(flash_work), flush=True)
     flash_report = {'image': str(image), 'expected_sha256': a.image_sha256.lower(),
-                    'device': device, 'inventory': inventory2, 'completed': False, 'commands': []}
+                    'device': device, 'authorized_rdev': authorized_device.st_rdev,
+                    'inventory': inventory2, 'completed': False, 'commands': []}
     try:
         flash_copy(image, device, a.image_sha256.lower(), flash_report)
         flash_report['completed'] = True
@@ -704,15 +707,30 @@ def flash(a):
     print('Root partition retains the image size; no automatic expansion or reboot was performed.')
 
 def flash_copy(image, device, expected_hash, report):
-    # Wipe stale backup GPT/RAID signatures only AFTER explicit erase authorization.
-    # Otherwise a DOS image on a larger old GPT disk can leave conflicting headers.
-    run(['wipefs', '--all', device], records=report['commands'])
-    expected_rdev = os.stat(device).st_rdev
+    expected_rdev = report.get('authorized_rdev')
+    require(type(expected_rdev) is int, 'Missing authorized device identity; no target opened.')
     # No discard, signature bypass, forced unmount or automatic retries.
     total = image.stat().st_size
     target_fd = os.open(device, os.O_RDWR | os.O_EXCL | os.O_CLOEXEC)
-    with image.open('rb') as source, os.fdopen(target_fd, 'r+b', buffering=0) as target:
+    with os.fdopen(target_fd, 'r+b', buffering=0) as target, image.open('rb') as source:
         require(stat.S_ISBLK(os.fstat(target.fileno()).st_mode) and os.fstat(target.fileno()).st_rdev == expected_rdev, 'Target changed before open.')
+        # Hold the exclusive descriptor through signature cleanup, writing,
+        # readback and partition-table reread. Reopening the pathname could act
+        # on a different device after hotplug; /proc/self/fd binds the subprocess
+        # to the inherited, already-authorized open block device instead.
+        command = ['wipefs', '--all', '/proc/self/fd/' + str(target.fileno())]
+        try:
+            result = subprocess.run(command, stdin=subprocess.DEVNULL,
+                capture_output=True, timeout=120, env=ENV, pass_fds=(target.fileno(),))
+            status, stdout, stderr = result.returncode, result.stdout, result.stderr
+        except subprocess.TimeoutExpired as exc:
+            status, stdout, stderr = 124, exc.stdout or b'', exc.stderr or b''
+        except OSError as exc:
+            status, stdout, stderr = 127, b'', str(exc).encode()
+        report['commands'].append({'argv': command, 'exit_status': status,
+            'stdout': stdout.decode(errors='replace'), 'stdout_sha256': hashlib.sha256(stdout).hexdigest(),
+            'stderr': stderr.decode(errors='replace'), 'stderr_sha256': hashlib.sha256(stderr).hexdigest()})
+        require(status == 0, 'Signature cleanup failed (exit ' + str(status) + '): ' + stderr.decode(errors='replace'))
         done = 0
         while True:
             chunk = source.read(8 * 1024**2)
@@ -737,8 +755,8 @@ def flash_copy(image, device, expected_hash, report):
             h.update(chunk); remaining -= len(chunk)
         report.update(written_bytes=done, readback_bytes=total, readback_sha256=h.hexdigest())
         require(h.hexdigest() == expected_hash, 'Device readback hash mismatch; do not boot/accept this card.')
+        fcntl.ioctl(target.fileno(), 0x125f)  # Linux BLKRRPART, same held device.
     print('\nFlash/readback matches image bytes. Partition/filesystem/boot checks still pending.')
-    run(['blockdev', '--rereadpt', device], records=report['commands'])
     run(['udevadm', 'settle', '--timeout=30'], records=report['commands'])
 
 class Cancelled(Exception):
