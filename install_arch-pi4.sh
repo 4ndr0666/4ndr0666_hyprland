@@ -29,7 +29,7 @@ import tarfile
 import tempfile
 import time
 
-VERSION = '3.2.1'
+VERSION = '3.2.2'
 SCRIPT_PATH = Path(os.environ.get('GUP_PROVISION_SCRIPT', 'install_arch-pi4.sh')).absolute()
 SOURCE_URL = 'https://github.com/4ndr0666/4ndr0666_hyprland.git'
 ROOTFS_NAME = 'ArchLinuxARM-rpi-aarch64-latest.tar.gz'
@@ -680,7 +680,9 @@ def flash(a):
     authorized_device = os.stat(device)
     require(stat.S_ISBLK(authorized_device.st_mode), 'Not a block device.')
     def inspect():
-        inventory = json.loads(run(['lsblk', '--json', '--bytes', '--paths', '--output', 'PATH,TYPE,SIZE,RO,MOUNTPOINTS,MODEL,SERIAL', device]))
+        # PATH alone does not enable lsblk's children[] hierarchy. Request it
+        # explicitly so partition mount/swap/consumer checks see the full disk.
+        inventory = json.loads(run(['lsblk', '--json', '--tree', '--bytes', '--paths', '--output', 'PATH,TYPE,SIZE,RO,MOUNTPOINTS,MODEL,SERIAL', device]))
         swaps = set(run(['swapon', '--show', '--noheadings', '--raw', '--output', 'NAME']).splitlines())
         disk = validate_target(device, image.stat().st_size, inventory, swaps)
         return inventory, disk
@@ -1244,7 +1246,7 @@ def privileged_script(ui, args):
 
 def target_picker(ui, image_size):
     while True:
-        inventory = json.loads(run(['lsblk', '--json', '--bytes', '--paths', '--output',
+        inventory = json.loads(run(['lsblk', '--json', '--tree', '--bytes', '--paths', '--output',
             'PATH,TYPE,SIZE,RO,MOUNTPOINTS,MODEL,SERIAL,TRAN,RM']))
         swaps = set(run(['swapon', '--show', '--noheadings', '--raw', '--output', 'NAME']).splitlines())
         options = []; devices = {}
