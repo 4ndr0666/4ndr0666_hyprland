@@ -371,6 +371,14 @@ class ProvisionTests(unittest.TestCase):
         self.assertEqual(legacy.read_text(), data)
         self.assertEqual(ui.profile.stat().st_mode & 0o777, 0o600)
 
+    def test_malformed_source_cache_map_is_preserved_and_recovered(self):
+        ui = self.make_ui()
+        ui.profile.write_text(json.dumps({'source_cache_hashes': []}))
+        recovered = self.make_ui()
+        self.assertEqual(recovered.saved, {})
+        backup = next(recovered.folder.glob('session-unreadable.*.json'))
+        self.assertEqual(json.loads(backup.read_text())['source_cache_hashes'], [])
+
     def test_wifi_saved_password_survives_settings_and_next_burn(self):
         ui = self.make_ui()
         secret = ui.private_file('wifi', 'remember-this-password')
