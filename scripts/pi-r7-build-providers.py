@@ -191,7 +191,10 @@ def inspect_package(runner, name, path):
     for line in text.splitlines():
         key, sep, value = line.partition(' = ')
         if sep:
-            fields[key] = value
+            if key in fields:
+                fields[key] = [*fields[key], value] if isinstance(fields[key], list) else [fields[key], value]
+            else:
+                fields[key] = value
     require(fields.get('pkgname') == name, 'Unexpected package name.')
     require(fields.get('arch') == ('any' if name.startswith('ttf-') else 'aarch64'),
             'Unexpected package architecture.')

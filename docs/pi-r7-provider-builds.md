@@ -74,3 +74,7 @@ The existing networkd/resolved/wpa_supplicant backend remains in use. RofiNetwor
 still consumes NetworkManager and that integration remains OPEN. No complete
 GUP certification is claimed. The next milestone is the native build evidence
 archive, followed by provider installation/configuration and live runtime gates.
+
+After reviewing the successful native build archive, proceed with the separate
+[package installation step](pi-r7-package-installation.md). It rechecks the
+reviewed package bytes and source manifest before offering installation.

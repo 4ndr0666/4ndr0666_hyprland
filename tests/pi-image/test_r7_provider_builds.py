@@ -139,6 +139,15 @@ class ProviderBuildTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'Unexpected package name'):
                 build.inspect_package(runner, 'wallust', Path(directory) / 'fixture.pkg.tar.zst')
 
+    def test_repeated_package_metadata_retains_all_dependencies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runner = FakeRunner(Path(directory))
+            runner.run = lambda *a, **k: 'pkgname = ttf-victor-mono\narch = any\ndepend = first\ndepend = second\ndepend = third\n'
+            package = Path(directory) / 'fixture.pkg.tar.zst'
+            package.write_bytes(b'fixture')
+            result = build.inspect_package(runner, 'ttf-victor-mono', package)
+            self.assertEqual(result['metadata']['depend'], ['first', 'second', 'third'])
+
     def test_evidence_excludes_sources_keys_cache_and_built_packages(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory) / 'providers-test'
