@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import tarfile
 import unittest
 from unittest.mock import patch
 
@@ -94,5 +95,21 @@ class ReadinessTests(unittest.TestCase):
             app.collect(probe,report)
             self.assertEqual(report['status'],'BLOCKED_PROVIDER_RECONCILIATION')
             self.assertEqual(report['unsupported_sync_architectures'],{'curl':'x86_64'})
+
+    def test_return_archive_excludes_checkouts_and_verifies_every_stream(self):
+        with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
+            work=Path(directory)/'capture'; work.mkdir(); (work/'logs').mkdir()
+            (work/'logs/sample.stdout').write_bytes(b'captured evidence')
+            (work/'commands.json').write_text('[]\n')
+            (work/'source').mkdir(); (work/'source/private-fixture').write_text('not part of evidence')
+            app.seal(work,{'status':'PREVIEW_COMPLETE_REVIEW_REQUIRED'})
+            with tarfile.open(work.with_suffix('.tar.gz'),'r:gz') as archive:
+                data={member.name:archive.extractfile(member).read() for member in archive.getmembers()}
+            self.assertNotIn('source/private-fixture',data)
+            manifest=data['SHA256SUMS'].decode().splitlines()
+            self.assertEqual(len(manifest),3)
+            for line in manifest:
+                checksum,name=line.split('  ',1)
+                self.assertEqual(app.digest(data[name]),checksum)
 
 if __name__=='__main__': unittest.main(verbosity=2)
