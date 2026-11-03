@@ -29,7 +29,7 @@ import tarfile
 import tempfile
 import time
 
-VERSION = '3.2.2'
+VERSION = '3.2.3'
 SCRIPT_PATH = Path(os.environ.get('GUP_PROVISION_SCRIPT', 'install_arch-pi4.sh')).absolute()
 SOURCE_URL = 'https://github.com/4ndr0666/4ndr0666_hyprland.git'
 ROOTFS_NAME = 'ArchLinuxARM-rpi-aarch64-latest.tar.gz'
@@ -671,7 +671,7 @@ def validate_target(device, image_bytes, inventory, swaps):
 
 def flash(a):
     require(os.geteuid() == 0, '--flash requires root.')
-    executable_tools(['lsblk', 'swapon', 'udevadm', 'wipefs'])
+    executable_tools(['lsblk', 'swapon', 'udevadm'])
     image = Path(a.flash).resolve(strict=True)
     require(image.is_file() and image.stat().st_size > 1024**3, 'Expected a regular full image file larger than1GiB.')
     require(re.fullmatch('[a-fA-F0-9]{64}', a.image_sha256 or ''), 'Expected external image SHA256.')
@@ -710,6 +710,83 @@ def flash(a):
         (flash_work / 'SHA256SUMS').write_text(digest(flash_work / 'flash-report.json') + '  flash-report.json\n')
     print('Root partition retains the image size; no automatic expansion or reboot was performed.')
 
+SIGNATURE_CLEANER = r'''
+import ctypes
+import json
+import os
+import sys
+
+# libblkid is supplied by util-linux, which also supplies the required lsblk.
+# Use its existing-fd API: never reopen a block device already held O_EXCL.
+try:
+    lib = ctypes.CDLL('libblkid.so.1', use_errno=True)
+except OSError as exc:
+    raise SystemExit('Missing host libblkid.so.1 (Arch package util-linux-libs): ' + str(exc))
+P = ctypes.c_void_p
+I = ctypes.c_int
+def bind(name, args, result=I):
+    fn = getattr(lib, name)
+    fn.argtypes = args
+    fn.restype = result
+    return fn
+new = bind('blkid_new_probe', [], P)
+free = bind('blkid_free_probe', [P], None)
+set_device = bind('blkid_probe_set_device', [P, I, ctypes.c_longlong, ctypes.c_longlong])
+superblocks = bind('blkid_probe_enable_superblocks', [P, I])
+super_flags = bind('blkid_probe_set_superblocks_flags', [P, I])
+partitions = bind('blkid_probe_enable_partitions', [P, I])
+part_flags = bind('blkid_probe_set_partitions_flags', [P, I])
+probe_next = bind('blkid_do_probe', [P])
+wipe = bind('blkid_do_wipe', [P, I])
+def check(code, label):
+    if code != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, label + ': ' + (os.strerror(error) if error else 'libblkid failure'))
+fd = int(sys.argv[1])
+if os.fstat(fd).st_rdev != int(sys.argv[2]):
+    raise RuntimeError('Inherited target identity mismatch')
+pr = new()
+if not pr:
+    raise MemoryError('libblkid probe allocation failed')
+try:
+    check(set_device(pr, fd, 0, 0), 'bind existing descriptor')
+    check(superblocks(pr, 1), 'enable superblock probing')
+    # BLKID_SUBLKS_MAGIC | BLKID_SUBLKS_BADCSUM (public libblkid API).
+    check(super_flags(pr, (1 << 9) | (1 << 10)), 'superblock flags')
+    check(partitions(pr, 1), 'enable partition probing')
+    # BLKID_PARTS_MAGIC | BLKID_PARTS_FORCE_GPT: include stale backup GPT.
+    check(part_flags(pr, (1 << 3) | (1 << 1)), 'partition flags')
+    erased = 0
+    for _ in range(1024):
+        status = probe_next(pr)
+        if status == 1:
+            break
+        check(status, 'probe signatures')
+        check(wipe(pr, 0), 'erase signature')
+        erased += 1
+    else:
+        raise RuntimeError('Signature cleanup did not converge')
+    os.fsync(fd)
+    print(json.dumps({'provider': 'libblkid existing-fd API', 'erased_signatures': erased}))
+finally:
+    free(pr)
+'''
+
+def erase_signatures(target_fd, authorized_rdev, report):
+    command = [sys.executable, '-I', '-c', SIGNATURE_CLEANER, str(target_fd), str(authorized_rdev)]
+    try:
+        result = subprocess.run(command, stdin=subprocess.DEVNULL,
+            capture_output=True, timeout=120, env=ENV, pass_fds=(target_fd,))
+        status, stdout, stderr = result.returncode, result.stdout, result.stderr
+    except subprocess.TimeoutExpired as exc:
+        status, stdout, stderr = 124, exc.stdout or b'', exc.stderr or b''
+    except OSError as exc:
+        status, stdout, stderr = 127, b'', str(exc).encode()
+    report['commands'].append({'argv': command, 'exit_status': status,
+        'stdout': stdout.decode(errors='replace'), 'stdout_sha256': hashlib.sha256(stdout).hexdigest(),
+        'stderr': stderr.decode(errors='replace'), 'stderr_sha256': hashlib.sha256(stderr).hexdigest()})
+    require(status == 0, 'Signature cleanup failed (exit ' + str(status) + '): ' + stderr.decode(errors='replace'))
+
 def flash_copy(image, device, expected_hash, report):
     expected_rdev = report.get('authorized_rdev')
     require(type(expected_rdev) is int, 'Missing authorized device identity; no target opened.')
@@ -718,23 +795,12 @@ def flash_copy(image, device, expected_hash, report):
     target_fd = os.open(device, os.O_RDWR | os.O_EXCL | os.O_CLOEXEC)
     with os.fdopen(target_fd, 'r+b', buffering=0) as target, image.open('rb') as source:
         require(stat.S_ISBLK(os.fstat(target.fileno()).st_mode) and os.fstat(target.fileno()).st_rdev == expected_rdev, 'Target changed before open.')
-        # Hold the exclusive descriptor through signature cleanup, writing,
-        # readback and partition-table reread. Reopening the pathname could act
-        # on a different device after hotplug; /proc/self/fd binds the subprocess
-        # to the inherited, already-authorized open block device instead.
-        command = ['wipefs', '--all', '/proc/self/fd/' + str(target.fileno())]
-        try:
-            result = subprocess.run(command, stdin=subprocess.DEVNULL,
-                capture_output=True, timeout=120, env=ENV, pass_fds=(target.fileno(),))
-            status, stdout, stderr = result.returncode, result.stdout, result.stderr
-        except subprocess.TimeoutExpired as exc:
-            status, stdout, stderr = 124, exc.stdout or b'', exc.stderr or b''
-        except OSError as exc:
-            status, stdout, stderr = 127, b'', str(exc).encode()
-        report['commands'].append({'argv': command, 'exit_status': status,
-            'stdout': stdout.decode(errors='replace'), 'stdout_sha256': hashlib.sha256(stdout).hexdigest(),
-            'stderr': stderr.decode(errors='replace'), 'stderr_sha256': hashlib.sha256(stderr).hexdigest()})
-        require(status == 0, 'Signature cleanup failed (exit ' + str(status) + '): ' + stderr.decode(errors='replace'))
+        # Keep exclusive ownership throughout. The child uses the inherited
+        # descriptor directly, without a second block-device open or --force.
+        erase_signatures(target.fileno(), expected_rdev, report)
+        # libblkid's writes share this open-file description and its offset.
+        # Reset it explicitly before copying the image from byte zero.
+        target.seek(0)
         done = 0
         while True:
             chunk = source.read(8 * 1024**2)

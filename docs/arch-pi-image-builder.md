@@ -66,6 +66,15 @@ write, flush, readback and partition reread use the held device. Refuse on any
 identity/state change, signature failure, short write or readback mismatch.
 No automatic retry, discard, force-unmount, resize or reboot occurs.
 
+Signature cleanup uses the host's `libblkid.so.1` (Arch: `util-linux-libs`,
+already a dependency of util-linux). A bounded Python child receives the held
+descriptor and calls the library's existing-descriptor API. It does not run
+`wipefs`, reopen the device path, release exclusivity, or use `--force`.
+The copy position is reset to byte zero after cleanup. Earlier regular-file
+tests did not model Linux block-device exclusive-open conflicts; they cannot
+establish physical-device correctness. Native tests now cover GPT headers,
+stale backup GPT, idempotency, replaced paths, write failures and timeouts.
+
 Before build failure, retain the existing card and diagnose the saved evidence.
 After flash failure, do not boot or accept the card; use the separately retained
 recovery image/card if needed. Stop target acceptance on boot failure, lost SSH
