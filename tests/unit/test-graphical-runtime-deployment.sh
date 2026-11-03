@@ -34,6 +34,8 @@ STARTUP="$TMP_HOME/.config/hypr/configs/Startup_Apps.lua"
 INITIALIZER="$TMP_HOME/.config/hypr/UserScripts/4ndr0init.sh"
 
 [[ -x "$INITIALIZER" ]]
+[[ -x "$TMP_HOME/.config/hypr/UserScripts/NetworkBackend.py" ]]
+cmp "$ROOT/config/hypr/UserScripts/NetworkBackend.py" "$TMP_HOME/.config/hypr/UserScripts/NetworkBackend.py"
 grep -Fq 'custom-user-command' "$STARTUP"
 grep -Fq 'hl.exec_cmd(UserScripts .. "/4ndr0init.sh")' "$STARTUP"
 grep -Fq 'source("configs.Startup_Apps")' "$ENTRYPOINT"

@@ -26,6 +26,12 @@ if [[ ! -f "$HOME/.config/hypr/.initial_startup_done" ]]; then
 
     # Initialize the wallpaper daemon and generate the palette exactly once.
     if [[ -f "$wallpaper" ]]; then
+        # The canonical initializer owns daemon startup in a separate hook.
+        # Wait for actual readiness; one fixed sleep races its portal startup.
+        for _ in {1..100}; do
+            awww query >/dev/null 2>&1 && break
+            sleep 0.1
+        done
         awww query >/dev/null 2>&1 || {
             printf '%s\n' '[ERROR] awww-daemon is not ready; refusing to start a second owner.' >&2
             exit 1

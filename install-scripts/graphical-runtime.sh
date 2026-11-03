@@ -9,6 +9,7 @@ HYPR_HOME="$HOME/.config/hypr"
 ENTRYPOINT="$HYPR_HOME/hyprland.lua"
 STARTUP="$HYPR_HOME/configs/Startup_Apps.lua"
 INITIALIZER="$HYPR_HOME/UserScripts/4ndr0init.sh"
+NETWORK_BACKEND="$HYPR_HOME/UserScripts/NetworkBackend.py"
 
 fail() {
   printf '[ERROR] Graphical runtime deployment: %s\n' "$*" >&2
@@ -17,6 +18,7 @@ fail() {
 
 for source in \
   "$CONFIG_ROOT/UserScripts/4ndr0init.sh" \
+  "$CONFIG_ROOT/UserScripts/NetworkBackend.py" \
   "$CONFIG_ROOT/configs/Startup_Apps.lua"; do
   [[ -f "$source" && -r "$source" ]] || fail "required repository source is missing or unreadable: $source"
 done
@@ -32,6 +34,10 @@ if [[ -L "$INITIALIZER" ]] || ! cmp -s -- "$CONFIG_ROOT/UserScripts/4ndr0init.sh
   file_state_atomic_replace "$CONFIG_ROOT/UserScripts/4ndr0init.sh" "$INITIALIZER"
 fi
 chmod +x -- "$INITIALIZER"
+if [[ -L "$NETWORK_BACKEND" ]] || ! cmp -s -- "$CONFIG_ROOT/UserScripts/NetworkBackend.py" "$NETWORK_BACKEND" 2>/dev/null; then
+  file_state_atomic_replace "$CONFIG_ROOT/UserScripts/NetworkBackend.py" "$NETWORK_BACKEND"
+fi
+chmod +x -- "$NETWORK_BACKEND"
 
 # Preserve user startup additions. Copy the repository default only when no
 # Startup_Apps module exists; otherwise inject just the mandatory initializer

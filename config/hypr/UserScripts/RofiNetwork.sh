@@ -12,6 +12,16 @@ Add dmenu options and default terminal if desired to
 ~/.config/rofi/networkmenu_config.ini
 
 """
+# Dispatch before importing GI/NM so the Pi's existing networkd backend cannot
+# be activated/migrated as a side effect of opening the network menu.
+if __name__ == '__main__':
+    import subprocess as _subprocess
+    import sys as _sys
+    from pathlib import Path as _Path
+    _dispatch = _subprocess.run([_sys.executable, str(_Path(__file__).with_name('NetworkBackend.py')), 'menu'])
+    if _dispatch.returncode != 75:
+        _sys.exit(_dispatch.returncode)
+
 import pathlib
 import struct
 import configparser
