@@ -135,7 +135,7 @@ def build_environment(work):
                          'PKGEXT', 'SRCEXT', 'GPGKEY', 'CARCH',
                          'CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LD_PRELOAD'}}
     env = {k: v for k, v in env.items() if not k.startswith('BASH_FUNC_')}
-    env.update(LC_ALL='C', GNUPGHOME=str(work / 'gnupg'), CARGO_HOME=str(work / 'cargo'),
+    env.update(LC_ALL='C', PATH='/usr/bin:/bin', GNUPGHOME=str(work / 'gnupg'), CARGO_HOME=str(work / 'cargo'),
                CARGO_BUILD_JOBS='1', MAKEFLAGS='-j1', PYTHONDONTWRITEBYTECODE='1')
     return env
 

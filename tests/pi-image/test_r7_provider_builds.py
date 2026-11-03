@@ -51,6 +51,7 @@ class ProviderBuildTests(unittest.TestCase):
                 self.assertNotIn(key, env)
         self.assertEqual(env['https_proxy'], values['https_proxy'])
         self.assertEqual(env['GNUPGHOME'], '/private/gnupg')
+        self.assertEqual(env['PATH'], '/usr/bin:/bin')
 
     def test_config_paths_are_shell_quoted_and_build_root_is_not_nested(self):
         text = build.makepkg_config(Path("/private/space ' dir"))
