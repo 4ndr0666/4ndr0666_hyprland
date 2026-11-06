@@ -24,6 +24,15 @@ for source in \
 done
 [[ -f "$ENTRYPOINT" && -r "$ENTRYPOINT" ]] || fail "Hyprland Lua entrypoint is missing or unreadable: $ENTRYPOINT. Deploy a compatible Hyprland configuration before installing mandatory runtime hooks."
 
+# UserScripts is user-owned. Stop before making any changes when an existing
+# initializer differs; a backup does not make overwriting customization safe.
+if [[ -e "$INITIALIZER" || -L "$INITIALIZER" ]]; then
+  [[ ! -L "$INITIALIZER" && -f "$INITIALIZER" && -x "$INITIALIZER" ]] ||
+    fail "existing user initializer is not an executable regular file; preserved: $INITIALIZER"
+  cmp -s -- "$CONFIG_ROOT/UserScripts/4ndr0init.sh" "$INITIALIZER" ||
+    fail "existing user initializer differs from the runtime candidate; preserved: $INITIALIZER"
+fi
+
 source "$SCRIPT_DIR/core/files.sh"
 
 mkdir -p "$HYPR_HOME/configs" "$HYPR_HOME/UserScripts"

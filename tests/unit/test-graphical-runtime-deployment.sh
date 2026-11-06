@@ -46,6 +46,23 @@ HOME="$TMP_HOME" XDG_STATE_HOME="$TMP_HOME/.local/state" bash "$DEPLOY"
 [[ "$(grep -Fc 'source("configs.Startup_Apps")' "$ENTRYPOINT")" -eq 1 ]]
 [[ "$(grep -Fc 'hl.exec_cmd(UserScripts .. "/4ndr0init.sh")' "$STARTUP")" -eq 1 ]]
 
+# A customized initializer is user-owned and must stop deployment before any
+# startup, entrypoint, or helper is changed.
+CUSTOM_HOME="$(mktemp -d)"
+mkdir -p "$CUSTOM_HOME/.config/hypr/UserScripts" "$CUSTOM_HOME/.config/hypr/configs"
+printf '%s\n' 'custom entrypoint' > "$CUSTOM_HOME/.config/hypr/hyprland.lua"
+printf '%s\n' '#!/bin/sh' 'echo custom' > "$CUSTOM_HOME/.config/hypr/UserScripts/4ndr0init.sh"
+chmod +x "$CUSTOM_HOME/.config/hypr/UserScripts/4ndr0init.sh"
+BEFORE="$(sha256sum "$CUSTOM_HOME/.config/hypr/UserScripts/4ndr0init.sh")"
+if HOME="$CUSTOM_HOME" XDG_STATE_HOME="$CUSTOM_HOME/.local/state" bash "$DEPLOY"; then
+  printf '%s\n' 'FAIL: customized initializer was accepted' >&2
+  exit 1
+fi
+[[ "$BEFORE" == "$(sha256sum "$CUSTOM_HOME/.config/hypr/UserScripts/4ndr0init.sh")" ]]
+[[ ! -e "$CUSTOM_HOME/.config/hypr/UserScripts/NetworkBackend.py" ]]
+[[ ! -e "$CUSTOM_HOME/.config/hypr/configs/Startup_Apps.lua" ]]
+rm -rf -- "$CUSTOM_HOME"
+
 # A clean profile without Startup_Apps.lua receives the repository module.
 mkdir -p "$MISSING_HOME/.config/hypr"
 cat > "$MISSING_HOME/.config/hypr/hyprland.lua" <<'LUA'
