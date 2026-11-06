@@ -63,6 +63,24 @@ fi
 [[ ! -e "$CUSTOM_HOME/.config/hypr/configs/Startup_Apps.lua" ]]
 rm -rf -- "$CUSTOM_HOME"
 
+# The independently captured initializer differs only in comments and is retained.
+CAPTURE_HOME="$(mktemp -d)"
+mkdir -p "$CAPTURE_HOME/.config/hypr/UserScripts"
+printf '%s\n' 'local function source(module_name)' 'return require(module_name)' 'end' 'source("configs.Keybinds")' > "$CAPTURE_HOME/.config/hypr/hyprland.lua"
+awk '{print} /^set -euo pipefail$/ {print "# This is the synchronous initialization for D-Bus, Environment, Portals "; print "# and graphical runtime daemons."; print "# "}' "$ROOT/config/hypr/UserScripts/4ndr0init.sh" > "$CAPTURE_HOME/.config/hypr/UserScripts/4ndr0init.sh"
+chmod +x "$CAPTURE_HOME/.config/hypr/UserScripts/4ndr0init.sh"
+BEFORE="$(sha256sum "$CAPTURE_HOME/.config/hypr/UserScripts/4ndr0init.sh")"
+[[ "${BEFORE%% *}" == 4720b7baa7140a606fa0e3ca7262c7d76afec5002afbfded408d1d003cd078f3 ]]
+HOME="$CAPTURE_HOME" XDG_STATE_HOME="$CAPTURE_HOME/.local/state" bash "$DEPLOY"
+[[ "$BEFORE" == "$(sha256sum "$CAPTURE_HOME/.config/hypr/UserScripts/4ndr0init.sh")" ]]
+# A conflicting user network helper must block before modifying any file.
+printf '%s\n' '#!/bin/sh' 'echo custom' > "$CAPTURE_HOME/.config/hypr/UserScripts/NetworkBackend.py"
+chmod +x "$CAPTURE_HOME/.config/hypr/UserScripts/NetworkBackend.py"
+BEFORE="$(sha256sum "$CAPTURE_HOME/.config/hypr/UserScripts/NetworkBackend.py")"
+if HOME="$CAPTURE_HOME" XDG_STATE_HOME="$CAPTURE_HOME/.local/state" bash "$DEPLOY"; then exit 1; fi
+[[ "$BEFORE" == "$(sha256sum "$CAPTURE_HOME/.config/hypr/UserScripts/NetworkBackend.py")" ]]
+rm -rf -- "$CAPTURE_HOME"
+
 # A clean profile without Startup_Apps.lua receives the repository module.
 mkdir -p "$MISSING_HOME/.config/hypr"
 cat > "$MISSING_HOME/.config/hypr/hyprland.lua" <<'LUA'

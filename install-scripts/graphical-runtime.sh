@@ -29,8 +29,20 @@ done
 if [[ -e "$INITIALIZER" || -L "$INITIALIZER" ]]; then
   [[ ! -L "$INITIALIZER" && -f "$INITIALIZER" && -x "$INITIALIZER" ]] ||
     fail "existing user initializer is not an executable regular file; preserved: $INITIALIZER"
-  cmp -s -- "$CONFIG_ROOT/UserScripts/4ndr0init.sh" "$INITIALIZER" ||
-    fail "existing user initializer differs from the runtime candidate; preserved: $INITIALIZER"
+  if ! cmp -s -- "$CONFIG_ROOT/UserScripts/4ndr0init.sh" "$INITIALIZER"; then
+    # This exact captured desktop version was independently compared: its
+    # only difference from the candidate is three comment lines.
+    captured_sha=4720b7baa7140a606fa0e3ca7262c7d76afec5002afbfded408d1d003cd078f3
+    actual_sha="$(sha256sum -- "$INITIALIZER")"
+    [[ "${actual_sha%% *}" == "$captured_sha" ]] ||
+      fail "existing user initializer differs from the runtime candidate; preserved: $INITIALIZER"
+  fi
+fi
+if [[ -e "$NETWORK_BACKEND" || -L "$NETWORK_BACKEND" ]]; then
+  [[ ! -L "$NETWORK_BACKEND" && -f "$NETWORK_BACKEND" && -x "$NETWORK_BACKEND" ]] ||
+    fail "existing network helper is not an executable regular file; preserved: $NETWORK_BACKEND"
+  cmp -s -- "$CONFIG_ROOT/UserScripts/NetworkBackend.py" "$NETWORK_BACKEND" ||
+    fail "existing user network helper differs from the runtime candidate; preserved: $NETWORK_BACKEND"
 fi
 
 source "$SCRIPT_DIR/core/files.sh"
@@ -39,7 +51,7 @@ mkdir -p "$HYPR_HOME/configs" "$HYPR_HOME/UserScripts"
 
 # Replace only the owned initializer when its contents differ. Existing
 # versions are backed up through the canonical file-state manifest.
-if [[ -L "$INITIALIZER" ]] || ! cmp -s -- "$CONFIG_ROOT/UserScripts/4ndr0init.sh" "$INITIALIZER" 2>/dev/null; then
+if [[ ! -e "$INITIALIZER" && ! -L "$INITIALIZER" ]]; then
   file_state_atomic_replace "$CONFIG_ROOT/UserScripts/4ndr0init.sh" "$INITIALIZER"
 fi
 chmod +x -- "$INITIALIZER"
