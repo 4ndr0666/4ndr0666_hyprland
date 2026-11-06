@@ -65,6 +65,13 @@ chmod +x -- "$NETWORK_BACKEND"
 # hook if it is absent.
 if [[ ! -f "$STARTUP" ]]; then
   file_state_atomic_replace "$CONFIG_ROOT/configs/Startup_Apps.lua" "$STARTUP"
+elif [[ ! -L "$STARTUP" ]]; then
+  # Upgrade the exact reviewed desktop module: it launches a second wallpaper
+  # daemon and unconditionally starts NM applets on the networkd Pi.
+  startup_sha="$(sha256sum -- "$STARTUP")"
+  if [[ "${startup_sha%% *}" == 30e72ee267f1c43ee7f416434205777488e73b75a1890eb1f093c264e091c958 ]]; then
+    file_state_atomic_replace "$CONFIG_ROOT/configs/Startup_Apps.lua" "$STARTUP"
+  fi
 fi
 
 if ! grep -Fq 'hl.exec_cmd(UserScripts .. "/4ndr0init.sh")' "$STARTUP"; then

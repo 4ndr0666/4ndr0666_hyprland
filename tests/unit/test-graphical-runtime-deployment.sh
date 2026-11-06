@@ -81,6 +81,17 @@ if HOME="$CAPTURE_HOME" XDG_STATE_HOME="$CAPTURE_HOME/.local/state" bash "$DEPLO
 [[ "$BEFORE" == "$(sha256sum "$CAPTURE_HOME/.config/hypr/UserScripts/NetworkBackend.py")" ]]
 rm -rf -- "$CAPTURE_HOME"
 
+# The captured desktop startup is upgraded with a recorded backup.
+DESKTOP_HOME="$(mktemp -d)"
+mkdir -p "$DESKTOP_HOME/.config/hypr/configs"
+printf '%s\n' 'local function source(module_name)' 'return require(module_name)' 'end' 'source("configs.Keybinds")' > "$DESKTOP_HOME/.config/hypr/hyprland.lua"
+git -C "$ROOT" show 8dbe1e8219c45a4bd00c26425e4867da901e88eb:config/hypr/configs/Startup_Apps.lua | awk '/hl.exec_cmd\(UserScripts .. "\/4ndr0init.sh"\)/ {print "    hl.exec_cmd(\"awww-daemon --format xrgb\")"} {print}' > "$DESKTOP_HOME/.config/hypr/configs/Startup_Apps.lua"
+[[ $(sha256sum "$DESKTOP_HOME/.config/hypr/configs/Startup_Apps.lua" | cut -d' ' -f1) == 30e72ee267f1c43ee7f416434205777488e73b75a1890eb1f093c264e091c958 ]]
+HOME="$DESKTOP_HOME" XDG_STATE_HOME="$DESKTOP_HOME/.local/state" bash "$DEPLOY"
+cmp "$ROOT/config/hypr/configs/Startup_Apps.lua" "$DESKTOP_HOME/.config/hypr/configs/Startup_Apps.lua"
+grep -Fq 'replaced' "$DESKTOP_HOME/.local/state/4ndr0666-hyprland/files.manifest"
+rm -rf -- "$DESKTOP_HOME"
+
 # A clean profile without Startup_Apps.lua receives the repository module.
 mkdir -p "$MISSING_HOME/.config/hypr"
 cat > "$MISSING_HOME/.config/hypr/hyprland.lua" <<'LUA'
