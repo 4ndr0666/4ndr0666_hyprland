@@ -72,6 +72,7 @@ TESTS=(
   tests/unit/test-express-assets-preservation.sh
   tests/unit/test-express-backup-preservation.sh
   tests/unit/test-user-scripts-preservation.sh
+  tests/unit/test-express-userconfigs-preservation.sh
   tests/unit/test-legacy-userconfig-archive.sh
   tests/unit/test-asset-deployment-connectivity.sh
   tests/unit/test-autodispatch-lifecycle.sh

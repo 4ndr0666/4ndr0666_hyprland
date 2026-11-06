@@ -263,7 +263,26 @@ restore_user_configs() {
 
   [[ -n "$LAST_HYPR_BACKUP_PATH" && -d "$backup_dir_path" ]] || return 0
   if [[ "$express_mode" -eq 1 ]]; then
-    printf '%s\n' "[NOTE] Express mode: skipping UserConfigs restoration prompts." | tee -a "$log"
+    # Restore user-owned files first; add only default paths that are absent.
+    # Legacy conf files remain present but are not implicitly active in Lua.
+    local stage displaced
+    [[ ! -L "$backup_dir_path" ]] || { printf '%s\n' '[ERROR] UserConfigs backup is a symlink; refusing restoration.' >&2; return 1; }
+    stage="$(mktemp -d --tmpdir="$dirpath" '.user-configs.XXXXXX')" || return 1
+    if ! cp -a -- "$backup_dir_path/." "$stage/" ||
+       ! cp -a -n -- "$dirpath/UserConfigs/." "$stage/"; then
+      rm -rf -- "$stage"
+      return 1
+    fi
+    if ! displaced="$(replace_dir_transaction "$stage" "$dirpath/UserConfigs" "$log")"; then
+      rm -rf -- "$stage"
+      return 1
+    fi
+    rm -rf -- "$stage"
+    printf '%s\n' "[OK] Restored user configurations; deployed defaults retained at ${displaced:-none}." | tee -a "$log"
+    if find "$backup_dir_path" -type f -name '*.conf' -print -quit | grep -q .; then
+      printf '%s\n' '[WARN] Legacy .conf files are preserved but are not loaded by the Lua runtime.' | tee -a "$log"
+    fi
+    return 0
   else
     local current_version="${old_version:-999.9.9}"
     local target_version="2.3.19"
