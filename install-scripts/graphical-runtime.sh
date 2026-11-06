@@ -60,6 +60,16 @@ if [[ -L "$NETWORK_BACKEND" ]] || ! cmp -s -- "$CONFIG_ROOT/UserScripts/NetworkB
 fi
 chmod +x -- "$NETWORK_BACKEND"
 
+# Reconcile the exact captured first-boot consumer with sole daemon ownership.
+# Unknown local versions remain user-owned and require separate review.
+FIRST_BOOT="$HYPR_HOME/initial-boot.sh"
+if [[ -f "$FIRST_BOOT" && ! -L "$FIRST_BOOT" ]]; then
+  first_boot_sha="$(sha256sum -- "$FIRST_BOOT")"
+  if [[ "${first_boot_sha%% *}" == 555cc5e7ca9380286615e6171c496cacf43e8ab83dab45b9c065b5e727c3d50b ]]; then
+    file_state_atomic_replace "$CONFIG_ROOT/initial-boot.sh" "$FIRST_BOOT"
+  fi
+fi
+
 # Preserve user startup additions. Copy the repository default only when no
 # Startup_Apps module exists; otherwise inject just the mandatory initializer
 # hook if it is absent.
