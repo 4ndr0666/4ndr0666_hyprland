@@ -324,31 +324,24 @@ restore_user_configs() {
   [[ -n "$detected_version" ]] && cleanup_duplicate_userconfigs "$detected_version" "$log"
 }
 
-restore_user_scripts() {
+restore_user_scripts() (
   local log="$1"
   local express_mode="$2"
   local dirpath="$HOME/.config/hypr"
   local backup_dir_path="$LAST_HYPR_BACKUP_PATH/UserScripts"
-  local -a scripts_to_restore=(RofiBeats.sh Weather.py Weather.sh)
+  local stage displaced
 
-  [[ -n "$LAST_HYPR_BACKUP_PATH" && -d "$backup_dir_path" ]] || return 0
-  [[ "$express_mode" -eq 1 ]] && { printf '%s\n' "${NOTE:-[NOTE]} Express mode: skipping UserScripts restoration prompts." | tee -a "$log"; return 0; }
-
-  printf '%s\n' "${NOTE:-[NOTE]} Restoring previous User-Scripts..." | tee -a "$log"
-  local script_name backup_script
-  for script_name in "${scripts_to_restore[@]}"; do
-    backup_script="$backup_dir_path/$script_name"
-    [[ -f "$backup_script" ]] || continue
-    printf '\n%s Found %s in hypr backup...\n' "${INFO:-[INFO]}" "$script_name"
-    read -r -p "${CAT:-[ACTION]} Do you want to restore $script_name from backup? (y/N): " restore_script
-    if [[ "$restore_script" == [Yy]* ]]; then
-      cp -f -- "$backup_script" "$dirpath/UserScripts/$script_name"
-      printf '%s\n' "${OK:-[OK]} - $script_name restored!" | tee -a "$log"
-    else
-      printf '%s\n' "${NOTE:-[NOTE]} - Skipped restoring $script_name." | tee -a "$log"
-    fi
-  done
-}
+  [[ -n "$LAST_HYPR_BACKUP_PATH" && -d "$backup_dir_path" && ! -L "$backup_dir_path" ]] || return 0
+  stage="$(mktemp -d --tmpdir="$dirpath" '.user-scripts.XXXXXX')" || return 1
+  trap 'rm -rf -- "$stage"' EXIT
+  cp -a -- "$backup_dir_path/." "$stage/" || return 1
+  # Old user-owned paths win. Add new default paths only where absent.
+  if [[ -d "$dirpath/UserScripts" && ! -L "$dirpath/UserScripts" ]]; then
+    cp -a -n -- "$dirpath/UserScripts/." "$stage/" || return 1
+  fi
+  displaced="$(replace_dir_transaction "$stage" "$dirpath/UserScripts" "$log")" || return 1
+  printf '%s\n' "${OK:-[OK]} Restored user scripts and filled missing defaults; prior deployed tree retained at ${displaced:-none}." | tee -a "$log"
+)
 
 restore_hypr_files() {
   local log="$1"
