@@ -167,11 +167,6 @@ restore_hypr_assets() {
   local backup_hypr_path="$LAST_HYPR_BACKUP_PATH"
 
   [[ -n "$backup_hypr_path" && -d "$backup_hypr_path" ]] || return 0
-  if [[ "$express_mode" -eq 1 ]]; then
-    printf '%s\n' "${NOTE:-[NOTE]} Express mode: skipping automatic restoration of animations and monitor profiles." | tee -a "$log"
-    return 0
-  fi
-
   printf '\n%s\n' "${NOTE:-[NOTE]} Restoring user Lua animations and monitor profiles into $hypr_dir..."
 
   local lua_dir backup_subdir
