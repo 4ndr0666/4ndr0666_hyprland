@@ -41,11 +41,7 @@ cleanup_backups() {
       [[ "$backup" -nt "$latest" ]] && latest="$backup"
     done
     if [[ "$mode" == auto ]]; then
-      for backup in "${backups[@]}"; do
-        [[ "$backup" == "$latest" ]] && continue
-        rm -rf -- "$backup"
-      done
-      printf '%s\n' "${INFO:-[INFO]} Express mode: trimmed backups for ${dir##*/}, keeping ${latest##*/}." | tee -a "$log"
+      printf '%s\n' "${INFO:-[INFO]} Express mode: retained all backups for ${dir##*/}." | tee -a "$log"
       continue
     fi
     printf '\n%s Found multiple backups for: %s\n' "${INFO:-[INFO]}" "${dir##*/}"
