@@ -31,6 +31,12 @@ def require(value, message):
     if not value:
         raise RuntimeError(message)
 
+def config_error_count(raw):
+    errors = json.loads(raw)
+    if not isinstance(errors, list) or any(not isinstance(x, str) for x in errors):
+        raise ValueError('Unexpected configerrors response')
+    return sum(bool(x.strip()) for x in errors)
+
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -183,7 +189,7 @@ def runtime_sample(probe, env, home, baseline, label):
                 checks['monitor_count'] = 0
         if name == 'configerrors' and result.returncode == 0:
             try:
-                checks['config_error_count'] = len(json.loads(result.stdout))
+                checks['config_error_count'] = config_error_count(result.stdout)
             except (ValueError, TypeError):
                 checks['config_error_count'] = 'unparsed; review raw capture'
         if name == 'session-bus' and result.returncode == 0:
@@ -257,7 +263,7 @@ def trial(probe, state, report):
                     sampled = True
                 time.sleep(1)
             if launched.poll() is None and sample_env:
-                probe.run('request-trial-exit', ['hyprctl', 'dispatch', 'exit'], env=sample_env, required=False)
+                probe.run('request-trial-exit', ['hyprctl', 'dispatch', 'hl.dsp.exit()'], env=sample_env, required=False)
                 try:
                     launched.wait(timeout=10)
                 except subprocess.TimeoutExpired:

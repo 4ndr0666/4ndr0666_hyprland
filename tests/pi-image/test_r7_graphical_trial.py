@@ -16,6 +16,13 @@ gui = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gui)
 
 class TrialSafetyTests(unittest.TestCase):
+    def test_config_errors_ignore_empty_strings_but_reject_unknown_shapes(self):
+        self.assertEqual(gui.config_error_count(b'["", "  "]'), 0)
+        self.assertEqual(gui.config_error_count(b'["", "real error"]'), 1)
+        for raw in [b'{}', b'null', b'[1]', b'invalid']:
+            with self.assertRaises(ValueError):
+                gui.config_error_count(raw)
+
     def test_manager_decoding_preserves_values_and_discards_unrelated_environment(self):
         for values in [['WAYLAND_DISPLAY=wayland-1', 'XDG_CURRENT_DESKTOP=Hyprland:Other', 'TOKEN=secret'],
                        [['WAYLAND_DISPLAY=wayland-1', 'XDG_CURRENT_DESKTOP=Hyprland:Other', 'TOKEN=secret']]]:
