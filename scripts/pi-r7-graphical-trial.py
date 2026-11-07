@@ -263,6 +263,7 @@ def trial(probe, state, report):
                     sampled = True
                 time.sleep(1)
             if launched.poll() is None and sample_env:
+                report['runtime_samples'].append(runtime_sample(probe, sample_env, home, baseline, 'runtime-final'))
                 probe.run('request-trial-exit', ['hyprctl', 'dispatch', 'hl.dsp.exit()'], env=sample_env, required=False)
                 try:
                     launched.wait(timeout=10)
