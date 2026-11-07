@@ -55,10 +55,9 @@ if [[ ! -f "$HOME/.config/hypr/.initial_startup_done" ]]; then
     fi
 
     # The deployed Kvantum config already selects this theme. Avoid opening
-    # the GUI for a missing theme; only select an installed complete theme.
+    # the GUI for a missing theme; only select an installed theme.
     kvantum_dir="${XDG_CONFIG_HOME:-$HOME/.config}/Kvantum"
-    if [[ -f "$kvantum_dir/$kvantum_theme/$kvantum_theme.kvconfig" &&
-          -f "$kvantum_dir/$kvantum_theme/$kvantum_theme.svg" ]] &&
+    if [[ -f "$kvantum_dir/$kvantum_theme/$kvantum_theme.kvconfig" ]] &&
        ! grep -Fxq "theme=$kvantum_theme" "$kvantum_dir/kvantum.kvconfig" 2>/dev/null &&
        command -v kvantummanager >/dev/null 2>&1; then
         kvantummanager --set "$kvantum_theme" >/dev/null 2>&1 &
