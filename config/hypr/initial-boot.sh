@@ -11,7 +11,7 @@ set -Eeuo pipefail
 scriptsDir="$HOME/.config/hypr/scripts"
 wallpaper="$HOME/.config/hypr/wallpaper_effects/.wallpaper_current"
 waybar_style="$HOME/.config/waybar/style/[Colorful] stolen-style.css"
-kvantum_theme="Colorful-Dark"
+kvantum_theme="Colorful-Dark-Kvantum#"
 color_scheme="prefer-dark"
 gtk_theme="Colorful-Dark"
 icon_theme="Colorful-Dark"
@@ -54,8 +54,15 @@ if [[ ! -f "$HOME/.config/hypr/.initial_startup_done" ]]; then
         dconf write /org/gnome/desktop/interface/cursor-size "24" >/dev/null 2>&1 &
     fi
 
-    # initiate kvantum theme
-    kvantummanager --set "$kvantum_theme" >/dev/null 2>&1 &
+    # The deployed Kvantum config already selects this theme. Avoid opening
+    # the GUI for a missing theme; only select an installed complete theme.
+    kvantum_dir="${XDG_CONFIG_HOME:-$HOME/.config}/Kvantum"
+    if [[ -f "$kvantum_dir/$kvantum_theme/$kvantum_theme.kvconfig" &&
+          -f "$kvantum_dir/$kvantum_theme/$kvantum_theme.svg" ]] &&
+       ! grep -Fxq "theme=$kvantum_theme" "$kvantum_dir/kvantum.kvconfig" 2>/dev/null &&
+       command -v kvantummanager >/dev/null 2>&1; then
+        kvantummanager --set "$kvantum_theme" >/dev/null 2>&1 &
+    fi
 
     if [[ -L "$HOME/.config/waybar/config" ]]; then
         "$scriptsDir/Refresh.sh" >/dev/null 2>&1 &
