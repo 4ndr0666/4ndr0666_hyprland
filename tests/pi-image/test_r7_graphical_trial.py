@@ -126,7 +126,7 @@ class TrialSafetyTests(unittest.TestCase):
             probe.run = lambda *args, **kwargs: subprocess.CompletedProcess([], 0, b'', b'')
             child = type('Child', (), {'poll': lambda self: 0,
                          'wait': lambda self, **kw: (_ for _ in ()).throw(subprocess.TimeoutExpired('trial', 10))})()
-            with patch.object(gui, 'processes', return_value=[]), patch.object(gui, 'owned_processes', return_value=[]), patch.object(gui, 'locate_profile', return_value=source), patch.object(gui.subprocess, 'Popen', return_value=child), patch.object(gui.time, 'sleep'), patch.object(gui, 'restore_manager') as restore, contextlib.redirect_stdout(io.StringIO()):
+            with patch.object(gui, 'repair_wallpaper'), patch.object(gui, 'processes', return_value=[]), patch.object(gui, 'owned_processes', return_value=[]), patch.object(gui, 'locate_profile', return_value=source), patch.object(gui.subprocess, 'Popen', return_value=child), patch.object(gui.time, 'sleep'), patch.object(gui, 'restore_manager') as restore, contextlib.redirect_stdout(io.StringIO()):
                 with self.assertRaisesRegex(RuntimeError, 'cleanup failed'):
                     gui.trial(probe, root, {})
                 restore.assert_called_once()

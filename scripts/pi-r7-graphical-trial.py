@@ -204,6 +204,15 @@ def runtime_sample(probe, env, home, baseline, label):
     checks['first_boot_marker'] = (home / '.config/hypr/.initial_startup_done').is_file()
     return checks
 
+def repair_wallpaper(home, report):
+    wallpaper_script = home / '.config/hypr/scripts/WallustAwww.sh'
+    require(sha(wallpaper_script) == 'aea3c186fe0719c336bbc998a513a754158f119be910f9a95ee0162c07d57597', 'Wallpaper source hash mismatch')
+    wallpaper_text = wallpaper_script.read_text()
+    old_copy = 'cp -f -- "$wallpaper_path" "$wallpaper_current"'
+    require(wallpaper_text.count(old_copy) == 1, 'Unexpected wallpaper script')
+    wallpaper_script.write_text(wallpaper_text.replace(old_copy, 'if [[ ! "$wallpaper_path" -ef "$wallpaper_current" ]]; then\n    ' + old_copy + '\nfi', 1))
+    report['trial_patch'] = {'base_commit': SOURCE_PIN, 'wallpaper_before': 'aea3c186fe0719c336bbc998a513a754158f119be910f9a95ee0162c07d57597', 'wallpaper_after': sha(wallpaper_script), 'scope': 'fresh private trial only'}
+
 def trial(probe, state, report):
     existing = processes()
     require(not any(p['executable'] in COMPOSITORS for p in existing), 'An existing compositor is running; leave it intact.')
@@ -217,6 +226,7 @@ def trial(probe, state, report):
     home = probe.work / 'profile-home'
     home.mkdir(mode=0o700)
     shutil.copytree(source, home / '.config', symlinks=True)
+    repair_wallpaper(home, report)
     env = dict(probe.env, HOME=str(home), XDG_CONFIG_HOME=str(home / '.config'),
                XDG_CACHE_HOME=str(home / '.cache'), XDG_DATA_HOME=str(home / '.local/share'),
                XDG_STATE_HOME=str(home / '.local/state'))
