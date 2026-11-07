@@ -8,7 +8,7 @@
 THEME='Colorful-Dark'
 ICONS='Colorful-Dark-Icons'
 FONT='Noto Sans 9'
-CURSOR='Bibata-Modern_Ice'
+CURSOR='Bibata-Modern-Ice'
 SCHEMA='gsettings set org.gnome.desktop.interface'
 apply_themes () {
 	${SCHEMA} gtk-theme "$THEME"

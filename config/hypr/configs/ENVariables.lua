@@ -45,6 +45,8 @@ hl.env("WINIT_UNIX_BACKEND", "wayland")
 -- Bibata-Modern-Ice-Cursor
 hl.env("HYPRCURSOR_THEME", "Bibata-Modern-Ice")
 hl.env("HYPRCURSOR_SIZE", "24")
+hl.env("XCURSOR_THEME", "Bibata-Modern-Ice")
+hl.env("XCURSOR_SIZE", "24")
 
 -- electron >28 apps (may help)
 hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")
