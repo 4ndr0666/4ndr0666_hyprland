@@ -106,14 +106,41 @@ file_state_atomic_replace() {
 
 file_state_restore_manifest() {
   file_state_init
-  local action path backup before after
-  while IFS=$'\t' read -r action path backup before after; do
-    [[ -n "$action" ]] || continue
-    case "$action" in
-      replaced) file_state_restore "$path" "$backup" ;;
-      created)
-        [[ -e "$path" || -L "$path" ]] && rm -rf -- "$path"
-        ;;
-    esac
+  local line rest action path backup before after actual
+  local -a actions=() paths=() backups=() befores=() afters=()
+  local -A seen=()
+  # Validate the entire transaction before touching any destination.
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    rest="$line"; action="${rest%%$'\t'*}"; rest="${rest#*$'\t'}"
+    path="${rest%%$'\t'*}"; rest="${rest#*$'\t'}"
+    backup="${rest%%$'\t'*}"; rest="${rest#*$'\t'}"
+    before="${rest%%$'\t'*}"; after="${rest#*$'\t'}"
+    [[ ( "$action" == created || "$action" == replaced ) && -n "$path" && "$after" =~ ^[[:xdigit:]]{64}$ ]] || { printf '[ERROR] Invalid restore record.\n' >&2; return 1; }
+    [[ ! ${seen[$path]+present} ]] || { printf '[ERROR] Multiple restore records for %s require review.\n' "$path" >&2; return 1; }
+    seen[$path]=1
+    [[ -e "$path" || -L "$path" ]] || { printf '[ERROR] Restore destination is missing: %s\n' "$path" >&2; return 1; }
+    actual="$(file_state_hash "$path")" || return 1
+    [[ "$actual" == "$after" ]] || { printf '[ERROR] Restore destination changed since deployment: %s\n' "$path" >&2; return 1; }
+    if [[ "$action" == replaced ]]; then
+      [[ -e "$backup" || -L "$backup" ]] || { printf '[ERROR] Restore backup is missing: %s\n' "$backup" >&2; return 1; }
+      # Directory hashes include the archive root name, which differs in the
+      # backup. Compare a normalized archive with the original basename.
+      if [[ -d "$backup" && ! -L "$backup" ]]; then
+        actual="$(tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner --transform="s|^\./|$(basename "$path")/|;s|^\.$|$(basename "$path")|" -cf - -C "$backup" . | sha256sum | awk '{print $1}')" || return 1
+      else
+        actual="$(file_state_hash "$backup")" || return 1
+      fi
+      [[ "$actual" == "$before" ]] || { printf '[ERROR] Restore backup changed: %s\n' "$backup" >&2; return 1; }
+    fi
+    actions+=("$action"); paths+=("$path"); backups+=("$backup")
   done < "$STATE_MANIFEST"
+  local i
+  for ((i=${#actions[@]}-1; i>=0; i--)); do
+    if [[ "${actions[i]}" == replaced ]]; then
+      file_state_restore "${paths[i]}" "${backups[i]}" || return 1
+    else
+      rm -rf -- "${paths[i]}" || return 1
+    fi
+  done
 }

@@ -49,4 +49,13 @@ file_state_restore_manifest
 [[ ! -e "$DEST/tree" ]] || fail 'created/replaced directory was not restored correctly'
 [[ "$(cat "$DEST/untouched")" == untouched ]] || fail 'unrelated file was modified'
 
+# A post-deployment edit must block the whole restore, not just one entry.
+: > "$MANIFEST"
+file_state_atomic_replace "$SOURCE/value" "$DEST/value"
+file_state_atomic_replace "$SOURCE/tree" "$DEST/tree"
+printf 'personal edit\n' > "$DEST/tree/sub/value"
+if file_state_restore_manifest; then fail 'restore accepted a changed destination'; fi
+[[ "$(cat "$DEST/value")" == replacement ]] || fail 'restore partially changed another destination'
+[[ "$(cat "$DEST/tree/sub/value")" == 'personal edit' ]] || fail 'restore overwrote a user edit'
+
 printf 'PASS: file-state core\n'
