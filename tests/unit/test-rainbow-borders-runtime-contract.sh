@@ -23,6 +23,7 @@ cat >"$TMP/bin/hyprctl" <<'STUB'
 #!/usr/bin/env bash
 set -Eeuo pipefail
 printf '%s\n' "$*" >>"$RAINBOW_HYPRCTL_LOG"
+printf 'ok\n'
 STUB
 chmod +x "$TMP/bin/hyprctl"
 cat >"$TMP/home/.config/hypr/wallust/wallust-hyprland.conf" <<'WALLUST'
@@ -40,7 +41,7 @@ for mode in wallust_random rainbow gradient_flow; do
   sed -i 's/^EFFECT_TYPE=.*/EFFECT_TYPE="'"$mode"'"/' "$TMP/RainbowBorders-$mode.sh"
   bash "$TMP/RainbowBorders-$mode.sh" || fail "$mode mode failed"
   [[ "$(wc -l <"$RAINBOW_HYPRCTL_LOG")" -eq 1 ]] || fail "$mode must issue exactly one compositor update"
-  grep -Fq 'dispatch hl.config(' "$RAINBOW_HYPRCTL_LOG" || fail "$mode did not use the Hyprland Lua IPC configuration dispatcher"
+  grep -Fq 'eval hl.config(' "$RAINBOW_HYPRCTL_LOG" || fail "$mode did not use the Hyprland Lua IPC configuration dispatcher"
   grep -Fq 'col.active_border' "$RAINBOW_HYPRCTL_LOG" || fail "$mode did not configure active borders"
   ! grep -Fq 'keyword general:col.active_border' "$RAINBOW_HYPRCTL_LOG" || fail "$mode used deprecated keyword IPC"
 done

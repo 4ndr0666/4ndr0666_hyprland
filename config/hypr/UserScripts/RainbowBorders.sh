@@ -23,7 +23,16 @@ apply_border_gradient() {
 
     # All values passed here are generated hex colors or parsed six-digit
     # Wallust colors; angle is selected only by the fixed mode table below.
-    hyprctl dispatch "hl.config({ general = { [\"col.active_border\"] = \"$colors $angle\" } })" >/dev/null
+    local color lua_colors="" result
+    local -a parts
+    read -r -a parts <<< "$colors"
+    [[ "$angle" =~ ^[0-9]+deg$ && ${#parts[@]} -gt 0 ]] || return 2
+    for color in "${parts[@]}"; do
+        [[ "$color" =~ ^rgba\([[:xdigit:]]{8}\)$ ]] || return 2
+        lua_colors+="\"$color\","
+    done
+    result="$(hyprctl eval "hl.config({ general = { [\"col.active_border\"] = { colors = {$lua_colors}, angle = ${angle%deg} } } })")" || return $?
+    [[ "${result//$'\n'/}" == ok ]] || { printf 'RainbowBorders: %s\n' "$result" >&2; return 1; }
 }
 
 apply_wallust_borders() {
