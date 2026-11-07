@@ -82,7 +82,11 @@ wallpaper_path="$(realpath -- "$wallpaper_path")"
 
 mkdir -p -- "$(dirname -- "$rofi_link")" "$(dirname -- "$wallpaper_current")"
 ln -sfn -- "$wallpaper_path" "$rofi_link"
-cp -f -- "$wallpaper_path" "$wallpaper_current"
+# First boot passes this very file; cp treats copying onto itself as failure.
+# -ef also recognizes symlinks and hard links to the same inode.
+if [[ ! "$wallpaper_path" -ef "$wallpaper_current" ]]; then
+    cp -f -- "$wallpaper_path" "$wallpaper_current"
+fi
 
 printf '%s\n' "[INFO] Generating Wallust palette from: $wallpaper_path"
 if ! command -v wallust >/dev/null 2>&1; then

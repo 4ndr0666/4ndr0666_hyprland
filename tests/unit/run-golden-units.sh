@@ -45,6 +45,7 @@ TESTS=(
   tests/unit/test-rainbow-borders-toggle.sh
   tests/unit/test-compositor-shell-installers.sh
   tests/unit/test-waybar-wallust-pipeline.sh
+  tests/unit/test-wallust-current-wallpaper.sh
   tests/unit/test-waybar-wallust-orchestration.sh
   tests/unit/test-wallust-ghostty-alignment.sh
   tests/unit/test-wallust-lua-consumer.sh
