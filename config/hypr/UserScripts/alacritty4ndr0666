@@ -1,4 +1,22 @@
 #!/usr/bin/env bash
+# Personal Alacritty launcher; preserve floating/fullscreen modes and argv.
 set -Eeuo pipefail
 
-exec alacritty "$@"
+config="${XDG_CONFIG_HOME:-$HOME/.config}/alacritty/alacritty.toml"
+args=()
+if [[ -f "$config" ]]; then
+    args+=(--config-file "$config")
+fi
+case "${1:-}" in
+    -f)
+        shift
+        args+=(--class 'alacritty-float,alacritty-float')
+        ;;
+    -F)
+        shift
+        args+=(--class 'alacritty-fullscreen,alacritty-fullscreen'
+            -o 'window.startup_mode="Fullscreen"' 'window.padding.x=30'
+            'window.padding.y=30' 'window.opacity=0.95' 'font.size=14')
+        ;;
+esac
+exec alacritty "${args[@]}" "$@"
