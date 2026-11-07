@@ -14,7 +14,7 @@ waybar_style="$HOME/.config/waybar/style/[Colorful] stolen-style.css"
 kvantum_theme="Colorful-Dark-Kvantum#"
 color_scheme="prefer-dark"
 gtk_theme="Colorful-Dark"
-icon_theme="Colorful-Dark"
+icon_theme="Colorful-Dark-Icons"
 cursor_theme="Bibata-Modern-Ice"
 
 awww_cmd=(awww img)
