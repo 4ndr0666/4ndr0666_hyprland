@@ -126,7 +126,7 @@ def main():
     print('SHA256: '+sha(archive))
     print('Installed the reviewed configuration. Prior directories retained at: '+str(work/'backups'))
     print('Recovery directory: '+str(work))
-    print('Start the desktop from this console with: Hyprland')
+    print('Start the desktop from this console with: start-hyprland')
     print('Rollback after logging out: python3 '+str(recovery_helper)+' --rollback '+str(work))
     print('Permanent-session runtime verification and full certification remain pending.')
     return 0

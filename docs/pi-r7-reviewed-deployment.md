@@ -26,7 +26,7 @@ Interrupted recovery can require manual review if the recorded state and disk
 state differ; no unconditional crash-recovery guarantee is asserted.
 
 The helper prints a configuration-installation evidence archive and SHA256,
-recovery location, the manual Hyprland launch command, and exact rollback command.
+recovery location, the normal start-hyprland launch command, and exact rollback command.
 Keep the helper and transaction until the persistent desktop is accepted.
 On config errors, unusable display/input, failed startup ownership, or network
 ownership/connectivity changes, log out to the console and restore the recorded
