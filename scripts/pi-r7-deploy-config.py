@@ -116,6 +116,8 @@ def main():
     require(not list(config.glob('.gup-deployment-*')),'Prior deployment exists; inspect its recovery record first')
     source=locate(state)
     work,data=install(config,source,EXPECTED)
+    recovery_helper=work/'recovery.py'
+    shutil.copy2(Path(__file__),recovery_helper)
     report=state/('installation-'+work.name.removeprefix('.gup-deployment-')+'.json')
     save(report,{'status':'INSTALLED','certification':'NOT_CERTIFIED','recovery_directory':str(work),'manifest_pin':MANIFEST_PIN,'script_sha256':sha(Path(__file__)),'destinations':data['entries']})
     archive=report.with_suffix('.tar.gz')
@@ -125,7 +127,7 @@ def main():
     print('Installed the reviewed configuration. Prior directories retained at: '+str(work/'backups'))
     print('Recovery directory: '+str(work))
     print('Start the desktop from this console with: Hyprland')
-    print('Rollback after logging out: python3 '+str(Path(__file__).resolve())+' --rollback '+str(work))
+    print('Rollback after logging out: python3 '+str(recovery_helper)+' --rollback '+str(work))
     print('Permanent-session runtime verification and full certification remain pending.')
     return 0
 if __name__=='__main__':
