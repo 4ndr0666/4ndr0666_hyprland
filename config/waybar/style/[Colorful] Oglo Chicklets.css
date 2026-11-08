@@ -88,7 +88,6 @@ button.active {
 #custom-file_manager,
 #custom-keybinds,
 #custom-keyboard,
-#custom-light_dark,
 #custom-nightlight,
 #custom-lock,
 #custom-hint,
@@ -222,7 +221,6 @@ label:focus {
 }
 
 #custom-lock,
-#custom-light_dark,
 #custom-nightlight,
 #backlight {
     background-color: #64b6ac;

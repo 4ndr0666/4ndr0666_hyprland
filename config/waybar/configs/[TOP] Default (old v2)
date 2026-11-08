@@ -23,7 +23,6 @@
 
 "modules-left": [
 	"custom/menu",
-	"custom/light_dark",
 	"custom/separator#dot-line",
 	"group/motherboard",
 	"custom/separator#line",
