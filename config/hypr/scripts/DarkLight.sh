@@ -92,7 +92,12 @@ set_qt_colors() {
   [[ -f "$QT5_CONFIG" ]] && sed -i -E "s|^color_scheme_path=.*$|color_scheme_path=$qt5_color|" "$QT5_CONFIG"
   [[ -f "$QT6_CONFIG" ]] && sed -i -E "s|^color_scheme_path=.*$|color_scheme_path=$qt6_color|" "$QT6_CONFIG"
   if command -v kvantummanager >/dev/null 2>&1; then
-    kvantummanager --set "$kvantum_theme"
+    if [[ -f "$HOME_CONFIG/Kvantum/$kvantum_theme/$kvantum_theme.kvconfig" ||
+          -f "/usr/share/Kvantum/$kvantum_theme/$kvantum_theme.kvconfig" ]]; then
+      kvantummanager --set "$kvantum_theme"
+    else
+      printf '[WARN] Kvantum theme %s is unavailable; preserving selected theme.\n' "$kvantum_theme" >&2
+    fi
   fi
 }
 
@@ -100,33 +105,42 @@ set_custom_gtk_theme() {
   local mode="$1"
   local theme_dir="$HOME/.themes"
   local icon_dir="$HOME/.icons"
-  local theme_setting='org.gnome.desktop.interface gtk-theme'
-  local icon_setting='org.gnome.desktop.interface icon-theme'
-  local color_setting='org.gnome.desktop.interface color-scheme'
+  local schema='org.gnome.desktop.interface'
+  local theme_setting='gtk-theme'
+  local icon_setting='icon-theme'
+  local color_setting='color-scheme'
   local keyword='*Light*'
   [[ "$mode" == Dark ]] && keyword='*Dark*'
 
   command -v gsettings >/dev/null 2>&1 || return 0
   if [[ "$mode" == Dark ]]; then
-    gsettings set "$color_setting" prefer-dark
+    gsettings set "$schema" "$color_setting" prefer-dark
   else
-    gsettings set "$color_setting" prefer-light
+    gsettings set "$schema" "$color_setting" prefer-light
   fi
 
   local -a themes=() icons=()
   local item
-  while IFS= read -r -d '' item; do themes+=("$(basename "$item")"); done < <(find "$theme_dir" -maxdepth 1 -type d -iname "$keyword" -print0 2>/dev/null)
-  while IFS= read -r -d '' item; do icons+=("$(basename "$item")"); done < <(find "$icon_dir" -maxdepth 1 -type d -iname "$keyword" -print0 2>/dev/null)
+  local root
+  for root in "$theme_dir" "${XDG_DATA_HOME:-$HOME/.local/share}/themes" /usr/share/themes; do
+    [[ -d "$root" ]] || continue
+    while IFS= read -r -d '' item; do themes+=("$(basename "$item")"); done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -iname "$keyword" -print0)
+  done
+  for root in "$icon_dir" "${XDG_DATA_HOME:-$HOME/.local/share}/icons" /usr/share/icons; do
+    [[ -d "$root" ]] || continue
+    while IFS= read -r -d '' item; do icons+=("$(basename "$item")"); done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -iname "$keyword" -print0)
+  done
 
   if ((${#themes[@]})); then
-    gsettings set "$theme_setting" "${themes[RANDOM % ${#themes[@]}]}"
+    gsettings set "$schema" "$theme_setting" "${themes[RANDOM % ${#themes[@]}]}"
   fi
   if ((${#icons[@]})); then
     local selected_icon="${icons[RANDOM % ${#icons[@]}]}"
-    gsettings set "$icon_setting" "$selected_icon"
+    gsettings set "$schema" "$icon_setting" "$selected_icon"
     [[ -f "$QT5_CONFIG" ]] && sed -i -E "s|^icon_theme=.*$|icon_theme=$selected_icon|" "$QT5_CONFIG"
     [[ -f "$QT6_CONFIG" ]] && sed -i -E "s|^icon_theme=.*$|icon_theme=$selected_icon|" "$QT6_CONFIG"
   fi
+  return 0
 }
 
 awww query >/dev/null 2>&1 || {
