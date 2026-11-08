@@ -21,7 +21,7 @@ class RepairTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as t:
    home=Path(t);config=home/'.config';root=config/'4ndr0tools/4ndr0pac';root.mkdir(parents=True);(root/'personal').write_text('keep')
    alias=home/'.local/bin/4ndr0pac';alias.parent.mkdir(parents=True);alias.write_text('old launcher')
-   replies=[subprocess.CompletedProcess([],0,'version',''),subprocess.CompletedProcess([],0,'dry-run',''),subprocess.CompletedProcess([],1,'','injected failure')]
+   replies=[subprocess.CompletedProcess([],0,'syntax',''),subprocess.CompletedProcess([],0,'version',''),subprocess.CompletedProcess([],0,'dry-run',''),subprocess.CompletedProcess([],1,'','injected failure')]
    with patch.object(m.subprocess,'run',side_effect=replies):
     with self.assertRaisesRegex(RuntimeError,'Installed frontend'):m.install(home,config,m.files())
    self.assertEqual(alias.read_text(),'old launcher');self.assertEqual((root/'personal').read_text(),'keep')
