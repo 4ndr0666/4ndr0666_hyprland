@@ -38,6 +38,15 @@ def apply(config,rows,work):
    shutil.copy2(work/'backup'/row['path'],p)
   raise
  return [r['path'] for r in actions]
+def reload_command():
+ if os.environ.get('HYPRLAND_INSTANCE_SIGNATURE'):
+  return ['hyprctl','reload']
+ result=subprocess.run(['hyprctl','-j','instances'],capture_output=True,text=True,timeout=10)
+ require(result.returncode==0,'Cannot discover Hyprland instances')
+ instances=json.loads(result.stdout)
+ require(isinstance(instances,list) and len(instances)==1 and isinstance(instances[0].get('instance'),str),'Select a Hyprland session explicitly; zero or multiple instances found')
+ return ['hyprctl','-i',instances[0]['instance'],'reload']
+
 def main():
  require(os.geteuid()!=0,'Run as your desktop user')
  home=Path.home();config=home/'.config'
@@ -46,7 +55,10 @@ def main():
  state=home/'.local/state/gup-r7';state.mkdir(parents=True,exist_ok=True);os.umask(0o077)
  work=Path(tempfile.mkdtemp(prefix='retire-darklight-',dir=state));changed=apply(config,rows,work)
  report={'status':'APPLIED','changed':changed,'backup':str(work),'lf_available':shutil.which('lf') is not None,'certification':'NOT_CERTIFIED'}
- for args in [['hyprctl','reload'],['pkill','-SIGUSR2','-u',str(os.getuid()),'-x','waybar']]:
+ try: reload_args=reload_command()
+ except (ValueError,RuntimeError,OSError) as error:
+  report['session_selection_error']=str(error);reload_args=['hyprctl','reload']
+ for args in [reload_args,['pkill','-SIGUSR2','-u',str(os.getuid()),'-x','waybar']]:
   p=subprocess.run(args,capture_output=True,text=True,timeout=20);report[' '.join(args)]={'exit':p.returncode,'reply':p.stdout.strip(),'stderr':p.stderr.strip()}
  (work/'report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
  if not report['lf_available']:print('LF binding is configured; LF executable is not currently on PATH.')

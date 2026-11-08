@@ -1,8 +1,15 @@
+import json,os,subprocess
+from unittest.mock import patch
 import hashlib,importlib.util,tempfile,unittest,base64
 from pathlib import Path
 s=importlib.util.spec_from_file_location('retirement',Path(__file__).resolve().parents[2]/'scripts/pi-r7-retire-darklight.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 def row(path,old,new):return {'path':path,'before':hashlib.sha256(old).hexdigest(),'after':hashlib.sha256(new).hexdigest() if new is not None else None,'data':base64.b64encode(new).decode() if new is not None else None}
 class RetirementTests(unittest.TestCase):
+ def test_reload_selects_only_unambiguous_instance_without_shell_environment(self):
+  with patch.dict(os.environ,{},clear=True),patch.object(m.subprocess,'run',return_value=subprocess.CompletedProcess([],0,json.dumps([{'instance':'owned-instance'}]),'')):
+   self.assertEqual(m.reload_command(),['hyprctl','-i','owned-instance','reload'])
+  with patch.dict(os.environ,{},clear=True),patch.object(m.subprocess,'run',return_value=subprocess.CompletedProcess([],0,'[]','')):
+   with self.assertRaisesRegex(RuntimeError,'zero or multiple'):m.reload_command()
  def test_update_backup_removal_and_repeat(self):
   with tempfile.TemporaryDirectory() as t:
    root=Path(t);config=root/'config';config.mkdir();(config/'file').write_bytes(b'old');(config/'script').write_bytes(b'retired');work=root/'work';work.mkdir()
