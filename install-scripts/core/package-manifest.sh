@@ -32,6 +32,7 @@ CORE_PACKAGES=(
   pavucontrol
   playerctl
   python-gobject
+  python-prompt-toolkit
   python-requests
   python-pyquery
   qt5ct

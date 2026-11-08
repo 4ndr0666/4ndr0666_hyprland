@@ -132,7 +132,7 @@ copy_waybar() {
 
 copy_phase2() {
   local log="$1"
-  local -a dirs=(btop cava hypr Kvantum qt5ct qt6ct swappy wallust wlogout)
+  local -a dirs=(4ndr0tools btop cava hypr Kvantum qt5ct qt6ct swappy wallust wlogout)
 
   for dir_name in "${dirs[@]}"; do
     local dir_path="$HOME/.config/$dir_name"

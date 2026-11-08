@@ -22,3 +22,20 @@ Backend actions in 4ndr0pac require their own package-manager dependencies and
 permissions. Frontend tests with a fake backend do not certify those actions.
 
 Importing these sources does not install them or execute their system actions.
+
+## Historical UI reconciliation
+
+The prompt_toolkit Electric Glass UI existed in scr commit
+713a1959b30fc8aebcd0a2b78b80f3b18955ade0 (frontend SHA256
+35d613eed23b7441d22fd135b5f5aa09472e81340f4f242be33db69101cad299).
+The GUP commit f97d82cad09073db187454b6e8ee4f87c5495714 added confirmation
+coverage but replaced that UI with plain input. This imported frontend restores
+the historical UI, completion, history, theme and non-TTY fallback while keeping
+the newer confirmation mapping and one-shot safety path. Historical hashes above
+identify supplied baselines, not revised file hashes.
+
+python-prompt-toolkit is declared in the canonical package manifest. The tools
+root is included in the normal configuration copy workflow. An existing Pi
+installation still needs its explicit user-local tool deployment; copying these
+sources into Git does not establish native command availability. Do not invoke
+the preserved system installer automatically.
