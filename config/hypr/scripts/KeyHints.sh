@@ -91,7 +91,7 @@ declare -a KEYBINDS=(
 	" M" "Set Split Ratio" "All Layouts"
 	"" "" ""
 	"<span weight='bold'>                ===⦑     💀Ψ•-⦑  CUSTOM KEYBINDS  ⦒-•Ψ💀      ⦒===</span>" "" ""
-	" F2" "File Manager" "Yazi"
+	" F2" "File Manager" "LF"
 	" F3" "Text Editor" "Micro"
 	" SHIFT F3" "Text Editor" "Neovim"
 	" F5" "Media Player" "Play With MPV"
@@ -100,11 +100,11 @@ declare -a KEYBINDS=(
 	" F7" "Downloader" "Jdownloader"
 	" SHIFT F7" "Downloader" "Dmenuhandler"
 	" F8" "Service Manager" "4ndr0service"
-	" SHIFT F8" "Kill Hanging" "Trigger_oom.sh"
+	" SHIFT F8" "Package Manager" "4ndr0pac"
 	" F9" "Torrent Manager" "Torwrap.sh"
 	" SHIFT F9" "Google Dorks" "Dorkmaster.py"
-	" F10" "Media Player" "MPV Network Profile"
-	" SHIFT F10" "Media Manager" "Wofi_media.sh"
+	" F10" "Media Player" "MPV"
+	" SHIFT F10" "Media Manager" "wofi_media.sh"
 	" F12" "Screenrecorder" "Dmenurecord"
 	"" "" ""
 )
@@ -189,8 +189,8 @@ if [ -n "$yad_output" ]; then
 		"Micro")
 			kitty -e micro &
 			;;
-		"Yazi")
-			kitty -e yazi &
+		"LF")
+			kitty -e lf &
 			;;
 		"grim")
 			grim ~/Pictures/Screenshots/$(date +'%Y-%m-%d+%H:%M:%S').png &
@@ -206,6 +206,15 @@ if [ -n "$yad_output" ]; then
 			;;
 		"Immediate Exit")
 			hyprctl dispatch 'hl.dsp.exit()'
+			;;
+		"MPV")
+			mpv &
+			;;
+		"wofi_media.sh")
+			wofi_media.sh &
+			;;
+		"4ndr0pac")
+			4ndr0pac &
 			;;
 		"Play With MPV" | "MPV Network Profile")
 			kitty -e mpv --player-operation-mode=pseudo-gui &

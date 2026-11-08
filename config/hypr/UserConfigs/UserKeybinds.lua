@@ -32,14 +32,14 @@ hl.bind(mainMod .. " + SHIFT + F7", hl.dsp.exec_cmd("bash " .. os.getenv("HOME")
 
 -- F8
 hl.bind(mainMod .. " + F8", hl.dsp.exec_cmd("bash 4ndr0service"), { description = "4ndr0service" })
-hl.bind(mainMod .. " + SHIFT + F8", hl.dsp.exec_cmd("bash /usr/local/bin/trigger_oom.sh"), { description = "OOM Killer" })
+hl.bind(mainMod .. " + SHIFT + F8", hl.dsp.exec_cmd("4ndr0pac"), { description = "4ndr0pac" })
 
 -- F9
 hl.bind(mainMod .. " + F9", hl.dsp.exec_cmd(term .. " -e " .. os.getenv("HOME") .. "/.local/bin/torwrap /dev/null 2>&1"), { description = "Torwrap" })
 
 -- F10
 hl.bind(mainMod .. " + F10", hl.dsp.exec_cmd("mpv"), { description = "MPV" })
-hl.bind(mainMod .. " + SHIFT + F10", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.local/bin/wl-media >/dev/null 2>&1"), { description = "Wl-Media" })
+hl.bind(mainMod .. " + SHIFT + F10", hl.dsp.exec_cmd("wofi_media.sh"), { description = "Wofi Media" })
 
 -- F12
 hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.local/bin/wl-record >/dev/null 2>&1"), { description = "Wl-record" })

@@ -48,6 +48,7 @@ TESTS=(
   tests/unit/test-rainbow-lua-ipc.sh
   tests/unit/test-personal-alacritty-launcher.sh
   tests/unit/test-darklight-retirement.sh
+  tests/unit/test-lf-hint-alignment.sh
   tests/unit/test-wallust-current-wallpaper.sh
   tests/unit/test-waybar-wallust-orchestration.sh
   tests/unit/test-wallust-ghostty-alignment.sh
