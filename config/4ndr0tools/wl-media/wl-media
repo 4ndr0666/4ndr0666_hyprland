@@ -1,0 +1,282 @@
+#!/bin/bash
+# 4ndr0666
+set -euo pipefail
+#                           # === WL-MEDIA === #
+# Description: Invokes wofi for media selection from user-specified dirs.
+#              Standalone interactive GUI tool for Hyprland.
+#              Features dynamic IPC socket queuing for active MPV instances.
+#
+# No CLI flags — fully menu-driven via wofi.
+#
+# Menu entries (mode prompt):
+#  Play Entire Directory               flat find, shuffled, looping
+#  Play Entire Directory (Recursive)   deep find, shuffled, looping
+#  Play Images Only (Slideshow)        flat find, images, sorted, looping
+#  Play Recent                         GTK xbel, 150 most-recent, shuffled
+#  Browse Files                        navigate subdirs → pick file →
+#                                        Play Now | Queue in mpv
+#
+# Directory sources:
+#  Preconfigured MEDIA_DIRS            dead mounts filtered out automatically
+#  Type a directory...                 manual path entry, ~ expanded
+# ---------------------------------------------------------------------
+
+# CONSTANTS
+PLAYLIST_DIR="$HOME/.config/mpv/playlists"
+SOCKETS_DIR="/tmp/"
+mkdir -p "$PLAYLIST_DIR"
+
+# Centralized Regex for Media (DRY)
+MEDIA_REGEX='\.(mp4|mkv|avi|mov|m4v|webm|gif|3gp|flv|ts|webp|wmv|mpg|mpeg)$'
+
+MEDIA_DIRS=(
+    "/s4/s4Downloads"
+    "$HOME/Downloads"
+    "/storage"
+    "/storage/Downloads"
+    "/s4/Mega/Ari"
+    "/s4/4n"
+    "/sto2"
+    "/sto2/Downloads"
+    "/sto2/Gym"
+    "/sto2/JD"
+    "/sto2/Downloads/kelly"
+    "/23.1/Downloads"
+    "/23.1/Edits"
+    "/23.1/JD"
+    "/23.1/Thecloud"
+    "/s3/home/andro"
+)
+
+# ==============================================================================
+# 2. Dependency Check
+# ==============================================================================
+for cmd in wofi socat jq mpv; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        notify-send "[Error]" "Missing dependency: $cmd"
+        exit 1
+    fi
+done
+
+# ==============================================================================
+# 3. Core UI / Validation
+# ==============================================================================
+wofi_prompt() {
+    wofi --dmenu --prompt "$1" --width 500 --lines 15 --columns 1 || true
+}
+
+validate_directory() {
+    if [[ -d "$1" ]]; then
+        return 0
+    else
+        notify-send "[Error]" "Invalid directory: $1"
+        return 1
+    fi
+}
+
+# ==============================================================================
+# 4. MPV Execution & IPC
+# ==============================================================================
+play_media() {
+    local media="$1"
+    mpv "$media" >/dev/null 2>&1 &
+    notify-send "Playing: $(basename "$media")"
+}
+
+queue_media() {
+    local media="$1"
+
+    if [[ ! -d "$SOCKETS_DIR" ]]; then
+        notify-send "[Error]" "No active mpv instances found (socket directory missing)."
+        return 1
+    fi
+
+    local mpv_socket
+    mpv_socket=$(find "$SOCKETS_DIR" -maxdepth 2 -type s -printf "%f\n" 2>/dev/null)
+
+    if [[ -z "$mpv_socket" ]]; then
+        notify-send "[Error]" "No active mpv instances found."
+        return 1
+    fi
+
+    local selected_socket
+    selected_socket=$(printf '%s\n' "$mpv_socket" | wofi_prompt "Select mpv instance to queue:")
+
+    if [[ -n "$selected_socket" ]]; then
+        local socket_path="$SOCKETS_DIR/$selected_socket"
+
+        if [[ -S "$socket_path" ]]; then
+            # jq constructs a correctly escaped JSON payload regardless of special
+            # characters (spaces, quotes, backslashes) in the file path.
+            local json_payload
+            json_payload=$(jq -n --arg file "$media" '{command: ["loadfile", $file, "append-play"]}')
+            # Suppress socat's stdout: mpv returns a JSON ACK that we discard.
+            printf '%s\n' "$json_payload" | socat - "$socket_path" >/dev/null 2>&1
+            notify-send "Queued media in mpv instance: $selected_socket"
+        else
+            notify-send "[Error]" "Selected item is not a valid mpv socket."
+        fi
+    fi
+}
+
+play_playlist() {
+    local playlist="$1"
+    if [[ -s "$playlist" ]]; then
+        mpv --shuffle --playlist="$playlist" --loop-playlist=inf 2>&1
+        notify-send "Playing playlist: $(basename "$playlist")"
+    else
+        notify-send "[Error]" "Playlist empty or invalid: $(basename "$playlist")"
+    fi
+}
+
+# ==============================================================================
+# 5. Playlist Generation
+# ==============================================================================
+generate_and_play_playlist() {
+    local dir="$1"
+    local dir_name
+    dir_name=$(basename "$dir")
+
+    # Use a single fixed playlist file per directory (overwrite on each invocation).
+    # The sequential-counter accumulation model created unbounded disk pollution:
+    # every run appended a new _1.m3u, _2.m3u … file that was never cleaned up.
+    # A fixed name per dir is correct: the playlist reflects the current dir state,
+    # not a historical record of prior invocations.
+    local playlist_file="${PLAYLIST_DIR}/${dir_name}_playlist.m3u8"
+
+    # Write the playlist. find | grep | sort -V produces a deterministic file;
+    # mpv --shuffle (in play_playlist) randomises playback order in memory.
+    find "$dir" -type f | grep -iE "$MEDIA_REGEX" | sort -V > "$playlist_file"
+
+    if [[ -s "$playlist_file" ]]; then
+        play_playlist "$playlist_file"
+    else
+        notify-send "[Error]" "No media found in: $dir"
+        rm -f "$playlist_file"
+    fi
+}
+
+# ==============================================================================
+# 6. Browse Logic
+# ==============================================================================
+browse_media() {
+    local current_dir="$1"
+    local history=("$current_dir")
+
+    while true; do
+        local subdirs
+        local media_files
+        # menu_items is an array. Each element is one entry.
+        # We build the array and pipe via printf '%s\n' to avoid echo -e,
+        # which would interpret \n, \t, and \\ sequences inside filenames —
+        # mangling paths and producing phantom entries in wofi.
+        local -a menu_items=()
+
+        subdirs=$(find "$current_dir" -mindepth 1 -maxdepth 4 -type d 2>/dev/null | sort)
+        media_files=$(find "$current_dir" -mindepth 1 -maxdepth 1 -type f 2>/dev/null \
+            | grep -iE "$MEDIA_REGEX" | sort -V || true)
+
+        while IFS= read -r d; do
+            [[ -n "$d" ]] && menu_items+=("$d")
+        done <<< "$subdirs"
+
+        while IFS= read -r f; do
+            [[ -n "$f" ]] && menu_items+=("$f")
+        done <<< "$media_files"
+
+        if [[ "${#menu_items[@]}" -eq 0 ]]; then
+            local empty_choice
+            empty_choice=$(printf '%s\n' "Back" "Exit" | wofi_prompt "No media in $(basename "$current_dir")")
+            if [[ "$empty_choice" == "Back" && "${#history[@]}" -gt 1 ]]; then
+                unset 'history[${#history[@]}-1]'
+                current_dir="${history[-1]}"
+                continue
+            else
+                return
+            fi
+        fi
+
+        [[ "${#history[@]}" -gt 1 ]] && menu_items+=("Back")
+        menu_items+=("Exit")
+
+        local selection
+        selection=$(printf '%s\n' "${menu_items[@]}" | wofi_prompt "Browse: $(basename "$current_dir")")
+
+        if [[ -z "$selection" || "$selection" == "Exit" ]]; then
+            return
+        elif [[ "$selection" == "Back" ]]; then
+            unset 'history[${#history[@]}-1]'
+            current_dir="${history[-1]}"
+        elif [[ -d "$selection" ]]; then
+            current_dir="$selection"
+            history+=("$current_dir")
+        elif [[ -f "$selection" ]]; then
+            local action
+            action=$(printf '%s\n' "Play Now" "Queue in mpv" "Back" \
+                | wofi_prompt "Action for $(basename "$selection"):")
+            case "$action" in
+                "Play Now")     play_media "$selection"; break ;;
+                "Queue in mpv") queue_media "$selection" ;;
+                "Back")         ;;
+            esac
+        else
+            notify-send "[Error]" "Invalid selection."
+        fi
+    done
+}
+
+# ==============================================================================
+# 7. Main Loop
+# ==============================================================================
+main() {
+    while true; do
+        # Pre-filter MEDIA_DIRS to only directories that currently exist.
+        # Listing dead mounts (/sto2, /23.1, /s3/home/andro, etc.) in the menu
+        # forces the user to select them, see an error notification, and retry.
+        # Filtering here produces a clean menu of only actionable paths.
+        local -a available_dirs=()
+        for d in "${MEDIA_DIRS[@]}"; do
+            [[ -d "$d" ]] && available_dirs+=("$d")
+        done
+
+        local -a main_menu_items=("${available_dirs[@]}" "Type a directory..." "Exit")
+
+        local dir_choice
+        dir_choice=$(printf '%s\n' "${main_menu_items[@]}" | wofi_prompt "Select a media directory:")
+
+        if [[ -z "$dir_choice" || "$dir_choice" == "Exit" ]]; then
+            exit 0
+        elif [[ "$dir_choice" == "Type a directory..." ]]; then
+            local typed_dir
+            typed_dir=$(printf '' | wofi_prompt "Enter a directory path:")
+
+            [[ -z "$typed_dir" ]] && continue
+
+            # Expand leading ~ to $HOME.
+            typed_dir="${typed_dir/#\~/$HOME}"
+            validate_directory "$typed_dir" || continue
+            dir_choice="$typed_dir"
+        else
+            validate_directory "$dir_choice" || continue
+        fi
+
+        local mode_choice
+        mode_choice=$(printf '%s\n' "Play Entire Directory" "Browse Files" "Exit" \
+            | wofi_prompt "Mode for $(basename "$dir_choice"):")
+
+        case "$mode_choice" in
+            "Play Entire Directory")
+                generate_and_play_playlist "$dir_choice"
+                break
+                ;;
+            "Browse Files")
+                browse_media "$dir_choice"
+                ;;
+            "Exit"|"")
+                exit 0
+                ;;
+        esac
+    done
+}
+
+main
