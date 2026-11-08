@@ -26,6 +26,6 @@ for target in LF MPV wofi_media.sh 4ndr0pac; do
  # Background launcher completes asynchronously; wait briefly for its capture.
  for attempt in {1..20}; do [[ -f "$CAPTURE" ]] && break; sleep 0.05; done
  [[ -f "$CAPTURE" ]]
- case "$target" in LF) grep -Fxq -- '-e lf' "$CAPTURE" ;; MPV) grep -Fxq mpv "$CAPTURE" ;; *) grep -Fxq "$target" "$CAPTURE" ;; esac
+ case "$target" in LF) grep -Fxq -- '-e lf' "$CAPTURE" ;; 4ndr0pac) grep -Fxq -- '-e 4ndr0pac' "$CAPTURE" ;; MPV) grep -Fxq mpv "$CAPTURE" ;; *) grep -Fxq "$target" "$CAPTURE" ;; esac
  rm -f "$CAPTURE"
 done

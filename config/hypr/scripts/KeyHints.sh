@@ -214,7 +214,7 @@ if [ -n "$yad_output" ]; then
 			wofi_media.sh &
 			;;
 		"4ndr0pac")
-			4ndr0pac &
+			kitty -e 4ndr0pac &
 			;;
 		"Play With MPV" | "MPV Network Profile")
 			kitty -e mpv --player-operation-mode=pseudo-gui &
