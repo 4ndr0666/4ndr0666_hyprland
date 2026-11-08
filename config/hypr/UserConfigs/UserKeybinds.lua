@@ -13,7 +13,7 @@ hl.bind(mainMod .. " + SHIFT + H", hl.dsp.exec_cmd(UserScripts .. "/Fkeyhints.sh
 hl.bind(mainMod .. " + P", hl.dsp.exec_cmd(UserScripts .. "/colorpicker"), { description = "Colorpicker" })
 
 -- F2
-hl.bind(mainMod .. " + F2", hl.dsp.exec_cmd(term .. " -e yazi " .. os.getenv("HOME") .. "/.cache/yazi"), { description = "Yazi" })
+hl.bind(mainMod .. " + F2", hl.dsp.exec_cmd(term .. " -e lf"), { description = "LF" })
 
 -- F3
 hl.bind(mainMod .. " + F3", hl.dsp.exec_cmd(term .. " -e micro"), { description = "Micro" })
